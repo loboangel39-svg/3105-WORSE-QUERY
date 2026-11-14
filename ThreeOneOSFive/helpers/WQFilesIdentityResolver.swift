@@ -1,0 +1,260 @@
+import Foundation
+
+struct WQFilesResolvedIdentity: Equatable {
+    let containerPath: String
+    let bundleID: String
+    let displayName: String
+    let source: String
+    let storeSignature: String
+}
+
+enum WQFilesIdentityResolver {
+    // This is a local diagnostic switch. It changes presentation only and never
+    // changes grants, MHA-C2, signing, or write operations.
+    static let enabledDefaultsKey = "wqfiles.identityResolver.enabled"
+
+    private struct Layout {
+        let name: String
+        let bundleSize: UInt32
+        let bundleID: UInt32
+        let container: UInt32
+        let nameRef: UInt32
+        let displayName: UInt32
+        let pluginSize: UInt32
+        let pluginBundleID: UInt32
+        let pluginContainer: UInt32
+    }
+
+    private struct StoreSnapshot {
+        let signature: String
+        let identities: [String: WQFilesResolvedIdentity]
+    }
+
+    private static let layouts: [Layout] = [
+        Layout(name: "27.0", bundleSize: 0x250, bundleID: 0x0c, container: 0x68,
+               nameRef: 0x6c, displayName: 0x74, pluginSize: 0x118,
+               pluginBundleID: 0x00, pluginContainer: 0x54),
+        Layout(name: "27.2", bundleSize: 0x25c, bundleID: 0x0c, container: 0x6c,
+               nameRef: 0x70, displayName: 0x78, pluginSize: 0x120,
+               pluginBundleID: 0x00, pluginContainer: 0x58),
+        Layout(name: "27.2b", bundleSize: 0x25c, bundleID: 0x10, container: 0x6c,
+               nameRef: 0x70, displayName: 0x78, pluginSize: 0x120,
+               pluginBundleID: 0x04, pluginContainer: 0x58),
+        Layout(name: "27.3", bundleSize: 0x25c, bundleID: 0x0c, container: 0x6c,
+               nameRef: 0x70, displayName: 0x78, pluginSize: 0x134,
+               pluginBundleID: 0x00, pluginContainer: 0x58),
+        Layout(name: "27.3d", bundleSize: 0x25c, bundleID: 0x0c, container: 0x6c,
+               nameRef: 0x70, displayName: 0x78, pluginSize: 0x0f0,
+               pluginBundleID: 0x04, pluginContainer: 0x6c)
+    ]
+
+    private static var snapshot: StoreSnapshot?
+    private static let lock = NSLock()
+
+    static var isEnabled: Bool {
+        UserDefaults.standard.object(forKey: enabledDefaultsKey) as? Bool ?? true
+    }
+
+    static func resolve(containerPaths: [String]) -> [String: WQFilesResolvedIdentity] {
+        guard isEnabled else {
+            log("wqfiles: identity resolver disabled by local diagnostic setting")
+            return [:]
+        }
+
+        let requested = Set(containerPaths.compactMap(applicationContainerPath))
+        guard !requested.isEmpty else { return [:] }
+        guard let current = loadSnapshot() else {
+            log("wqfiles: CSStore2 unavailable or incompatible; preserving original list")
+            return [:]
+        }
+
+        let result = current.identities.filter { requested.contains($0.key) }
+        log("wqfiles: CSStore2 verified \(result.count)/\(requested.count) application identities")
+        return result
+    }
+
+    static func resetForDiagnostics() {
+        lock.lock()
+        snapshot = nil
+        lock.unlock()
+    }
+
+    private static func applicationContainerPath(_ raw: String) -> String? {
+        let path = ContainerDiscoveryMerger.canonicalPath(raw)
+        let root = ContainerDiscoveryMerger.canonicalPath(ContainerStore.appDataRoot)
+        guard path.hasPrefix(root + "/") else { return nil }
+        let uuid = (path as NSString).lastPathComponent
+        guard UUID(uuidString: uuid) != nil else { return nil }
+        return path
+    }
+
+    private static func loadSnapshot() -> StoreSnapshot? {
+        let candidates = storeCandidates()
+        guard !candidates.isEmpty else { return nil }
+
+        for url in candidates {
+            guard let attributes = try? FileManager.default.attributesOfItem(atPath: url.path),
+                  let size = (attributes[.size] as? NSNumber)?.uint64Value,
+                  size >= 4 * 1024, size <= 64 * 1024 * 1024,
+                  let before = try? FileManager.default.attributesOfItem(atPath: url.path),
+                  let data = try? Data(contentsOf: url, options: .mappedIfSafe),
+                  let after = try? FileManager.default.attributesOfItem(atPath: url.path),
+                  sameFile(before, after),
+                  let parsed = parse(data: data) else {
+                continue
+            }
+
+            let signature = fileSignature(after)
+            lock.lock()
+            if let cached = snapshot, cached.signature == signature {
+                lock.unlock()
+                return cached
+            }
+            let stamped = parsed.mapValues {
+                WQFilesResolvedIdentity(
+                    containerPath: $0.containerPath,
+                    bundleID: $0.bundleID,
+                    displayName: $0.displayName,
+                    source: $0.source,
+                    storeSignature: signature
+                )
+            }
+            let result = StoreSnapshot(signature: signature, identities: stamped)
+            snapshot = result
+            lock.unlock()
+            log("wqfiles: accepted CSStore2 snapshot \(url.lastPathComponent) identities=\(parsed.count)")
+            return result
+        }
+        return nil
+    }
+
+    private static func storeCandidates() -> [URL] {
+        var cacheRoots: [String] = []
+        var seen = Set<String>()
+        func add(_ raw: String) {
+            let path = ContainerDiscoveryMerger.canonicalPath(raw)
+            if seen.insert(path).inserted { cacheRoots.append(path) }
+        }
+
+        var error: NSString?
+        if let lsd = MCMActivateContainerPath(10, "com.apple.lsd", false, &error) {
+            add((lsd as NSString).appendingPathComponent("Library/Caches"))
+        }
+        add("/var/db/lsd")
+        add("/var/mobile/Library/Caches")
+
+        var result: [URL] = []
+        for root in cacheRoots {
+            guard let names = try? FileManager.default.contentsOfDirectory(atPath: root) else { continue }
+            for name in names where name.hasPrefix("com.apple.LaunchServices-") && name.hasSuffix("-v2.csstore") {
+                result.append(URL(fileURLWithPath: (root as NSString).appendingPathComponent(name)))
+            }
+        }
+        return result.sorted { $0.path < $1.path }
+    }
+
+    private static func parse(data: Data) -> [String: WQFilesResolvedIdentity]? {
+        guard data.count >= 4, data.prefix(4) == Data("bdsl".utf8) else { return nil }
+        let bytes = [UInt8](data)
+        let strings = stringTable(bytes)
+        guard !strings.isEmpty else { return nil }
+
+        var choices: [[String: WQFilesResolvedIdentity]] = []
+        for layout in layouts {
+            var map: [String: WQFilesResolvedIdentity] = [:]
+            var conflicts = Set<String>()
+            guard bytes.count > Int(layout.bundleSize) + 8 else { continue }
+
+            var offset = 0
+            while offset + 8 + Int(layout.bundleSize) <= bytes.count {
+                let size = read32(bytes, offset + 4)
+                let body = offset + 8
+                if size == layout.bundleSize {
+                    let bid = strings[read32(bytes, body + Int(layout.bundleID)) >> 2]
+                    let path = strings[read32(bytes, body + Int(layout.container)) >> 2]
+                    let name = strings[read32(bytes, body + Int(layout.displayName)) >> 2]
+                        ?? strings[read32(bytes, body + Int(layout.nameRef)) >> 2]
+                    if let bid, let path,
+                       let canonical = applicationContainerPath(path),
+                       isValidBundleID(bid),
+                       let display = safeDisplayName(name, bundleID: bid) {
+                        let identity = WQFilesResolvedIdentity(
+                            containerPath: canonical,
+                            bundleID: bid,
+                            displayName: display,
+                            source: "CSStore2/\(layout.name)",
+                            storeSignature: "pending"
+                        )
+                        if let previous = map[canonical], previous.bundleID != bid {
+                            conflicts.insert(canonical)
+                        } else {
+                            map[canonical] = identity
+                        }
+                    }
+                }
+                offset += 4
+            }
+            for conflict in conflicts { map.removeValue(forKey: conflict) }
+            if !map.isEmpty { choices.append(map) }
+        }
+
+        guard let best = choices.max(by: { $0.count < $1.count }) else { return nil }
+        // A known layout must produce a meaningful set. One accidental record is
+        // not enough evidence to replace a UUID in the UI.
+        guard best.count >= 2 else { return nil }
+        return best
+    }
+
+    private static func stringTable(_ bytes: [UInt8]) -> [UInt32: String] {
+        var values: [UInt32: String] = [:]
+        var ambiguous = Set<UInt32>()
+        guard bytes.count >= 8 else { return [:] }
+        var offset = 0
+        while offset + 8 <= bytes.count {
+            let id = read32(bytes, offset)
+            let length = Int(read32(bytes, offset + 4))
+            guard id > 0, id < 1_000_000, length > 0, length < 0x800,
+                  offset + 8 + length <= bytes.count,
+                  let value = String(bytes: bytes[(offset + 8)..<(offset + 8 + length)], encoding: .utf8),
+                  !value.contains("\0") else {
+                offset += 4
+                continue
+            }
+            if let previous = values[id], previous != value { ambiguous.insert(id) }
+            else if !ambiguous.contains(id) { values[id] = value }
+            offset += 4
+        }
+        for id in ambiguous { values.removeValue(forKey: id) }
+        return values
+    }
+
+    private static func read32(_ bytes: [UInt8], _ offset: Int) -> UInt32 {
+        guard offset >= 0, offset + 4 <= bytes.count else { return 0 }
+        return UInt32(bytes[offset]) | UInt32(bytes[offset + 1]) << 8 |
+            UInt32(bytes[offset + 2]) << 16 | UInt32(bytes[offset + 3]) << 24
+    }
+
+    private static func isValidBundleID(_ value: String) -> Bool {
+        ContainerBundleCandidateResolver.isValidBundleIdentifier(value) &&
+            !value.hasPrefix("group.") && !value.hasPrefix("systemgroup.")
+    }
+
+    private static func safeDisplayName(_ value: String?, bundleID: String) -> String? {
+        guard let value else { return bundleID }
+        let clean = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !clean.isEmpty, clean.utf8.count <= 256,
+              clean.rangeOfCharacter(from: .controlCharacters) == nil,
+              UUID(uuidString: clean) == nil else { return bundleID }
+        return clean
+    }
+
+    private static func sameFile(_ lhs: [FileAttributeKey: Any], _ rhs: [FileAttributeKey: Any]) -> Bool {
+        lhs[.size] as? NSNumber == rhs[.size] as? NSNumber &&
+            lhs[.modificationDate] as? Date == rhs[.modificationDate] as? Date &&
+            lhs[.systemFileNumber] as? NSNumber == rhs[.systemFileNumber] as? NSNumber
+    }
+
+    private static func fileSignature(_ attributes: [FileAttributeKey: Any]) -> String {
+        "\((attributes[.systemNumber] as? NSNumber)?.int64Value ?? 0):\((attributes[.systemFileNumber] as? NSNumber)?.int64Value ?? 0):\((attributes[.size] as? NSNumber)?.int64Value ?? 0):\((attributes[.modificationDate] as? Date)?.timeIntervalSince1970 ?? 0)"
+    }
+}
