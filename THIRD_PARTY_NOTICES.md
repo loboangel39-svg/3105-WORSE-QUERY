@@ -8,6 +8,7 @@
 | CrazyMind90 | FilzaSlop sandbox-escape foundation | [GitHub profile](https://github.com/CrazyMind90) |
 | LeminLimez and contributors | Pocket Poster, Nugget, and the `.tendies` package format | [Pocket-Poster](https://github.com/leminlimez/Pocket-Poster) |
 | forcequitOS | `bad_query` research | [GitHub profile](https://github.com/forcequitOS) |
+| Taj C (forcequitOS) | Isolated `worse_query` provider implementation and GPLv3 notice | [worse_query](https://github.com/forcequitOS/worse_query) |
 | opa334 and Dopamine contributors | Kernel-exploit research foundation | [Dopamine](https://github.com/opa334/Dopamine) |
 
 Original portions of 3105 are distributed under GPL-3.0. Pocket-Poster also publishes a GPL-3.0 license in its upstream repository. FilzaSlop did not expose a repository license through GitHub when this notice was prepared. Review each upstream project and its current terms before redistributing derived code.

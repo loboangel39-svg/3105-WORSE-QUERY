@@ -15,7 +15,10 @@
 		3105A206 /* SBX.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3105A026; };
 		3105A207 /* MG.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3105A027; };
 		3105A209 /* bad_query.c in Sources */ = {isa = PBXBuildFile; fileRef = 3105A029; };
+		3105A212 /* worse_query.m in Sources */ = {isa = PBXBuildFile; fileRef = 3105A032; };
+		3105A213 /* worse_query_adapter.m in Sources */ = {isa = PBXBuildFile; fileRef = 3105A033; };
 		3105A210 /* mcm_bridge.m in Sources */ = {isa = PBXBuildFile; fileRef = 3105A030; };
+		3105A242 /* ContainerAccessCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3105A114; };
 		3105A220 /* kexploit_opa334.m in Sources */ = {isa = PBXBuildFile; fileRef = 3105A080; };
 		3105A221 /* offsets.m in Sources */ = {isa = PBXBuildFile; fileRef = 3105A081; };
 		3105A222 /* krw.m in Sources */ = {isa = PBXBuildFile; fileRef = 3105A082; };
@@ -88,6 +91,10 @@
 		3105A027 /* MG.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MG.swift; sourceTree = "<group>"; };
 		3105A029 /* bad_query.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = bad_query.c; sourceTree = "<group>"; };
 		3105A030 /* mcm_bridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = mcm_bridge.m; sourceTree = "<group>"; };
+		3105A032 /* worse_query.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = worse_query.m; sourceTree = "<group>"; };
+		3105A034 /* worse_query.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = worse_query.h; sourceTree = "<group>"; };
+		3105A033 /* worse_query_adapter.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = worse_query_adapter.m; sourceTree = "<group>"; };
+		3105A035 /* worse_query_adapter.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = worse_query_adapter.h; sourceTree = "<group>"; };
 		3105A031 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		3105A040 /* bad_query.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = bad_query.h; sourceTree = "<group>"; };
 		3105A041 /* mcm_bridge.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = mcm_bridge.h; sourceTree = "<group>"; };
@@ -110,6 +117,7 @@
 		3105A098 /* DesignSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignSystem.swift; sourceTree = "<group>"; };
 		3105A099 /* Localization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Localization.swift; sourceTree = "<group>"; };
 		3105A104 /* ContainerStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContainerStore.swift; sourceTree = "<group>"; };
+		3105A114 /* ContainerAccessCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContainerAccessCoordinator.swift; sourceTree = "<group>"; };
 		3105A105 /* AppDataBrowserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDataBrowserView.swift; sourceTree = "<group>"; };
 		3105A106 /* AppIconHelper.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AppIconHelper.m; sourceTree = "<group>"; };
 		3105A107 /* AppIconHelper.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AppIconHelper.h; sourceTree = "<group>"; };
@@ -215,6 +223,10 @@
 			children = (
 				3105A029 /* bad_query.c */,
 				3105A040 /* bad_query.h */,
+				3105A032 /* worse_query.m */,
+				3105A034 /* worse_query.h */,
+				3105A033 /* worse_query_adapter.m */,
+				3105A035 /* worse_query_adapter.h */,
 				3105A030 /* mcm_bridge.m */,
 				3105A041 /* mcm_bridge.h */,
 				3105F100 /* wallpaper_zip.c */,
@@ -251,6 +263,7 @@
 			children = (
 				3105A099 /* Localization.swift */,
 				3105A104 /* ContainerStore.swift */,
+				3105A114 /* ContainerAccessCoordinator.swift */,
 				3105A108 /* ContainerIdentityResolver.swift */,
 				3105A109 /* ContainerBrowserLogic.swift */,
 				3105A110 /* FileReplacementService.swift */,
@@ -384,6 +397,7 @@
 			files = (
 				3105A200, 3105A201, 3105A203, 3105A204,
 				3105A205, 3105A206, 3105A207, 3105A209,
+				3105A212, 3105A213,
 				3105A210, 3105A220, 3105A221, 3105A222, 3105A223,
 				3105A224, 3105A225,
 				3105A226,
@@ -395,6 +409,7 @@
 				3105A237,
 				3105A238,
 				3105A239,
+				3105A242,
 				3105A208,
 				3105J200,
 				3105J204,

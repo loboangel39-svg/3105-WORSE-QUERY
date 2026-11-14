@@ -1,0 +1,128 @@
+name: Build unsigned 3105 IPA
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-14
+    timeout-minutes: 45
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Select installed Xcode
+        shell: bash
+        run: |
+          set -euo pipefail
+          XCODE_APP="$(find /Applications -maxdepth 1 -type d -name 'Xcode*.app' -print | sort | tail -n 1)"
+          test -n "$XCODE_APP"
+          sudo xcode-select --switch "$XCODE_APP/Contents/Developer"
+          xcodebuild -version | tee xcode-version.txt
+
+      - name: Discover project scheme
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcodebuild -list -json -project ThreeOneOSFive.xcodeproj > schemes.json
+          SCHEME="$(python3 - <<'PY'
+          import json
+          with open("schemes.json", encoding="utf-8") as source:
+              schemes = json.load(source).get("project", {}).get("schemes", [])
+          if "3105" in schemes:
+              print("3105")
+          elif schemes:
+              print(schemes[0])
+          else:
+              raise SystemExit("No Xcode schemes were discovered")
+          PY
+          )"
+          printf 'scheme=%s\n' "$SCHEME" | tee -a "$GITHUB_OUTPUT"
+          echo "SCHEME=$SCHEME" >> "$GITHUB_ENV"
+
+      - name: Resolve project dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcodebuild -resolvePackageDependencies -project ThreeOneOSFive.xcodeproj -scheme "$SCHEME"
+
+      - name: Validate source before build
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --check
+          test "$(grep -c 'PRODUCT_BUNDLE_IDENTIFIER = "com.apple.mobile.MobileHouseArrest";' ThreeOneOSFive.xcodeproj/project.pbxproj)" -eq 2
+          test "$(grep -c 'IPHONEOS_DEPLOYMENT_TARGET = 16.0;' ThreeOneOSFive.xcodeproj/project.pbxproj)" -ge 2
+          test "$(grep -c 'CODE_SIGN_ENTITLEMENTS = "";' ThreeOneOSFive.xcodeproj/project.pbxproj)" -eq 2
+          grep -q 'ContainerAccessCoordinator.swift in Sources' ThreeOneOSFive.xcodeproj/project.pbxproj
+          grep -q 'worse_query_adapter.m in Sources' ThreeOneOSFive.xcodeproj/project.pbxproj
+
+      - name: Build unsigned device app
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf build
+          mkdir -p build/Products/Release
+          xcodebuild \
+            -project ThreeOneOSFive.xcodeproj \
+            -scheme "$SCHEME" \
+            -sdk iphoneos \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build/DerivedData \
+            CONFIGURATION_BUILD_DIR="$PWD/build/Products/Release" \
+            ARCHS=arm64 \
+            ONLY_ACTIVE_ARCH=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build | tee build/xcodebuild.log
+
+      - name: Package unsigned IPA and validate output
+        shell: bash
+        run: |
+          set -euo pipefail
+          APP_PATH="$(find build/Products/Release -maxdepth 1 -type d -name '*.app' -print -quit)"
+          test -n "$APP_PATH"
+          test -x "$APP_PATH/3105"
+          test -f "$APP_PATH/Info.plist"
+          /usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP_PATH/Info.plist" | grep -Fx 'com.apple.mobile.MobileHouseArrest'
+          /usr/libexec/PlistBuddy -c 'Print :MinimumOSVersion' "$APP_PATH/Info.plist" | grep -Fx '16.0'
+          test "$(find build/DerivedData -type f \( -name 'worse_query.o' -o -name 'worse_query_adapter.o' -o -name 'ContainerAccessCoordinator.o' \) | wc -l | tr -d ' ')" -ge 3
+          grep -Eq 'worse_query\.m|worse_query_adapter\.m|ContainerAccessCoordinator\.swift' build/xcodebuild.log
+          mkdir -p build/Payload
+          cp -R "$APP_PATH" build/Payload/
+          (cd build && /usr/bin/ditto -c -k --sequesterRsrc --keepParent Payload 3105-WorseQuery-Unsigned.ipa)
+          test -f build/3105-WorseQuery-Unsigned.ipa
+          {
+            echo '# 3105 worse_query build report'
+            echo
+            echo "- Xcode: $(xcodebuild -version | tr '\n' ' ')"
+            echo "- Scheme: $SCHEME"
+            echo '- SDK: iphoneos'
+            echo '- Configuration: Release'
+            echo '- Architecture: arm64'
+            echo '- Signing: disabled for build; IPA is unsigned'
+            echo '- Bundle ID: com.apple.mobile.MobileHouseArrest'
+            echo '- Minimum OS: 16.0'
+            echo '- IPA: 3105-WorseQuery-Unsigned.ipa'
+            echo '- Runtime/device tests: not performed by this workflow'
+          } > build/BUILD-REPORT.md
+          cp docs/WORSE_QUERY_INTEGRATION.md build/WORSE_QUERY_INTEGRATION.md
+          git diff --no-index /dev/null build/BUILD-REPORT.md >/dev/null || true
+
+      - name: Upload unsigned IPA and reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: 3105-WorseQuery-Unsigned
+          path: |
+            build/3105-WorseQuery-Unsigned.ipa
+            build/BUILD-REPORT.md
+            build/WORSE_QUERY_INTEGRATION.md
+            build/xcodebuild.log
+            xcode-version.txt
+          retention-days: 30
