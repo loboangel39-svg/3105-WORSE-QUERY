@@ -64,3 +64,11 @@ ContainerAccessCoordinator
 The checked-out project has no authorized App Group. Consequently `worse_query` is present
 and integrated but reports `no authorized App Group in the signed entitlements` rather than
 changing signing configuration. No claim is made about iOS 27.2.1 compatibility.
+
+## GitHub Actions runner correction
+
+Run `43644265758` was cancelled before a runner was assigned: its job had `runner_id: 0`,
+no steps, and zero billable milliseconds. The workflow requested `macos-14`, which is no
+longer listed among GitHub's supported standard macOS labels. The only CI change was to use
+the supported `macos-15` arm64 label; source code, signing settings, and project settings
+were not changed.

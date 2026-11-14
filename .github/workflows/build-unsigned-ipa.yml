@@ -8,7 +8,8 @@ permissions:
 
 jobs:
   build:
-    runs-on: macos-14
+    # macos-14 is retired; macos-15 is the supported arm64 standard runner.
+    runs-on: macos-15
     timeout-minutes: 45
 
     steps:
