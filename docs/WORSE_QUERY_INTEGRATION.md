@@ -72,3 +72,8 @@ no steps, and zero billable milliseconds. The workflow requested `macos-14`, whi
 longer listed among GitHub's supported standard macOS labels. The only CI change was to use
 the supported `macos-15` arm64 label; source code, signing settings, and project settings
 were not changed.
+
+The first `macos-15` build reached Xcode but failed because ARC rejected explicit
+`xpc_release` calls in the imported Objective-C implementation. The minimal correction was
+to use the same `OS_OBJECT_USE_OBJC` conditional-release pattern already present in
+`mcm_bridge.m`.
