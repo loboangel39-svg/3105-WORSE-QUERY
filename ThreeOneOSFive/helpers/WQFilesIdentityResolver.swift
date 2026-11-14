@@ -30,6 +30,19 @@ enum WQFilesIdentityResolver {
         let identities: [String: WQFilesResolvedIdentity]
     }
 
+    private struct SourceInventory {
+        let stores: [URL]
+        let rootsChecked: Int
+        let inaccessibleRoots: Int
+    }
+
+    private struct ParseOutcome {
+        let state: String
+        let identities: [String: WQFilesResolvedIdentity]
+        let recordsProcessed: Int
+        let recordsRejected: Int
+    }
+
     private static let layouts: [Layout] = [
         Layout(name: "27.0", bundleSize: 0x250, bundleID: 0x0c, container: 0x68,
                nameRef: 0x6c, displayName: 0x74, pluginSize: 0x118,
@@ -64,7 +77,6 @@ enum WQFilesIdentityResolver {
         let requested = Set(containerPaths.compactMap(applicationContainerPath))
         guard !requested.isEmpty else { return [:] }
         guard let current = loadSnapshot() else {
-            log("wqfiles: CSStore2 unavailable or incompatible; preserving original list")
             return [:]
         }
 
@@ -89,18 +101,37 @@ enum WQFilesIdentityResolver {
     }
 
     private static func loadSnapshot() -> StoreSnapshot? {
-        let candidates = storeCandidates()
-        guard !candidates.isEmpty else { return nil }
+        let inventory = storeCandidates()
+        guard !inventory.stores.isEmpty else {
+            let state = inventory.inaccessibleRoots > 0 ? "access_denied" : "source_not_found"
+            log("wqfiles: diagnostic state=\(state) roots=\(inventory.rootsChecked) inaccessible=\(inventory.inaccessibleRoots) candidates=0 records=0 rejected=0 matches=0; preserving original list")
+            return nil
+        }
 
-        for url in candidates {
+        var lastState = "read_failed"
+        var lastRecords = 0
+        var lastRejected = 0
+        for url in inventory.stores {
             guard let attributes = try? FileManager.default.attributesOfItem(atPath: url.path),
                   let size = (attributes[.size] as? NSNumber)?.uint64Value,
-                  size >= 4 * 1024, size <= 64 * 1024 * 1024,
-                  let before = try? FileManager.default.attributesOfItem(atPath: url.path),
+                  size >= 4 * 1024, size <= 64 * 1024 * 1024 else {
+                lastState = "access_denied"
+                continue
+            }
+            guard let before = try? FileManager.default.attributesOfItem(atPath: url.path),
                   let data = try? Data(contentsOf: url, options: .mappedIfSafe),
                   let after = try? FileManager.default.attributesOfItem(atPath: url.path),
-                  sameFile(before, after),
-                  let parsed = parse(data: data) else {
+                  sameFile(before, after) else {
+                lastState = "read_failed"
+                continue
+            }
+
+            let parsed = parse(data: data)
+            lastState = parsed.state
+            lastRecords = parsed.recordsProcessed
+            lastRejected = parsed.recordsRejected
+            guard !parsed.identities.isEmpty else {
+                log("wqfiles: diagnostic state=\(parsed.state) store=\(url.lastPathComponent) candidates=\(inventory.stores.count) records=\(parsed.recordsProcessed) rejected=\(parsed.recordsRejected) matches=0")
                 continue
             }
 
@@ -110,7 +141,7 @@ enum WQFilesIdentityResolver {
                 lock.unlock()
                 return cached
             }
-            let stamped = parsed.mapValues {
+            let stamped = parsed.identities.mapValues {
                 WQFilesResolvedIdentity(
                     containerPath: $0.containerPath,
                     bundleID: $0.bundleID,
@@ -122,13 +153,14 @@ enum WQFilesIdentityResolver {
             let result = StoreSnapshot(signature: signature, identities: stamped)
             snapshot = result
             lock.unlock()
-            log("wqfiles: accepted CSStore2 snapshot \(url.lastPathComponent) identities=\(parsed.count)")
+            log("wqfiles: diagnostic state=success store=\(url.lastPathComponent) candidates=\(inventory.stores.count) records=\(parsed.recordsProcessed) rejected=\(parsed.recordsRejected) matches=\(stamped.count)")
             return result
         }
+        log("wqfiles: diagnostic state=\(lastState) candidates=\(inventory.stores.count) records=\(lastRecords) rejected=\(lastRejected) matches=0; preserving original list")
         return nil
     }
 
-    private static func storeCandidates() -> [URL] {
+    private static func storeCandidates() -> SourceInventory {
         var cacheRoots: [String] = []
         var seen = Set<String>()
         func add(_ raw: String) {
@@ -136,30 +168,54 @@ enum WQFilesIdentityResolver {
             if seen.insert(path).inserted { cacheRoots.append(path) }
         }
 
+        var directStores: [URL] = []
         var error: NSString?
         if let lsd = MCMActivateContainerPath(10, "com.apple.lsd", false, &error) {
             add((lsd as NSString).appendingPathComponent("Library/Caches"))
+        }
+        // WQFiles remembers the exact store after locating it. Reuse only that
+        // path if it is already available to this process; do not discover or
+        // read anything through a new privilege mechanism.
+        if let remembered = UserDefaults.standard.string(forKey: "WQLaunchServicesStore"),
+           remembered.hasSuffix(".csstore") {
+            directStores.append(URL(fileURLWithPath: ContainerDiscoveryMerger.canonicalPath(remembered)))
         }
         add("/var/db/lsd")
         add("/var/mobile/Library/Caches")
 
         var result: [URL] = []
+        var inaccessibleRoots = 0
         for root in cacheRoots {
-            guard let names = try? FileManager.default.contentsOfDirectory(atPath: root) else { continue }
-            for name in names where name.hasPrefix("com.apple.LaunchServices-") && name.hasSuffix("-v2.csstore") {
+            guard let names = try? FileManager.default.contentsOfDirectory(atPath: root) else {
+                inaccessibleRoots += 1
+                continue
+            }
+            // WQFiles accepts every LaunchServices CSStore suffix. The
+            // suffix is not stable across iOS 27 point releases.
+            for name in names where name.hasPrefix("com.apple.LaunchServices-") && name.hasSuffix(".csstore") {
                 result.append(URL(fileURLWithPath: (root as NSString).appendingPathComponent(name)))
             }
         }
-        return result.sorted { $0.path < $1.path }
+        result.append(contentsOf: directStores)
+        var unique: [URL] = []
+        var paths = Set<String>()
+        for url in result where paths.insert(url.path).inserted { unique.append(url) }
+        return SourceInventory(stores: unique.sorted { $0.path < $1.path }, rootsChecked: cacheRoots.count, inaccessibleRoots: inaccessibleRoots)
     }
 
-    private static func parse(data: Data) -> [String: WQFilesResolvedIdentity]? {
-        guard data.count >= 4, data.prefix(4) == Data("bdsl".utf8) else { return nil }
+    private static func parse(data: Data) -> ParseOutcome {
+        guard data.count >= 4, data.prefix(4) == Data("bdsl".utf8) else {
+            return ParseOutcome(state: "invalid_header", identities: [:], recordsProcessed: 0, recordsRejected: 0)
+        }
         let bytes = [UInt8](data)
         let strings = stringTable(bytes)
-        guard !strings.isEmpty else { return nil }
+        guard !strings.isEmpty else {
+            return ParseOutcome(state: "parse_failed", identities: [:], recordsProcessed: 0, recordsRejected: 0)
+        }
 
         var choices: [[String: WQFilesResolvedIdentity]] = []
+        var totalRecords = 0
+        var totalRejected = 0
         for layout in layouts {
             var map: [String: WQFilesResolvedIdentity] = [:]
             var conflicts = Set<String>()
@@ -170,6 +226,7 @@ enum WQFilesIdentityResolver {
                 let size = read32(bytes, offset + 4)
                 let body = offset + 8
                 if size == layout.bundleSize {
+                    totalRecords += 1
                     let bid = strings[read32(bytes, body + Int(layout.bundleID)) >> 2]
                     let path = strings[read32(bytes, body + Int(layout.container)) >> 2]
                     let name = strings[read32(bytes, body + Int(layout.displayName)) >> 2]
@@ -190,6 +247,8 @@ enum WQFilesIdentityResolver {
                         } else {
                             map[canonical] = identity
                         }
+                    } else {
+                        totalRejected += 1
                     }
                 }
                 offset += 4
@@ -198,11 +257,16 @@ enum WQFilesIdentityResolver {
             if !map.isEmpty { choices.append(map) }
         }
 
-        guard let best = choices.max(by: { $0.count < $1.count }) else { return nil }
+        guard let best = choices.max(by: { $0.count < $1.count }) else {
+            let state = totalRecords == 0 ? "unsupported_layout" : "no_matching_records"
+            return ParseOutcome(state: state, identities: [:], recordsProcessed: totalRecords, recordsRejected: totalRejected)
+        }
         // A known layout must produce a meaningful set. One accidental record is
         // not enough evidence to replace a UUID in the UI.
-        guard best.count >= 2 else { return nil }
-        return best
+        guard best.count >= 2 else {
+            return ParseOutcome(state: "validation_rejected", identities: [:], recordsProcessed: totalRecords, recordsRejected: totalRejected + best.count)
+        }
+        return ParseOutcome(state: "success", identities: best, recordsProcessed: totalRecords, recordsRejected: totalRejected)
     }
 
     private static func stringTable(_ bytes: [UInt8]) -> [UInt32: String] {
