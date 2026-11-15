@@ -1,6 +1,6 @@
 # Auditoría retrospectiva de omisiones de sandbox y acceso
 
-Rama: `experiment/wqfiles-sandbox-completeness-audit`  
+Rama: `experiment/wqfiles-sandbox-completeness-audit`
 Base auditada: `54d787a` (`experiment/wqfiles-bundleid-complete`)
 
 ## Alcance y evidencia
