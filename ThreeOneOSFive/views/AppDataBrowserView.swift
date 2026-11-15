@@ -348,7 +348,7 @@ struct AppDataBrowserView: View {
                 containerPaths: filesystemApps.map(\.containerPath),
                 original: identities
             )
-            WQBundleIdentityCoordinator.log(
+            WQBundleIdentityCoordinator.emitDiagnostics(
                 identityComparison,
                 containerCount: filesystemApps.count
             )

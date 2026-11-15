@@ -93,7 +93,7 @@ enum WQBundleIdentityCoordinator {
         )
     }
 
-    static func log(_ comparison: WQBundleIdentityComparison, containerCount: Int) {
+    static func emitDiagnostics(_ comparison: WQBundleIdentityComparison, containerCount: Int) {
         let groupUsable = FileManager.default.containerURL(
             forSecurityApplicationGroupIdentifier: "group.pigtjing.top"
         ) != nil
