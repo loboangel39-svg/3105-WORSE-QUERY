@@ -126,6 +126,9 @@ BOOL WQScanConsentPolicyTests(void) {
     [defaults setObject:@{ WQScanScope(@"test"): valid } forKey:WQScanConsentKey];
     [defaults setObject:@"interrupted-test" forKey:WQScanRunningKey];
     WQScanRestorePresentationState();
+    NSDictionary *beforeNoGrant = [defaults dictionaryForKey:WQScanConsentKey];
+    WQIntegratedScanAuthorize();
+    BOOL noGrant = [[defaults dictionaryForKey:WQScanConsentKey] isEqual:beforeNoGrant];
     BOOL recovered = [WQScanState[@"status"] isEqual:@"stopped"] &&
         ![defaults objectForKey:WQScanRunningKey] &&
         WQScanConsentValid([defaults dictionaryForKey:WQScanConsentKey][WQScanScope(@"test")], 1000, now);
@@ -137,7 +140,7 @@ BOOL WQScanConsentPolicyTests(void) {
     BOOL backoff = WQIntegratedRefreshRetryDelay(0, YES) == 2 &&
         WQIntegratedRefreshRetryDelay(1, YES) == 8 && WQIntegratedRefreshRetryDelay(2, YES) == 30 &&
         WQIntegratedRefreshRetryDelay(3, YES) < 0 && WQIntegratedRefreshRetryDelay(0, NO) < 0;
-    return policy && recovered && backoff;
+    return policy && recovered && backoff && noGrant;
 }
 #endif
 
@@ -146,6 +149,7 @@ BOOL WQScanConsentPolicyTests(void) {
 void WQInternalRefreshRetry(id owner, SEL action, int errorCode) {
     NSCAssert(NSThread.isMainThread, @"Retry scheduling requires main queue");
     static char retryKey;
+    if ([WQIntegratedScanState()[@"status"] isEqual:@"blocked"]) return;
     BOOL transient = errorCode == EINTR || errorCode == EAGAIN || errorCode == EBUSY || errorCode == ETIMEDOUT;
     NSMutableDictionary *state = objc_getAssociatedObject(owner, &retryKey);
     if (!state) { state = [@{ @"attempt": @0, @"pending": @NO } mutableCopy]; objc_setAssociatedObject(owner, &retryKey, state, OBJC_ASSOCIATION_RETAIN_NONATOMIC); }
@@ -165,3 +169,30 @@ void WQInternalRefreshRetry(id owner, SEL action, int errorCode) {
         if ([target respondsToSelector:action]) ((void (*)(id, SEL))[target methodForSelector:action])(target, action);
     });
 }
+
+#ifdef WQ_SCAN_UI_TESTING
+@interface WQInternalRetryProbe : NSObject
+@property(nonatomic) NSUInteger calls;
+@property(nonatomic) BOOL completed;
+@property(nonatomic, copy) void (^completion)(BOOL);
+- (void)retry;
+@end
+@implementation WQInternalRetryProbe
+- (void)retry {
+    self.calls++;
+    WQInternalRefreshRetry(self, @selector(retry), EAGAIN);
+    if (self.calls == 3) dispatch_after(dispatch_time(DISPATCH_TIME_NOW, NSEC_PER_SEC), dispatch_get_main_queue(), ^{
+        if (!self.completed) { self.completed = YES; self.completion(self.calls == 3); }
+    });
+}
+@end
+void WQInternalRetryExercise(void (^completion)(BOOL)) {
+    WQInternalRetryProbe *probe = [WQInternalRetryProbe new];
+    probe.completion = completion;
+    WQInternalRefreshRetry(probe, @selector(retry), EAGAIN);
+    WQInternalRefreshRetry(probe, @selector(retry), EAGAIN); // duplicate is rejected
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 75 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
+        if (!probe.completed) { probe.completed = YES; probe.completion(NO); }
+    });
+}
+#endif

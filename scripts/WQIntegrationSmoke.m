@@ -4,6 +4,7 @@
 #import "WQCore.h"
 #import "WQArchive.h"
 extern BOOL WQScanConsentPolicyTests(void);
+extern void WQInternalRetryExercise(void (^completion)(BOOL));
 
 static BOOL HasRefreshChrome(UIView *view) {
     if (view.hidden || view.alpha == 0) return NO;
@@ -68,6 +69,11 @@ static BOOL HasRefreshChrome(UIView *view) {
             ok &= silent;
             BOOL hosted = self.window.rootViewController.childViewControllers.count == 1;
             [checks addObject:@{ @"embeddedUIKitRoot": @(hosted) }];
+            WQInternalRetryExercise(^(BOOL retried) {
+            [checks addObject:@{ @"boundedInternalRetriesActuallyExecuted": @(retried) }];
+            BOOL stillSilent = !HasRefreshChrome(self.window.rootViewController.view) && self.window.rootViewController.presentedViewController == nil;
+            [checks addObject:@{ @"noRefreshChromeAfterRetries": @(stillSilent) }];
+            ok &= retried && stillSilent;
             NSDictionary *report = @{ @"passed": @(ok && hosted), @"checks": checks,
                 @"environment": @"iOS Simulator, real WQFiles implementations and local files",
                 @"deviceSandboxEscapeValidated": @NO };
@@ -75,6 +81,7 @@ static BOOL HasRefreshChrome(UIView *view) {
             [[NSJSONSerialization dataWithJSONObject:report options:NSJSONWritingPrettyPrinted error:nil]
                 writeToFile:[documents stringByAppendingPathComponent:@"integration-smoke.json"] atomically:YES];
             exit(ok && hosted ? 0 : 1);
+            });
         });
     });
     };
