@@ -1,6 +1,9 @@
 name: Build experimental 3105 App Group IPA
 
 on:
+  push:
+    branches:
+      - experiment/ios27-appgroup-entitlements
   workflow_dispatch:
 
 permissions:
