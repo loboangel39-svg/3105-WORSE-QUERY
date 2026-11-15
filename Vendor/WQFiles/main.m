@@ -4665,7 +4665,7 @@ static void wq_apply_design(void);
         row.distribution = UIStackViewDistributionFillEqually;
         [_containersStack addArrangedSubview:row];
     }
-    if (!wq_system_areas_reachable()) {
+    if (!wq_system_areas_reachable() && !WQSilentRefresh()) {
         UILabel *note = [UILabel new];
         note.text = WQLocalized(@"On iOS 26, System Data and System Groups can't be reached (worse_query covers them on iOS 27 only), and Internal Daemons need a scan of every file id: the first one can take most of an hour on a well-used device, later ones only check new files.");
         note.font = [UIFont preferredFontForTextStyle:UIFontTextStyleCaption1];
@@ -5708,7 +5708,7 @@ static NSString *const kWQTroubleshootingFooter =
 - (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section
 {
     if (section == 3) return WQLocalized(kWQTroubleshootingFooter);
-    if (section == 0 && !wq_system_areas_reachable())
+    if (section == 0 && !wq_system_areas_reachable() && !WQSilentRefresh())
         return WQLocalized(@"On iOS 26, System Data and System Groups can't be reached (worse_query covers them on iOS 27 only), and Internal Daemons need a scan of every file id: the first one can take most of an hour on a well-used device, later ones only check new files.");
     if (section == 2)
         return [NSString stringWithFormat:@"%@\n\n%@",
