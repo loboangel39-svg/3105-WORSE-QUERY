@@ -3,6 +3,7 @@
 #import "WQAccess.h"
 #import "WQCore.h"
 #import "WQArchive.h"
+extern BOOL WQScanConsentPolicyTests(void);
 
 @interface WQSmokeScene : UIResponder <UIWindowSceneDelegate>
 @property(nonatomic, strong) UIWindow *window;
@@ -40,6 +41,9 @@
         ok &= copied && [wq_read([copy stringByAppendingPathComponent:@"sample.txt"], 0, nil) isEqualToData:second];
         [checks addObject:@{ @"copyActualTree": @(copied) }];
         dispatch_async(dispatch_get_main_queue(), ^{
+            BOOL consentPolicy = WQScanConsentPolicyTests();
+            ok &= consentPolicy;
+            [checks addObject:@{ @"scanConsentExpiryScopeAndGrowth": @(consentPolicy) }];
             BOOL refreshOwned = WQIntegratedBeginRefresh();
             BOOL duplicateRejected = !WQIntegratedBeginRefresh();
             WQIntegratedScanCancel();

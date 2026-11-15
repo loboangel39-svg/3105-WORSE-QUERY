@@ -126,3 +126,16 @@ static void WQScanInitializePresentation(void) {
     }];
     wq_set_full_scan_ui(WQScanConfirmPresentation, WQScanProgressPresentation);
 }
+
+#ifdef WQ_SCAN_UI_TESTING
+BOOL WQScanConsentPolicyTests(void) {
+    NSDate *now = NSDate.date;
+    NSDictionary *valid = @{ @"ids": @1000, @"until": [now dateByAddingTimeInterval:60] };
+    NSDictionary *expired = @{ @"ids": @1000, @"until": [now dateByAddingTimeInterval:-1] };
+    return !WQScanConsentValid(nil, 1000, now) &&
+        WQScanConsentValid(valid, 1000, now) && WQScanConsentValid(valid, 1500, now) &&
+        !WQScanConsentValid(valid, 1501, now) && !WQScanConsentValid(expired, 1000, now) &&
+        !WQScanConsentValid(valid, 0, now) &&
+        ![WQScanScope(@"Internal Daemons") isEqual:WQScanScope(@"System")];
+}
+#endif

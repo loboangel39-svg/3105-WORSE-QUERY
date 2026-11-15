@@ -9,7 +9,7 @@ SDK=$(xcrun --sdk iphonesimulator --show-sdk-path)
 ARCH=$(uname -m)
 xcrun --sdk iphonesimulator clang -fobjc-arc -fmodules -arch "$ARCH" \
   -isysroot "$SDK" -mios-simulator-version-min=26.0 -O0 \
-  -I Vendor/WQFiles Vendor/WQFiles/WQ*.m scripts/WQIntegrationSmoke.m \
+  -DWQ_SCAN_UI_TESTING=1 -I Vendor/WQFiles Vendor/WQFiles/WQ*.m scripts/WQIntegrationSmoke.m \
   -framework UIKit -framework Foundation -framework Security -framework UniformTypeIdentifiers \
   -framework AVFoundation -framework AVKit -lsqlite3 -lz -o "$APP/WQIntegrationSmoke"
 cat > "$APP/Info.plist" <<'PLIST'
