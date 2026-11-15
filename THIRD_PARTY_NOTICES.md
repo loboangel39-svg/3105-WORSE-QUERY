@@ -14,3 +14,11 @@
 Original portions of 3105 are distributed under GPL-3.0. Pocket-Poster also publishes a GPL-3.0 license in its upstream repository. FilzaSlop did not expose a repository license through GitHub when this notice was prepared. Review each upstream project and its current terms before redistributing derived code.
 
 The 3105 license applies only to material for which the project owner has the right to grant that license. This file provides attribution; it does not replace upstream copyright or license notices and does not relicense third-party material.
+
+## WQFiles LaunchServices Phase 1
+
+`ThreeOneOSFive/exploit/WQLaunchServicesPhase1.m` and its header are adapted from
+`kolbicz/WQFiles` (`WQLaunchServices.m` and `WQLaunchServices.h`), licensed under
+GPL-3.0-or-later. The original copyright and license header is retained. This
+adaptation is limited to the LaunchServices/CSStore2 parser and uses Foundation
+file reads only; it does not include WQAccess, WQCache, or other WQFiles modules.

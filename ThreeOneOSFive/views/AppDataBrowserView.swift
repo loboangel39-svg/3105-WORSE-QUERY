@@ -344,6 +344,32 @@ struct AppDataBrowserView: View {
             }.count
             log("wqfiles: comparison original=\(baseIdentifiedApps.count), filesystem=\(filesystemApps.count), verified=\(verifiedApps.count), additional=\(newPathCount), unresolved=\(max(0, filesystemApps.count - verifiedApps.count))")
 
+            // Phase 1 comparison only: both readers receive the same bytes
+            // from the remembered, already-available CSStore2 path. The WQ
+            // result is not used to replace or grant any Files identity yet.
+            if let sharedStore = wq_phase1_read_available_store(),
+               let wqReport = wq_phase1_parse_store_data(sharedStore) {
+                let originalShared = WQFilesIdentityResolver.resolve(
+                    data: sharedStore,
+                    containerPaths: filesystemApps.map(\.containerPath)
+                )
+                let originalMap = originalShared.mapValues(\.bundleID)
+                let rawWQMap = (wqReport["containers"] as? [String: Any]) ?? [:]
+                let wqMap = rawWQMap.compactMapValues { $0 as? String }
+                let sharedPaths = Set(originalMap.keys).intersection(wqMap.keys)
+                let matching = sharedPaths.filter { originalMap[$0] == wqMap[$0] }.count
+                let conflicts = sharedPaths.count - matching
+                let additional = Set(wqMap.keys).subtracting(originalMap.keys).count
+                let records = (wqReport["records"] as? NSNumber)?.intValue ?? 0
+                log("ls.original: source=shared_csstore2 records=\(originalShared.count) identities=\(originalShared.count)")
+                log("ls.wqfiles: source=shared_csstore2 records=\(records) identities=\(wqMap.count)")
+                log("ls.compare: matching=\(matching) conflicts=\(conflicts) additional=\(additional)")
+            } else {
+                log("ls.original: source=unavailable records=unavailable identities=unavailable")
+                log("ls.wqfiles: source=unavailable records=unavailable identities=unavailable")
+                log("ls.compare: matching=unavailable conflicts=unavailable additional=unavailable")
+            }
+
             result = ContainerDiscoveryMerger.merge(
                 enumerated: result,
                 identified: verifiedApps,

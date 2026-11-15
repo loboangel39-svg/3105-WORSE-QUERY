@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - experiment/ios27-appgroup-entitlements
+      - experiment/wqfiles-launchservices
   workflow_dispatch:
 
 permissions:
@@ -35,6 +36,9 @@ jobs:
           grep -q 'CODE_SIGN_ENTITLEMENTS = "ThreeOneOSFive/3105-Experimental.entitlements";' ThreeOneOSFive.xcodeproj/project.pbxproj
           grep -q 'group.pigtjing.top' ThreeOneOSFive/3105-Experimental.entitlements
           test "$(grep -c 'CODE_SIGN_ENTITLEMENTS = "";' ThreeOneOSFive.xcodeproj/project.pbxproj)" -eq 2
+          test -f ThreeOneOSFive/exploit/WQLaunchServicesPhase1.m
+          test -f ThreeOneOSFive/exploit/WQLaunchServicesPhase1.h
+          ! grep -q '#import "WQAccess.h"' ThreeOneOSFive/exploit/WQLaunchServicesPhase1.m
 
       - name: Build unsigned experimental device app
         shell: bash

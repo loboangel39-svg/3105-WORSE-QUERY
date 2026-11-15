@@ -17,6 +17,7 @@
 		3105A209 /* bad_query.c in Sources */ = {isa = PBXBuildFile; fileRef = 3105A029; };
 		3105A212 /* worse_query.m in Sources */ = {isa = PBXBuildFile; fileRef = 3105A032; };
 		3105A213 /* worse_query_adapter.m in Sources */ = {isa = PBXBuildFile; fileRef = 3105A033; };
+		3105A244 /* WQLaunchServicesPhase1.m in Sources */ = {isa = PBXBuildFile; fileRef = 3105A117; };
 		3105A210 /* mcm_bridge.m in Sources */ = {isa = PBXBuildFile; fileRef = 3105A030; };
 		3105A242 /* ContainerAccessCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3105A114; };
 		3105A243 /* WQFilesIdentityResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3105A115; };
@@ -121,6 +122,8 @@
 		3105A114 /* ContainerAccessCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContainerAccessCoordinator.swift; sourceTree = "<group>"; };
 		3105A115 /* WQFilesIdentityResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WQFilesIdentityResolver.swift; sourceTree = "<group>"; };
 		3105A116 /* 3105-Experimental.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "3105-Experimental.entitlements"; sourceTree = "<group>"; };
+		3105A117 /* WQLaunchServicesPhase1.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = WQLaunchServicesPhase1.m; sourceTree = "<group>"; };
+		3105A118 /* WQLaunchServicesPhase1.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = WQLaunchServicesPhase1.h; sourceTree = "<group>"; };
 		3105A105 /* AppDataBrowserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDataBrowserView.swift; sourceTree = "<group>"; };
 		3105A106 /* AppIconHelper.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AppIconHelper.m; sourceTree = "<group>"; };
 		3105A107 /* AppIconHelper.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AppIconHelper.h; sourceTree = "<group>"; };
@@ -230,6 +233,8 @@
 				3105A034 /* worse_query.h */,
 				3105A033 /* worse_query_adapter.m */,
 				3105A035 /* worse_query_adapter.h */,
+				3105A117 /* WQLaunchServicesPhase1.m */,
+				3105A118 /* WQLaunchServicesPhase1.h */,
 				3105A030 /* mcm_bridge.m */,
 				3105A041 /* mcm_bridge.h */,
 				3105F100 /* wallpaper_zip.c */,
@@ -402,7 +407,7 @@
 			files = (
 				3105A200, 3105A201, 3105A203, 3105A204,
 				3105A205, 3105A206, 3105A207, 3105A209,
-				3105A212, 3105A213,
+				3105A212, 3105A213, 3105A244,
 				3105A210, 3105A220, 3105A221, 3105A222, 3105A223,
 				3105A224, 3105A225,
 				3105A226,

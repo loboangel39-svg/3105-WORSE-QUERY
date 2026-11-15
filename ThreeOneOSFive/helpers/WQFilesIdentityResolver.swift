@@ -104,6 +104,17 @@ enum WQFilesIdentityResolver {
         return result
     }
 
+    // Diagnostic-only entry point used by the Phase 1 A/B comparison. The
+    // caller supplies the exact bytes read by the LaunchServices module, so
+    // both readers process the same CSStore2 snapshot.
+    static func resolve(data: Data, containerPaths: [String]) -> [String: WQFilesResolvedIdentity] {
+        let requested = Set(containerPaths.compactMap(applicationContainerPath))
+        guard !requested.isEmpty else { return [:] }
+        let parsed = parse(data: data)
+        guard !parsed.identities.isEmpty else { return [:] }
+        return parsed.identities.filter { requested.contains($0.key) }
+    }
+
     static func resetForDiagnostics() {
         lock.lock()
         snapshot = nil
