@@ -120,6 +120,7 @@
 		3105A104 /* ContainerStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContainerStore.swift; sourceTree = "<group>"; };
 		3105A114 /* ContainerAccessCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContainerAccessCoordinator.swift; sourceTree = "<group>"; };
 		3105A115 /* WQFilesIdentityResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WQFilesIdentityResolver.swift; sourceTree = "<group>"; };
+		3105A116 /* 3105-Experimental.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "3105-Experimental.entitlements"; sourceTree = "<group>"; };
 		3105A105 /* AppDataBrowserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDataBrowserView.swift; sourceTree = "<group>"; };
 		3105A106 /* AppIconHelper.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AppIconHelper.m; sourceTree = "<group>"; };
 		3105A107 /* AppIconHelper.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AppIconHelper.h; sourceTree = "<group>"; };
@@ -267,6 +268,7 @@
 				3105A104 /* ContainerStore.swift */,
 				3105A114 /* ContainerAccessCoordinator.swift */,
 				3105A115 /* WQFilesIdentityResolver.swift */,
+				3105A116 /* 3105-Experimental.entitlements */,
 				3105A108 /* ContainerIdentityResolver.swift */,
 				3105A109 /* ContainerBrowserLogic.swift */,
 				3105A110 /* FileReplacementService.swift */,
@@ -543,6 +545,15 @@
 			};
 			name = Release;
 		};
+		3105A603 /* ExperimentalRelease */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = "ThreeOneOSFive/3105-Experimental.entitlements";
+				CODE_SIGN_STYLE = Automatic;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.apple.mobile.MobileHouseArrest";
+			};
+			name = ExperimentalRelease;
+		};
 		3105AA01 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -660,6 +671,13 @@
 			};
 			name = Release;
 		};
+		3105AA03 /* ExperimentalRelease */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				SDKROOT = iphoneos;
+			};
+			name = ExperimentalRelease;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -668,6 +686,7 @@
 			buildConfigurations = (
 				3105A601 /* Debug */,
 				3105A602 /* Release */,
+				3105A603 /* ExperimentalRelease */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
@@ -677,6 +696,7 @@
 			buildConfigurations = (
 				3105AA01 /* Debug */,
 				3105AA02 /* Release */,
+				3105AA03 /* ExperimentalRelease */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

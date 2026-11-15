@@ -285,6 +285,7 @@ struct AppDataBrowserView: View {
     private func reload() {
         let requestToken = UUID()
         reloadToken = requestToken
+        WQFilesIdentityResolver.logExperimentalAppGroupStatus()
         log("wqfiles: reload scheduled token=\(requestToken.uuidString) enabled=\(WQFilesIdentityResolver.isEnabled) os=\(AppInfo.osVersion) build=\(AppInfo.osBuild)")
         isLoading = true
         isResolving = true
