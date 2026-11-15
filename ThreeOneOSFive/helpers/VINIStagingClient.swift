@@ -3,10 +3,12 @@ import CryptoKit
 import Security
 
 enum VINIStagingError: Error, Equatable {
-    case signedOut, paused, denied, expired, offline, rateLimited, invalidResponse, integrity, keychain, stale
+    case signedOut, invalidLicense, blockedLicense, paused, denied, expired, offline, rateLimited, invalidResponse, integrity, keychain, stale
     var message: String {
         switch self {
         case .signedOut: return "Sin sesión"
+        case .invalidLicense: return "Clave de licencia no válida"
+        case .blockedLicense: return "Cuenta bloqueada"
         case .paused: return "Licencia pausada"
         case .denied: return "Licencia inactiva, revocada o dispositivo no autorizado"
         case .expired: return "Licencia expirada"
@@ -158,6 +160,8 @@ actor VINIStagingClient {
         let text = ((try? JSONSerialization.jsonObject(with: data)) as? [String: Any])?["error"] as? String ?? ""
         if text.lowercased().contains("paused") { return .paused }
         if text.lowercased().contains("expired") { return .expired }
+        if text.lowercased().contains("invalid license") { return .invalidLicense }
+        if text.lowercased().contains("blocked") { return .blockedLicense }
         if status == 403 { return .denied }
         return status == 401 ? .signedOut : .invalidResponse
     }

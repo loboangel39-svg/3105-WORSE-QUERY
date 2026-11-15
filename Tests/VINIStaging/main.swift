@@ -168,7 +168,9 @@ func expect(_ condition: Bool, _ name: String) throws { if !condition { throw VI
                     },beforeMutation:{ receipt in rr.transactionID=receipt.id;rr.phase = .prepared;try rb.save(rr);try rb.preparePair(rr) })
                 } catch { rollbackTriggered = true }
                 let rollbackReceipt = try rb.receipt(rr)
-                try expect(rollbackTriggered && (try PatchTransaction.journalSnapshot(receipt:rollbackReceipt)).status == "rolledBack","existing engine rolls back a genuinely partially applied transaction")
+                let rollbackStatus = try PatchTransaction.journalSnapshot(receipt:rollbackReceipt).status
+                rr.phase = .restored; rr.lastVerifiedEnabled = false; rr.desiredEnabled = false; try rb.sealRestored(rr); try rb.save(rr)
+                try expect(rollbackTriggered && rollbackStatus == "rolledBack","existing engine rolls back a genuinely partially applied transaction")
                 for i in 0..<2 { try expect(try Data(contentsOf:partialRoot.appendingPathComponent(rules[i].relativePath)) == originals[i],"partial rollback original hash restored for file \(i)") }
 
                 try expect(try Data(contentsOf:lab.appendingPathComponent("InjectedFailure/Container/Documents/acceptance.bin")) == VINIIsolatedFixture.original, "existing transaction rollback preserves original bytes")
@@ -192,7 +194,7 @@ func expect(_ condition: Bool, _ name: String) throws { if !condition { throw VI
         try expect(try await unassigned.catalog().isEmpty,"PRO has no automatic assignments")
         do { _ = try await unassigned.downloadTestPackage(id:VINIStagingEnvironment.fixtureID); throw VINIStagingError.invalidResponse }
         catch let e as VINIStagingError { try expect(e == .denied,"unassigned PRO download denied") }
-        for (name,expected) in [("paused",VINIStagingError.paused),("revoked",.denied),("expired",.expired),("blocked",.denied)] {
+        for (name,expected) in [("paused",VINIStagingError.paused),("revoked",.denied),("expired",.expired),("blocked",.blockedLicense)] {
             guard let key = licenses[name] else { throw VINIStagingError.signedOut }
             do { _ = try await VINIStagingClient(vault:MemoryVault()).login(licenseKey:key); throw VINIStagingError.invalidResponse }
             catch let e as VINIStagingError { try expect(e == expected,"live staging rejects " + name + " license") }

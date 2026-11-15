@@ -7,8 +7,8 @@ struct VINIAuthenticationRoot: View {
     var onAuthorized: () -> Void
     var onImport: (URL) -> Void
     var body: some View {
-        Group {
-            if store.phase == .authorized {
+        TimelineView(.periodic(from: .now, by: 1)) { _ in
+            if store.phase == .authorized && store.authorizationDeadline > ProcessInfo.processInfo.systemUptime {
                 VINIStagingDashboard(store: store)
             } else { VINILicenseLogin(store: store) }
         }
@@ -25,7 +25,9 @@ struct VINIAuthenticationRoot: View {
             catch { return }
             if store.phase == .authorized { await store.refresh(force: true) }
         }
-        .onOpenURL { url in if store.phase == .authorized { onImport(url) } }
+        .onOpenURL { url in
+            if store.phase == .authorized && store.authorizationDeadline > ProcessInfo.processInfo.systemUptime { onImport(url) }
+        }
     }
 }
 

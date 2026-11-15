@@ -21,10 +21,30 @@ enum VINIAuthenticationPhase: Equatable { case checking, login, validating, auth
     private let client = VINIStagingClient()
     private var uptime: TimeInterval = 0
     private var lastRefresh: TimeInterval = -.infinity
+    private func finishOperation() {
+        busy = false
+        if phase == .authorized && authorizationDeadline <= ProcessInfo.processInfo.systemUptime {
+            Task { await self.refresh(force: true) }
+        }
+    }
+    private func checkAuthorizationAfterFailure(_ error: Error) async {
+        guard let cause = error as? VINIStagingError else { return }
+        guard [.signedOut, .invalidLicense, .blockedLicense, .paused, .denied, .expired, .offline, .keychain].contains(cause) else { return }
+        do {
+            let p = try await client.profile()
+            let lifetime = try await client.authorizationLifetime(p)
+            profile = p; uptime = ProcessInfo.processInfo.systemUptime
+            authorizationDeadline = uptime + lifetime
+        } catch {
+            verified = false; authorizationDeadline = 0
+            phase = (error as? VINIStagingError) == .offline ? .blocked : .login
+            status = (error as? VINIStagingError)?.message ?? "Autorización sin verificar"
+        }
+    }
     func refresh(licenseKey: String? = nil, force: Bool = false) async {
         guard !busy else { return }
         if !force && licenseKey == nil && ProcessInfo.processInfo.systemUptime - lastRefresh < 15 { return }
-        busy = true; defer { busy = false }
+        busy = true; defer { finishOperation() }
         lastRefresh = ProcessInfo.processInfo.systemUptime
         phase = licenseKey == nil ? .checking : .validating
         if licenseKey != nil { preparedFixture = false; profile = nil; verified = false; packages = []; packageResult = nil }
@@ -55,9 +75,9 @@ enum VINIAuthenticationPhase: Equatable { case checking, login, validating, auth
     }
     func download(_ patch: VINIStagingPatch) async {
         guard !busy, verified else { return }
-        busy = true; defer { busy = false }
+        busy = true; defer { finishOperation() }
         do { let name = try await client.downloadTestPackage(id: patch.id); packageResult = "Descargado y decodificado: " + name; preparedFixture = true; await inspectFixture() }
-        catch { preparedFixture = false; packageResult = (error as? VINIStagingError)?.message ?? "El codec rechazó el paquete" }
+        catch { preparedFixture = false; packageResult = (error as? VINIStagingError)?.message ?? "El codec rechazó el paquete"; await checkAuthorizationAfterFailure(error) }
     }
     private func inspectFixture() async {
         do {
@@ -67,14 +87,14 @@ enum VINIAuthenticationPhase: Equatable { case checking, login, validating, auth
     }
     func applyFixture() async {
         guard !busy, phase == .authorized, preparedFixture, fixtureCanApply else { return }
-        busy = true; defer { busy = false }
+        busy = true; defer { finishOperation() }
         do {
             let p = try await client.profile(); _ = try await client.authorizationLifetime(p)
             let bytes = try await client.verifiedTestBytes(id: VINIStagingEnvironment.fixtureID)
             let finalProfile = try await client.profile(); _ = try await client.authorizationLifetime(finalProfile)
             fixtureState = try await fixture.apply(bytes: bytes)
             await inspectFixture()
-        } catch { preparedFixture = false; await inspectFixture(); packageResult = "Apply no confirmado; revisar receipt del ensayo" }
+        } catch { preparedFixture = false; await inspectFixture(); packageResult = "Apply no confirmado; revisar receipt del ensayo"; await checkAuthorizationAfterFailure(error) }
     }
     func restoreFixture() async {
         guard !busy, fixtureCanRestore else { return }; busy = true; defer { busy = false }
