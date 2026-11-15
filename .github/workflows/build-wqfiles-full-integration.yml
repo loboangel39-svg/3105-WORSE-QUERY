@@ -1,0 +1,110 @@
+name: Build complete WQFiles integration
+
+on:
+  push:
+    branches: [experiment/wqfiles-full-integration]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-experimental:
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Select installed Xcode
+        shell: bash
+        run: |
+          set -euo pipefail
+          XCODE_APP="$(find /Applications -maxdepth 1 -type d -name 'Xcode*.app' -print | sort | tail -n 1)"
+          test -n "$XCODE_APP"
+          sudo xcode-select --switch "$XCODE_APP/Contents/Developer"
+          xcodebuild -version | tee xcode-version.txt
+
+      - name: Verify integration provenance and target
+        run: |
+          git diff --check
+          python3 scripts/verify-wqfiles-integration.py
+
+      - name: Build unsigned experimental device app
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf build-experimental
+          mkdir -p build-experimental/Products/Release
+          xcodebuild \
+            -project ThreeOneOSFive.xcodeproj \
+            -scheme 3105 \
+            -sdk iphoneos \
+            -configuration ExperimentalRelease \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build-experimental/DerivedData \
+            CONFIGURATION_BUILD_DIR="$PWD/build-experimental/Products/Release" \
+            ARCHS=arm64 \
+            ONLY_ACTIVE_ARCH=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build | tee build-experimental/xcodebuild.log
+
+      - name: Package experimental unsigned IPA
+        shell: bash
+        run: |
+          set -euo pipefail
+          APP_PATH="$(find build-experimental/Products/Release -maxdepth 1 -type d -name '*.app' -print -quit)"
+          test -n "$APP_PATH"
+          test -x "$APP_PATH/3105"
+          test -f "$APP_PATH/Info.plist"
+          /usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP_PATH/Info.plist" | grep -Fx 'com.apple.mobile.MobileHouseArrest'
+          mkdir -p build-experimental/Payload
+          cp -R "$APP_PATH" build-experimental/Payload/
+          (cd build-experimental && /usr/bin/ditto -c -k --sequesterRsrc --keepParent Payload 3105-WQFiles-Full-Integration-Unsigned.ipa)
+          {
+            echo '# 3105 experimental App Group build report'
+            echo
+            echo "- Commit: $(git rev-parse HEAD)"
+            echo "- Variant: ExperimentalRelease"
+            echo "- Requested App Group: group.pigtjing.top"
+            echo "- Entitlements file: ThreeOneOSFive/3105-Experimental.entitlements"
+            echo '- Signing: disabled; IPA is unsigned'
+            echo '- Effective signed entitlements: not verifiable until authorized signing'
+            echo '- Device test: not performed by GitHub Actions'
+          } > build-experimental/BUILD-REPORT.md
+
+      - name: Check linked WQFiles runtime
+        run: |
+          APP_PATH="$(find build-experimental/Products/Release -maxdepth 1 -type d -name '*.app' -print -quit)"
+          nm "$APP_PATH/3105" > build-experimental/symbols.txt
+          for symbol in wq_grant wq_enumerate wq_reset_access_cache wq_health_run wq_purge_contents_cancellable wq_write WQIntegratedMakeViewController; do
+            grep -q "_$symbol$" build-experimental/symbols.txt
+          done
+          test -f "$APP_PATH/WQFilesResources.bundle/es.lproj/Localizable.strings"
+
+      - name: Upload experimental artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: 3105-WQFiles-Full-Integration-Unsigned
+          path: |
+            build-experimental/3105-WQFiles-Full-Integration-Unsigned.ipa
+            build-experimental/BUILD-REPORT.md
+            build-experimental/xcodebuild.log
+            xcode-version.txt
+          retention-days: 30
+
+  upstream-regressions:
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run full original host and iOS regression suites
+        working-directory: Vendor/WQFiles
+        run: bash tests/run_all_tests.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: WQFiles-regression-logs
+          path: Vendor/WQFiles/.work/tests/
