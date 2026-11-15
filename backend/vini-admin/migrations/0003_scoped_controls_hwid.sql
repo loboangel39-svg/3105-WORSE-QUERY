@@ -1,0 +1,10 @@
+ALTER TABLE users ADD COLUMN device_epoch INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE pause_claims ADD COLUMN scope_kind TEXT NOT NULL DEFAULT 'legacy' CHECK(scope_kind IN ('legacy','individual','direct','distributor','global','selected'));
+ALTER TABLE pause_claims ADD COLUMN scope_distributor_id TEXT REFERENCES distributors(id);
+UPDATE pause_claims SET scope_kind=CASE WHEN source IN ('individual','legacy') THEN 'individual' WHEN (SELECT json_extract(selector,'$.group') FROM admin_operations WHERE id=operation_id)='all' THEN 'global' WHEN (SELECT json_extract(selector,'$.group') FROM admin_operations WHERE id=operation_id)='direct' THEN 'direct' WHEN (SELECT json_extract(selector,'$.group') FROM admin_operations WHERE id=operation_id)='distributor' THEN 'distributor' ELSE 'selected' END,scope_distributor_id=(SELECT json_extract(selector,'$.distributorId') FROM admin_operations WHERE id=operation_id);
+ALTER TABLE operation_members ADD COLUMN was_paused INTEGER;
+ALTER TABLE operation_members ADD COLUMN distributor_at_preview TEXT;
+ALTER TABLE operation_members ADD COLUMN will_change INTEGER;
+CREATE TABLE operation_claim_members (operation_id TEXT NOT NULL REFERENCES admin_operations(id), user_id TEXT NOT NULL REFERENCES users(id), claim_id TEXT NOT NULL REFERENCES pause_claims(id), PRIMARY KEY(operation_id,user_id,claim_id));
+CREATE INDEX pause_scope ON pause_claims(user_id,scope_kind,scope_distributor_id,active);
+CREATE TABLE admin_security_events (id TEXT PRIMARY KEY, actor_id TEXT, event TEXT NOT NULL, method TEXT NOT NULL, route TEXT NOT NULL, created_at TEXT NOT NULL);

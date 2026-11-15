@@ -36,7 +36,7 @@ export function selection(a,params,action='read'){
 export async function listUsers(env,a,params){
   const q=selection(a,params);const offset=Number(params.offset||0),limit=Number(params.limit||100);
   if(!Number.isSafeInteger(offset)||offset<0||!Number.isSafeInteger(limit)||limit<1||limit>200)fail(400,'invalid_page');
-  const projection='u.id,u.username,u.plan_id,u.is_premium,u.is_active,u.is_paused,u.is_blocked,u.license_expires_at,u.pause_remaining_ms,u.pause_remaining_known,u.created_by_admin_id,u.distributor_id,u.origin_status,u.created_at,u.archived_at,u.revoked_at,u.purged_at,u.admin_revision';
+  const projection="u.id,u.username,u.plan_id,u.is_premium,u.is_active,u.is_paused,u.is_blocked,u.license_expires_at,u.pause_remaining_ms,u.pause_remaining_known,u.created_by_admin_id,u.distributor_id,u.origin_status,u.created_at,u.archived_at,u.revoked_at,u.purged_at,u.admin_revision,CASE WHEN u.hwid IS NULL OR u.hwid='' THEN NULL WHEN length(u.hwid)<8 THEN '••••' ELSE substr(u.hwid,1,3)||'…'||substr(u.hwid,-3) END AS hwidMasked";
   const rows=await env.DB.prepare(`SELECT ${projection} FROM users u WHERE ${q.sql} ORDER BY u.created_at,u.id LIMIT ? OFFSET ?`).bind(...q.args,limit,offset).all();
   const total=await env.DB.prepare(`SELECT COUNT(*) AS count FROM users u WHERE ${q.sql}`).bind(...q.args).first();
   return json({users:rows.results.map(u=>({...u,licenseStatus:licenseStatus(u)})),total:total.count,offset,limit});

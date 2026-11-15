@@ -1,8 +1,9 @@
 import first from '../migrations/0001_admin_plans.sql';
 import second from '../migrations/0002_operations_capabilities.sql';
+import third from '../migrations/0003_scoped_controls_hwid.sql';
 import {verifyAuth} from '../dist/upstream.mjs';
 import {fail,json,digest,body} from './auth.mjs';
-const sources=[['0001_admin_plans',first],['0002_operations_capabilities',second]];
+const sources=[['0001_admin_plans',first],['0002_operations_capabilities',second],['0003_scoped_controls_hwid',third]];
 export async function migrationRoute(request,env,apply){
   if(env.ADMIN_MIGRATIONS_ENABLED!=='1')fail(404,'not_found');
   // Bootstrap uses ONLY the existing verified principal, never APP/RBAC tokens.
@@ -24,6 +25,8 @@ export async function migrationRoute(request,env,apply){
     // One complete SQL statement per physical line, including each full trigger.
     const statements=source.split(/\r?\n/).map(s=>s.trim()).filter(s=>s&&!s.startsWith('--'));
     await env.DB.batch([...statements.map(sql=>env.DB.prepare(sql)),env.DB.prepare('INSERT INTO vini_admin_migrations VALUES(?,?,?)').bind(name,manifest[i].sha256,new Date().toISOString())]);
+    break; // Bound each invocation: one complete atomic migration per request.
   }
-  return json({success:true,manifestHash,applied:manifest.map(m=>m.name)});
+  const finished=(await env.DB.prepare('SELECT name FROM vini_admin_migrations ORDER BY name').all()).results.map(r=>r.name);
+  return json({success:true,manifestHash,applied:finished,remaining:manifest.filter(m=>!finished.includes(m.name)).map(m=>m.name)});
 }

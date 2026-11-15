@@ -5,7 +5,7 @@ import {tmpdir} from 'node:os';
 import assert from 'node:assert/strict';
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 async function until(fn,label){for(let i=0;i<150;i++){const result=await fn();if(result)return result;await sleep(100)}throw Error('Browser timeout: '+label)}
-export async function browserTest({origin,root,superPassword,distributorPassword,ownedUserId,readUser}){
+export async function browserTest({origin,root,superPassword,distributorPassword,ownedUserId,readUser,superUserName='staging-super',distributorUserName='synthetic-distributor'}){
   const candidates=process.platform==='win32'?['C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe','C:/Program Files/Google/Chrome/Application/chrome.exe']:['/usr/bin/google-chrome','/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'];
   let executable=null;for(const candidate of candidates){try{await access(candidate);executable=candidate;break}catch{}}
   if(!executable)throw Error('A real desktop Chrome/Edge executable is required for panel tests');
@@ -23,17 +23,20 @@ export async function browserTest({origin,root,superPassword,distributorPassword
     await command('Page.enable');await command('Runtime.enable');await command('Page.navigate',{url:origin+'/admin'});
     await until(()=>evaluate("!!document.getElementById('page-admin-v2')"),'extension loaded');
     async function login(username,password){await evaluate(`document.getElementById('loginUsername').value=${JSON.stringify(username)};document.getElementById('loginPassword').value=${JSON.stringify(password)};document.getElementById('loginForm').requestSubmit();`);await until(()=>evaluate("document.getElementById('page-admin-v2').textContent.includes('Total sin duplicados:')"),'authenticated table')}
-    await login('staging-super',superPassword);
+    await login(superUserName,superPassword);
     assert(await evaluate("[...document.querySelectorAll('.sidebar button')].some(b=>b.textContent==='Todos los usuarios')"));
     await evaluate("[...document.querySelectorAll('.sidebar button')].find(b=>b.textContent==='Distribuidores').click()");
     await until(()=>evaluate("document.querySelector('#page-admin-v2 h1')?.textContent==='Distribuidores'"),'distributor section');
     await until(()=>evaluate("document.getElementById('page-admin-v2').textContent.includes('Synthetic A')"),'distributor data loaded');
     await evaluate("document.getElementById('logoutBtn').click()");
-    await login('synthetic-distributor',distributorPassword);
+    await login(distributorUserName,distributorPassword);
     assert(await evaluate("![...document.querySelectorAll('.sidebar button')].some(b=>b.textContent==='Todos los usuarios')"));
     assert(await evaluate("[...document.querySelectorAll('.nav-item[data-page]')].every(b=>getComputedStyle(b).display==='none')"));
     assert(await evaluate("document.getElementById('page-admin-v2').textContent.includes('synthetic-ui-owned')"));
     assert(!await evaluate("document.getElementById('page-admin-v2').textContent.includes('synthetic-other-client')"));
+    assert(!await evaluate("[...document.querySelectorAll('#page-admin-v2 button')].some(b=>b.textContent==='Pausar todas las licencias')"));
+    assert(await evaluate("[...document.querySelectorAll('#page-admin-v2 button')].some(b=>b.textContent==='Reactivar todas')"));
+    assert(await evaluate("!!document.querySelector('#page-admin-v2 .badge')"));
     await evaluate("[...document.querySelectorAll('#page-admin-v2 tbody tr')].find(r=>r.textContent.includes('synthetic-ui-owned')).querySelectorAll('button')[1].click()");
     await until(async()=>!!(await readUser(ownedUserId)).is_paused,'confirmed pause from UI');
     assert(dialogs>=1,'administrative preview must require a browser confirmation');

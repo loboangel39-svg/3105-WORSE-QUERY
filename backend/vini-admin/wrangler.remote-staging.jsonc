@@ -1,0 +1,9 @@
+{
+  "name": "vini-admin-plans-staging-2b",
+  "main": "dist/worker.mjs",
+  "compatibility_date": "2026-09-01",
+  "workers_dev": true,
+  "routes": [],
+  "d1_databases": [{"binding":"DB", "database_name":"vini-admin-plans-staging-2b-db", "database_id":"cd4adf09-e968-455b-8825-5832bc5ed2c5"}],
+  "vars": {"ADMIN_USERNAME":"staging-owner", "ADMIN_PLANS_ENABLED":"1", "ADMIN_MIGRATIONS_ENABLED":"0", "LEASE_TTL_SECONDS":"300", "ENABLE_DEBUG_ROUTES":"0", "ENABLE_DESTRUCTIVE_DEBUG":"0"}
+}

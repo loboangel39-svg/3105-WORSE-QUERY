@@ -1,11 +1,17 @@
 import upstream,{verifyAppAuth,verifyAuth,createJWT} from '../dist/upstream.mjs';
 import panel from '../dist/panel.mjs';
-import {Fault,fail,body,text,json,now,actor,login,superOnly,audit} from './auth.mjs';
+import {Fault,fail,body,text,json,now,actor,login,superOnly,audit,requestActors} from './auth.mjs';
 import {profile,listUsers,createUser,editUser,renewUser,transferUser,listDistributors,createDistributor,createAdmin,allowedPatch} from './domain.mjs';
 import {preview,execute,operationResult,members,reconfirm,cancel} from './operations.mjs';
 import {migrationRoute} from './migrations.mjs';
 
-async function appAuth(request,env){const auth=await verifyAppAuth(request,env);if(!auth.valid||auth.user.archived_at||auth.user.purged_at)fail(401,'unauthorized');return auth}
+async function appAuth(request,env){
+  const auth=await verifyAppAuth(request,env);if(!auth.valid||auth.user.archived_at||auth.user.purged_at)fail(401,'unauthorized');
+  let payload;try{payload=JSON.parse(atob(request.headers.get('Authorization').slice(7).split('.')[1]))}catch{fail(401,'unauthorized')}
+  if((payload.deviceEpoch??0)!==(auth.user.device_epoch??0))fail(401,'device_session_revoked');
+  if((auth.user.device_epoch??0)>0&&(!auth.user.hwid||payload.hwid!==auth.user.hwid))fail(401,'device_binding_revoked');
+  return auth;
+}
 async function legacyFetch(request,env,a){
   superOnly(a);
   if((await verifyAuth(request,env)).valid)return upstream.fetch(request,env);
@@ -39,6 +45,7 @@ async function adminRoutes(request,env,url){
   if(match){if(match[2]==='execute'&&method==='POST')return execute(env,a,match[1],await body(request));if(match[2]==='reconfirm'&&method==='POST')return reconfirm(env,a,match[1]);if(match[2]==='cancel'&&method==='POST')return cancel(env,a,match[1]);if(match[2]==='members'&&method==='GET')return members(env,a,match[1],url);if(!match[2]&&method==='GET')return json(await operationResult(env,a,match[1]))}
   if(path==='/operations'&&method==='GET')return json({operations:(await env.DB.prepare(`SELECT id,actor_id,action,status,reason,created_at,revert_of FROM admin_operations WHERE ${a.role==='SUPER_ADMIN'?'1':'actor_id=?'} ORDER BY created_at DESC LIMIT 100`).bind(...(a.role==='SUPER_ADMIN'?[]:[a.id])).all()).results});
   if(path==='/plans'&&method==='GET')return json({plans:(await env.DB.prepare('SELECT id,name,enabled FROM plans ORDER BY id').all()).results});
+  if(path==='/security-events'&&method==='GET'){superOnly(a);return json({events:(await env.DB.prepare('SELECT * FROM admin_security_events ORDER BY created_at DESC LIMIT 100').all()).results})}
   if(path==='/retention'&&method==='GET'){superOnly(a);return json(await env.DB.prepare('SELECT * FROM admin_retention WHERE id=1').first())}
   if(path==='/retention'&&method==='PUT'){superOnly(a);const input=await body(request);if(typeof input.enabled!=='boolean'||!Number.isInteger(input.days)||input.days<90||input.days>3650)fail(400,'invalid_retention');await env.DB.batch([env.DB.prepare('UPDATE admin_retention SET enabled=?,days=?,updated_by=?,updated_at=? WHERE id=1').bind(input.enabled?1:0,input.days,a.id,now()),audit(env,a,'retention_policy',null,null,{enabled:input.enabled,days:input.days})]);return json({success:true})}
   if(path==='/audit'&&method==='GET'){
@@ -79,7 +86,10 @@ async function legacyUserMutation(request,env,url){
     const action=request.method==='DELETE'?'archive':u.is_paused?'resume_individual':'pause_individual';
     const result=await preview(env,a,{action,selection:{group:'selected',ids:[id]},reason:'manual',idempotencyKey:request.headers.get('Idempotency-Key')||crypto.randomUUID()});const operation=await result.json();return execute(env,a,operation.id,{confirmationToken:operation.confirmationToken});
   }
-  if(['hwid','block'].includes(match[2])&&request.method==='POST'){
+  if(match[2]==='hwid'&&request.method==='POST'){
+    const response=await preview(env,a,{action:'hwid_reset',selection:{group:'selected',ids:[id]},reason:'support',idempotencyKey:request.headers.get('Idempotency-Key')||crypto.randomUUID()});const op=await response.json();const result=await execute(env,a,op.id,{confirmationToken:op.confirmationToken});return json({success:true,...await result.json(),offlineLeases:'Previously issued offline leases expire under their original signed expiry.'});
+  }
+  if(match[2]==='block'&&request.method==='POST'){
     const response=await legacyFetch(request,env,a);if(response.ok)await audit(env,a,'legacy_'+match[2],id).run();return response;
   }
   return null;
@@ -107,8 +117,10 @@ export default {
       if(path==='/api/app/validate-license'&&method==='POST'){
         const response=await upstream.fetch(request,env);if(!response.ok)return response;
         const data=await response.json();const auth=await verifyAppAuth(new Request(request.url,{headers:{Authorization:'Bearer '+data.token}}),env);
+        if(auth.valid){const payload=JSON.parse(atob(data.token.split('.')[1]));if((auth.user.device_epoch??0)>0&&(!auth.user.hwid||payload.hwid!==auth.user.hwid))fail(403,'device_binding_changed');data.token=await createJWT({...payload,deviceEpoch:auth.user.device_epoch??0},env)}
         return json(auth.valid?{...data,...profile(auth.user)}:data,response.status);
       }
+      if(path.startsWith('/api/app/')&&method!=='OPTIONS')await appAuth(request,env);
       const patch=path.match(/^\/api\/app\/patches\/([^/]+)(?:\/download)?$/);
       if(patch&&method==='GET'){const auth=await appAuth(request,env);if(!await allowedPatch(env,auth.user,decodeURIComponent(patch[1])))fail(403,'patch_not_authorized')}
       if(path==='/api/app/patches'&&method==='GET'){
@@ -123,7 +135,13 @@ export default {
       }
       return await upstream.fetch(request,env);
     }catch(error){
-      if(error instanceof Fault)return json({error:error.code},error.status);
+      if(error instanceof Fault){
+        if([401,403,404].includes(error.status)&&new URL(request.url).pathname.startsWith('/api/admin-v2/')){
+          const route=new URL(request.url).pathname.startsWith('/api/admin-v2/users')?'/api/admin-v2/users/{id}':new URL(request.url).pathname.startsWith('/api/admin-v2/operations')?'/api/admin-v2/operations/{id}':'/api/admin-v2/administration';
+          try{await env.DB.prepare('INSERT INTO admin_security_events VALUES(?,?,?,?,?,?)').bind(crypto.randomUUID(),requestActors.get(request)||null,error.code,request.method,route,now()).run()}catch{console.warn('admin_security_event_unavailable')}
+        }
+        return json({error:error.code},error.status);
+      }
       console.error(JSON.stringify({event:'admin_extension_failure',type:error?.constructor?.name||'Error'}));
       return json({error:'service_unavailable'},503);
     }

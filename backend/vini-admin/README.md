@@ -1,5 +1,8 @@
 # VINI — planes y distribuidores, experimental
 
+Estado actual: [Fase 2B — staging remoto y controles completos](docs/PHASE_2B.md).
+El informe de Fase 2A se conserva como evidencia histórica del commit cb98ba7.
+
 Ampliación del Worker `vini-v2-api` auditado en `b858469`. No es un backend
 alternativo ni una migración a `vini-patch-db`. El Worker y el panel originales
 se conservan completos en `upstream/`, con hashes verificados durante el build.
@@ -67,5 +70,6 @@ y masiva. Sustituye expresamente la antigua devolución de días completos.
 - [Reversión/recuperación](docs/ROLLBACK.md)
 - [Procedencia del Worker y panel](docs/UPSTREAM_PROVENANCE.md)
 
-No se ha desplegado en Cloudflare ni aplicado SQL en bases reales. El staging
-validado es local y separado; no se declara validación sobre tráfico de clientes.
+Fase 2A se validó localmente. Fase 2B crea exclusivamente un Worker/D1 remotos de
+staging separados, con datos ficticios; nunca se valida mediante clientes reales
+ni se despliega automáticamente a producción. Véase su informe específico.

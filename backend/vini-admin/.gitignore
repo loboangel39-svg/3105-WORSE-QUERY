@@ -4,3 +4,5 @@ dist/
 .env*
 node_modules/
 test-results.json
+remote-test-results.json
+remote-panel-results.json

@@ -6,6 +6,7 @@ import {join} from 'node:path';
 import {dependency} from '../scripts/deps.mjs';
 import {build,root} from '../scripts/build.mjs';
 import {browserTest} from './browser.mjs';
+import {controls2B} from './controls-2b.mjs';
 const {Miniflare,Log,LogLevel,convertV4MiniflareOptions}=dependency('miniflare');
 const {unstable_splitSqlQuery:split}=dependency('wrangler');
 const results=[];
@@ -21,7 +22,7 @@ let db,rootToken,basic,pro,direct,distributed,other,distA,distB,distToken,limite
 async function sql(source){const statements=split(source).filter(s=>s.trim());return db.batch(statements.map(s=>db.prepare(s)))}
 async function migrate(){
   const plan=await call('/api/admin-v2/migrations/preview');
-  return call('/api/admin-v2/migrations/apply',{method:'POST',data:{manifestHash:plan.manifestHash,confirm:true}});
+  for(let i=0;i<5;i++){const result=await call('/api/admin-v2/migrations/apply',{method:'POST',data:{manifestHash:plan.manifestHash,confirm:true}});if(!result.remaining.length)return result}throw Error('Migration did not finish');
 }
 async function call(path,{method='GET',data,token=rootToken,expect=200,headers={}}={}){
   const response=await mf.dispatchFetch('http://staging.local'+path,{method,headers:{'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{}),...headers},...(data?{body:JSON.stringify(data)}:{})});
@@ -161,7 +162,7 @@ try{
   });
   await test('Extra: operation resumes after actual workerd shutdown without repeating committed batches',async()=>{
     const ids=[];for(let i=0;i<21;i++)ids.push((await create('synthetic-restart-'+i)).id);
-    const op=await preview('pause',{group:'selected',ids});const first=await call('/api/admin-v2/operations/'+op.id+'/execute',{method:'POST',data:{confirmationToken:op.confirmationToken}});assert.equal(first.status,'running');assert.equal(first.results.applied,10);
+    const op=await preview('pause',{group:'selected',ids});const first=await call('/api/admin-v2/operations/'+op.id+'/execute',{method:'POST',data:{confirmationToken:op.confirmationToken}});assert.equal(first.status,'running');assert.equal(first.results.applied,5);
     await mf.dispose();mf=new Miniflare(options());db=await mf.getD1Database('DB');const done=await run(op);assert.equal(done.results.applied,21);assert.equal((await db.prepare('SELECT COUNT(*) AS count FROM admin_audit WHERE operation_id=?').bind(op.id).first()).count,21);
   });
   await test('Extra: real desktop browser panel login, roles, navigation, preview and confirmed action',async()=>{
@@ -192,6 +193,7 @@ try{
     await call('/api/app/patches/fixture-patch/download',{token:session.token,expect:403});assert.equal((await db.prepare('SELECT COUNT(*) AS count FROM downloads').first()).count,before);
     await db.prepare("UPDATE patch_policies SET revoked=0,enabled=0 WHERE patch_id='fixture-patch'").run();assert.equal((await call('/api/app/patches',{token:session.token})).patches.length,0);
   });
+  await controls2B(call,rootToken,result=>{results.push(result);console.log(result.passed?'PASS':'FAIL',result.name)});
   await test('Extra: maintenance keeps APP authentication but blocks administrative writes',async()=>{
     fixtureBindings.ADMIN_READ_ONLY='1';await mf.dispose();mf=new Miniflare(options());db=await mf.getD1Database('DB');
     await call('/api/admin-v2/users',{method:'POST',data:{username:'cannot-write',plan:'basic'},expect:503});await call('/api/users/'+pro.id,{method:'PUT',data:{username:'cannot-write'},expect:503});assert.equal((await appLogin(pro)).valid,true);

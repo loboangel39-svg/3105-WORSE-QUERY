@@ -1,5 +1,6 @@
 import { verifyAuth } from '../dist/upstream.mjs';
 export class Fault extends Error { constructor(status,code){super(code);this.status=status;this.code=code;} }
+export const requestActors=new WeakMap();
 export const fail=(status,code)=>{throw new Fault(status,code)};
 export const now=()=>new Date().toISOString();
 export const json=(value,status=200)=>Response.json(value,{status,headers:{'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});
@@ -39,7 +40,7 @@ export async function login(request,env){
   const signature=b64(await crypto.subtle.sign('HMAC',await signingKey(env),new TextEncoder().encode(data)));
   return json({token:data+'.'+signature,expiresAt:new Date(Date.now()+3600000).toISOString()});
 }
-export const ACTIONS=['read','create','renew','pause','reactivate','revoke','archive','transfer','purge','policy'];
+export const ACTIONS=['read','create','renew','pause','reactivate','revoke','archive','transfer','purge','policy','hwid_reset'];
 export async function actor(request,env){
   let id=null;
   const legacy=await verifyAuth(request,env);
@@ -60,7 +61,7 @@ export async function actor(request,env){
   if(a.role==='DISTRIBUTOR'&&!(await env.DB.prepare("SELECT id FROM distributors WHERE id=? AND status='active'").bind(a.distributor_id).first()))fail(403,'distributor_suspended');
   a.actions=(await env.DB.prepare('SELECT action FROM admin_actions WHERE admin_id=?').bind(id).all()).results.map(r=>r.action);
   a.scopes=(await env.DB.prepare('SELECT scope_key FROM admin_scopes WHERE admin_id=?').bind(id).all()).results.map(r=>r.scope_key);
-  return a;
+  requestActors.set(request,a.id);return a;
 }
 export function permit(a,action){if(a.role!=='SUPER_ADMIN'&&!a.actions.includes(action))fail(403,'action_forbidden')}
 export function superOnly(a){if(a.role!=='SUPER_ADMIN')fail(403,'super_admin_required')}
