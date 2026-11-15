@@ -521,7 +521,13 @@ private final class SilentAppDataRefresh: ObservableObject {
                     log("wqfiles: async result discarded phase=final token=\(requestToken.uuidString)")
                     return
                 }
-                mergeVisible(result)
+                let state = WQIntegratedScanState()["status"] as? String
+                if !result.isEmpty && identityComparison.sourceReadable && !wq_full_scan_was_declined()
+                    && state != "blocked" && state != "stopped" && !WQIntegratedRefreshHadTransientError() {
+                    apps = result
+                } else {
+                    mergeVisible(result)
+                }
                 isLoading = false
                 isResolving = false
                 WQIntegratedEndRefresh()

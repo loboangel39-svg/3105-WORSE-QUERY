@@ -20,3 +20,6 @@ assert 'WQIntegratedMakeViewController()' in (root/'ThreeOneOSFive/views/Setting
 ids = re.findall(r'^\s*([A-F0-9]{24})\s*(?:/\*.*?\*/\s*)?=\s*\{', project, re.M)
 assert len(ids) == len(set(ids)), 'duplicate Xcode object identifiers'
 print(f'PASS: {len(manifest["sha256"])} upstream files preserved; all implementations in target')
+
+import runpy
+runpy.run_path(str(root/"scripts/verify-silent-refresh.py"), run_name="__main__")
