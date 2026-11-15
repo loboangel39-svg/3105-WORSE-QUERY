@@ -63,11 +63,15 @@ func expect(_ condition: Bool, _ name: String) throws { if !condition { throw VI
         do { _ = try await switched.login(licenseKey:"OTHER-SYNTHETIC"); throw VINIStagingError.invalidResponse }
         catch let e as VINIStagingError { try expect(e == .paused,"rejected account switch reported") }
         try expect(switchVault.value?.licenseKey == "OTHER-SYNTHETIC" && switchVault.value?.token == "", "rejected account switch cannot resurrect old session")
-        let stale = VINIStagingClient(transport:TestTransport([(200,profile)]),vault:MemoryVault(record()))
+        let logoutVault = MemoryVault(record())
+        let stale = VINIStagingClient(transport:TestTransport([(200,profile)]),vault:logoutVault)
         let pending = Task { try await stale.profile() }; try await Task.sleep(nanoseconds:5_000_000); try await stale.logout()
         var staleRejected = false
         do { _ = try await pending.value } catch { staleRejected = true }
         try expect(staleRejected, "logout prevents stale response restoring session")
+        try expect(logoutVault.value?.hwid == "synthetic" && logoutVault.value?.token == "" && logoutVault.value?.licenseKey == "", "logout removes credentials but preserves device identity")
+        do { _ = try await stale.profile(); throw VINIStagingError.invalidResponse }
+        catch let e as VINIStagingError { try expect(e == .signedOut,"HWID alone never establishes a session") }
         let kc = VINIStagingKeychain(service:"vini.staging.native-test."+UUID().uuidString)
         try kc.save(record()); try expect(try kc.load()?.token == "old-token", "real macOS Keychain read after write")
         var replacement = record(); replacement.token = "replacement"
@@ -101,6 +105,11 @@ func expect(_ condition: Bool, _ name: String) throws { if !condition { throw VI
                 try expect(!name.isEmpty,"live R2 bytes match SHA256 and unchanged Swift codec decodes fixture")
                 let restored = VINIStagingClient(vault:liveVault)
                 try expect(try await restored.profile().username == p.username,"session restored without new login")
+                let deviceID = liveVault.value!.hwid
+                try await restored.logout()
+                let relogged = VINIStagingClient(vault:liveVault)
+                _ = try await relogged.login(licenseKey:key)
+                try expect(liveVault.value?.hwid == deviceID,"live logout/relogin retains server device binding")
             } else {
                 try expect(!patches.contains { $0.id == VINIStagingEnvironment.fixtureID },"BASIC does not receive PRO fixture")
                 do { _ = try await live.downloadTestPackage(id:VINIStagingEnvironment.fixtureID); throw VINIStagingError.invalidResponse }

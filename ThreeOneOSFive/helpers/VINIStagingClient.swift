@@ -166,8 +166,14 @@ actor VINIStagingClient {
         return try await profile()
     }
     func logout() throws {
-        generation += 1; refreshTask?.cancel(); refreshTask = nil; credentials = nil; loaded = true
-        try vault.delete()
+        try load()
+        generation += 1; refreshTask?.cancel(); refreshTask = nil
+        // Device identity survives logout; rotating it would lock out a license
+        // already bound by the server. Remove license/token, retain only HWID.
+        if let hwid = credentials?.hwid {
+            let identity = VINIStagingCredentials(licenseKey: "", hwid: hwid, token: "", expiresAt: "")
+            try vault.save(identity); credentials = identity
+        } else { try vault.delete(); credentials = nil }
     }
     func profile() async throws -> VINIStagingProfile {
         try load()
@@ -179,7 +185,7 @@ actor VINIStagingClient {
         return try await task.value
     }
     private func fetchProfile(epoch: Int) async throws -> VINIStagingProfile {
-        guard let saved = credentials else { throw VINIStagingError.signedOut }
+        guard let saved = credentials, !saved.licenseKey.isEmpty else { throw VINIStagingError.signedOut }
         if !saved.token.isEmpty {
             let (bytes, response) = try await request("api/app/me", token: saved.token)
             guard generation == epoch else { throw VINIStagingError.stale }
