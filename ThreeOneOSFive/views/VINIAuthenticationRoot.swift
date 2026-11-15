@@ -78,11 +78,7 @@ struct VINILicenseLogin: View {
                                 .frame(maxWidth: .infinity).frame(height: 48)
                                 .background(AppTheme.accent, in: RoundedRectangle(cornerRadius: 13))
                                 .shadow(color: AppTheme.accent.opacity(0.22), radius: 10, y: 4)
-                        }.buttonStyle(.plain).disabled(busy || license.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                        if store.phase == .blocked {
-                            Button("Reintentar conexión") { Task { await store.refresh(force: true) } }
-                                .font(AppTheme.mono(10)).foregroundStyle(AppTheme.accent).disabled(store.busy)
-                        }
+                        }.buttonStyle(.plain).disabled(busy || (license.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && store.phase != .blocked))
                     }.padding(18).background(Color(red: 0.05, green: 0.065, blue: 0.09), in: RoundedRectangle(cornerRadius: 20))
                         .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color.white.opacity(0.1), lineWidth: 0.8))
                     Spacer(minLength: 48)
@@ -105,7 +101,11 @@ struct VINILicenseLogin: View {
         }.preferredColorScheme(.dark).accessibilityIdentifier("vini-license-login")
     }
     private func authenticate() {
-        guard !busy, !license.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        guard !busy else { return }
+        if license.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            if store.phase == .blocked { Task { await store.refresh(force: true) } }
+            return
+        }
         let key = license; license = ""
         Task { await store.refresh(licenseKey: key, force: true) }
     }
