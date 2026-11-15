@@ -13,6 +13,7 @@ struct AppDataBrowserView: View {
     @State private var errorMessage: String?
     @State private var hasLoaded = false
     @State private var workspaceURL: URL?
+    @State private var reloadToken = UUID()
     @Binding private var tabSession: FilesTabSession
     let onOpenSettings: () -> Void
     let onOpenLogs: () -> Void
@@ -282,6 +283,9 @@ struct AppDataBrowserView: View {
     }
 
     private func reload() {
+        let requestToken = UUID()
+        reloadToken = requestToken
+        log("wqfiles: reload scheduled token=\(requestToken.uuidString) enabled=\(WQFilesIdentityResolver.isEnabled) os=\(AppInfo.osVersion) build=\(AppInfo.osBuild)")
         isLoading = true
         isResolving = true
         errorMessage = nil
@@ -314,7 +318,45 @@ struct AppDataBrowserView: View {
                 ContainerPresentationPolicy.shouldShow(bundleID: $0.bundleID)
             }
             DispatchQueue.main.async {
+                guard reloadToken == requestToken else {
+                    log("wqfiles: async result discarded phase=preliminary token=\(requestToken.uuidString)")
+                    return
+                }
                 apps = preliminary
+                isLoading = false
+            }
+
+            log("wqfiles: provider about_to_run token=\(requestToken.uuidString) filesystem=\(filesystemApps.count)")
+            let identities = WQFilesIdentityResolver.resolve(
+                containerPaths: filesystemApps.map(\.containerPath)
+            )
+            log("wqfiles: provider returned token=\(requestToken.uuidString) identities=\(identities.count)")
+            let verifiedApps = WQFilesIdentityMerge.verifiedApps(
+                identities: identities,
+                originalApps: baseIdentifiedApps + filesystemApps
+            )
+            let originalPathSet = Set(baseIdentifiedApps.map {
+                ContainerDiscoveryMerger.canonicalPath($0.containerPath)
+            })
+            let newPathCount = verifiedApps.filter {
+                !originalPathSet.contains(ContainerDiscoveryMerger.canonicalPath($0.containerPath))
+            }.count
+            log("wqfiles: comparison original=\(baseIdentifiedApps.count), filesystem=\(filesystemApps.count), verified=\(verifiedApps.count), additional=\(newPathCount), unresolved=\(max(0, filesystemApps.count - verifiedApps.count))")
+
+            result = ContainerDiscoveryMerger.merge(
+                enumerated: result,
+                identified: verifiedApps,
+                path: { $0.containerPath }
+            )
+            result.sort {
+                $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending
+            }
+            DispatchQueue.main.async {
+                guard reloadToken == requestToken else {
+                    log("wqfiles: async result discarded phase=provider token=\(requestToken.uuidString)")
+                    return
+                }
+                apps = result.filter { ContainerPresentationPolicy.shouldShow(bundleID: $0.bundleID) }
                 isLoading = false
             }
 
@@ -347,12 +389,16 @@ struct AppDataBrowserView: View {
                 progressiveResult.sort {
                     $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending
                 }
-                DispatchQueue.main.async {
-                    apps = progressiveResult
+            DispatchQueue.main.async {
+                guard reloadToken == requestToken else {
+                    log("wqfiles: async result discarded phase=progressive token=\(requestToken.uuidString)")
+                    return
                 }
+                apps = progressiveResult
+            }
             }
 
-            let allKnownApps = mhaApps + baseIdentifiedApps
+            let allKnownApps = mhaApps + baseIdentifiedApps + verifiedApps
             let identifiedPaths = Set(allKnownApps.map {
                 ContainerDiscoveryMerger.canonicalPath($0.containerPath)
             })
@@ -382,9 +428,14 @@ struct AppDataBrowserView: View {
             }
 
             DispatchQueue.main.async {
+                guard reloadToken == requestToken else {
+                    log("wqfiles: async result discarded phase=final token=\(requestToken.uuidString)")
+                    return
+                }
                 apps = result
                 isLoading = false
                 isResolving = false
+                log("wqfiles: files displayed=\(result.count)")
                 if result.isEmpty {
                     errorMessage = emptyMessage
                 }
