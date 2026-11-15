@@ -20,7 +20,10 @@ enum WQBundleIdentityCoordinator {
         containerPaths: [String],
         original: [String: WQFilesResolvedIdentity]
     ) -> WQBundleIdentityComparison {
-        let report = (wq_phase1_identity_report() as? [String: Any]) ?? [:]
+        let usesOriginalRuntime = ProcessInfo.processInfo.operatingSystemVersion.majorVersion >= 26
+        let report = usesOriginalRuntime
+            ? WQIntegratedRuntimeReport()
+            : ((wq_phase1_identity_report() as? [String: Any]) ?? [:])
         let sourceState = report["sourceState"] as? String ?? "unavailable"
         let sourceFound = report["sourceFound"] as? Bool ?? false
         let sourceReadable = report["sourceReadable"] as? Bool ?? false
@@ -35,18 +38,22 @@ enum WQBundleIdentityCoordinator {
         log("wq.identity: effective_access sampled=\(health.sampledContainers) opened=\(health.containersOpened) providers=\(health.accessProviders)")
 
         let sourceData: Data?
-        if sourceState == "valid" {
-            sourceData = wq_phase1_read_available_store()
-                ?? (report["sourcePath"] as? String).flatMap {
-                    WQIdentityHealth.readAuthorizedSource(at: $0)
-                }
-        } else if let path = report["sourcePath"] as? String {
-            sourceData = WQIdentityHealth.readAuthorizedSource(at: path)
-        } else {
+        let parsedReport: [String: Any]?
+        if usesOriginalRuntime {
             sourceData = nil
+            parsedReport = sourceReadable ? report : nil
+        } else {
+            if sourceState == "valid" {
+                sourceData = wq_phase1_read_available_store()
+                    ?? (report["sourcePath"] as? String).flatMap { WQIdentityHealth.readAuthorizedSource(at: $0) }
+            } else if let path = report["sourcePath"] as? String {
+                sourceData = WQIdentityHealth.readAuthorizedSource(at: path)
+            } else {
+                sourceData = nil
+            }
+            parsedReport = sourceData.flatMap { wq_phase1_parse_store_data($0) as? [String: Any] }
         }
-        guard let data = sourceData,
-              let parsed = wq_phase1_parse_store_data(data) as? [String: Any] else {
+        guard let parsed = parsedReport else {
             return WQBundleIdentityComparison(
                 sourceState: sourceState,
                 sourceFound: sourceFound,
@@ -99,7 +106,7 @@ enum WQBundleIdentityCoordinator {
             sourceState: sourceState == "valid" ? "valid" : "valid_after_existing_provider",
             sourceFound: true,
             sourceReadable: true,
-            storeBytes: data.count,
+            storeBytes: sourceData?.count ?? reportBytes,
             layout: report["layout"] as? String ?? "unknown",
             records: (parsed["records"] as? NSNumber)?.intValue ?? reportRecords,
             bundleIDs: Set(wqMap.values).count,
@@ -121,7 +128,7 @@ enum WQBundleIdentityCoordinator {
         log("wq.identity: source_readable=\(comparison.sourceReadable)")
         log("wq.identity: store_bytes=\(comparison.storeBytes)")
         log("wq.identity: layout=\(comparison.layout)")
-        log("wq.identity: records=\(comparison.records)")
+        log("wq.identity: records=\(comparison.records < 0 ? "see_original_parser_log" : String(comparison.records))")
         log("wq.identity: bundle_ids=\(comparison.bundleIDs)")
         log("wq.identity: matched_uuid=\(comparison.matchedUUID)")
         log("wq.identity: verified_names=\(comparison.verifiedNames)")

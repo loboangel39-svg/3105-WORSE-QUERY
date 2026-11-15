@@ -56,3 +56,33 @@ NSDictionary *WQIntegratedIdentities(NSArray<NSString *> *paths) {
     }
     return result;
 }
+
+NSDictionary<NSString *, id> *WQIntegratedRuntimeReport(void) {
+    WQIntegratedInitialize();
+    wq_load_display_names();
+    NSMutableDictionary *containers = [NSMutableDictionary new];
+    NSMutableDictionary *display = [NSMutableDictionary new];
+    for (NSString *path in wq_ls_container_paths(nil)) {
+        NSString *bid = wq_bundle_id_for_container(path);
+        if (!bid.length) continue;
+        containers[path] = bid;
+        NSString *name = wq_display_name(bid);
+        if (name.length) display[bid] = name;
+    }
+    NSString *path = [NSUserDefaults.standardUserDefaults stringForKey:@"WQLaunchServicesStore"];
+    struct stat st = {0};
+    BOOL readable = wq_display_names_loaded() && path.length && wq_stat(path, &st);
+    NSMutableDictionary *report = [@{
+        @"sourceState": readable ? @"valid" : @"unavailable",
+        @"sourceFound": @(path.length > 0), @"sourceReadable": @(readable),
+        @"storeBytes": readable ? @(st.st_size) : @0,
+        // The original parser logs its layout and raw record counts itself.
+        // These are not inferred from the number of mapped container paths.
+        @"layout": @"original-parser (see WQFiles names log)", @"records": @(-1),
+        @"containers": containers, @"display": display, @"bundleNames": @{},
+        @"bundleIDs": @([NSSet setWithArray:containers.allValues].count),
+        @"verifiedNames": @(display.count)
+    } mutableCopy];
+    if (path.length) report[@"sourcePath"] = path;
+    return report;
+}

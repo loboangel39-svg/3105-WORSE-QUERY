@@ -103,6 +103,16 @@ enum ContainerStore {
         let detail = lookupError.map(String.init) ?? "unavailable"
         log("patch: MHA-C2 could not resolve \(bundleID), detail=\(detail)")
 
+        if #available(iOS 26.0, *) {
+            wq_load_display_names()
+            for path in wq_ls_container_paths(nil) ?? [] {
+                guard isApplicationContainerPath(path),
+                      wq_bundle_id_for_container(path) == bundleID else { continue }
+                log("patch: WQFiles resolved \(bundleID)")
+                return ContainerDiscoveryMerger.canonicalPath(path)
+            }
+        }
+
         // Fallback for iOS builds where MCM refuses to hand out sandbox
         // tokens (e.g. iOS 18.1.x): scan the app-data root with the inode
         // walk and read each container's MCM metadata plist directly. The
@@ -116,7 +126,7 @@ enum ContainerStore {
 
     static func resolveAppContainerPathByMetadataScan(bundleID: String) -> String? {
         // iOS < 26: kernel R/W is enough, no need to require full sandbox escape
-        if KernelExploit.requiresSandboxEscape, !KernelExploit.hasSandboxAccess() {
+        if !shouldUseBadQuery, KernelExploit.requiresSandboxEscape, !KernelExploit.hasSandboxAccess() {
             log("patch: metadata scan skipped — sandbox access not active")
             return nil
         }

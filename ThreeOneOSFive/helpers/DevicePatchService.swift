@@ -102,7 +102,6 @@ enum DevicePatchService {
             }
             roots[bundleID] = PatchPathValidator.canonicalFileURL(URL(fileURLWithPath: path, isDirectory: true))
         }
-        _ = sessions
-        return try operation(roots)
+        return try withExtendedLifetime(sessions) { try operation(roots) }
     }
 }
