@@ -1,6 +1,8 @@
 # VINI — planes y distribuidores, experimental
 
-Estado actual: [Fase 2B — staging remoto y controles completos](docs/PHASE_2B.md).
+Estado actual: [Fase 2C — aceptación y pendientes de producción](../../VINI_STAGING_ACCEPTANCE.md).
+El binario 2B se conserva sin reconstruir; staging añade únicamente R2 de prueba.
+[Fase 2B — controles completos](docs/PHASE_2B.md) se conserva como evidencia histórica.
 El informe de Fase 2A se conserva como evidencia histórica del commit cb98ba7.
 
 Ampliación del Worker `vini-v2-api` auditado en `b858469`. No es un backend
