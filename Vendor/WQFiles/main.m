@@ -3643,6 +3643,7 @@ static NSString *const kWQLanguagePref = @"WQLanguage";
 static NSString *wq_chosen_language(void)
 {
     NSString *code = [NSUserDefaults.standardUserDefaults stringForKey:kWQLanguagePref];
+    if (!code.length && WQSilentRefresh()) code = [NSUserDefaults.standardUserDefaults stringForKey:@"appLanguage"] ?: @"es";
     return code.length ? code : nil;
 }
 
@@ -4276,7 +4277,8 @@ static void wq_apply_design(void);
     NSDictionary *last = [NSUserDefaults.standardUserDefaults dictionaryForKey:kWQLastFolderPref];
     if (![NSUserDefaults.standardUserDefaults boolForKey:kWQReopenOffPref] && [last[@"path"] isKindOfClass:NSString.class])
         _reopenFolder = last;
-    [self checkForUpdate];
+    // Application-version networking disabled in the integrated build.
+    if (!WQSilentRefresh()) [self checkForUpdate];
     [self runHealthCheck];
 }
 
@@ -4511,51 +4513,11 @@ static void wq_apply_design(void);
 
 - (UIView *)buildFooter
 {
-    UILabel *version = [UILabel new];
-    version.text = wq_app_version_line();
-    version.font = [UIFont monospacedSystemFontOfSize:9 weight:UIFontWeightRegular];
-    version.textColor = UIColor.tertiaryLabelColor;
-    version.textAlignment = NSTextAlignmentCenter;
-
-    UIButtonConfiguration *linkCfg = [UIButtonConfiguration plainButtonConfiguration];
-    linkCfg.title = @"GitHub";
-    linkCfg.image = [UIImage systemImageNamed:@"chevron.left.forwardslash.chevron.right"];
-    linkCfg.imagePadding = 4;
-    linkCfg.buttonSize = UIButtonConfigurationSizeSmall;
-    linkCfg.baseForegroundColor = UIColor.secondaryLabelColor;
-    UIButton *github = [UIButton buttonWithConfiguration:linkCfg primaryAction:[UIAction actionWithHandler:^(UIAction *__unused a) {
-        [UIApplication.sharedApplication openURL:[NSURL URLWithString:@"https://github.com/kolbicz"] options:@{} completionHandler:nil];
-    }]];
-
-    UIButtonConfiguration *xcfg = [UIButtonConfiguration plainButtonConfiguration];
-    xcfg.title = @"@_kolbicz";
-    xcfg.image = [UIImage systemImageNamed:@"at"];
-    xcfg.imagePadding = 4;
-    xcfg.buttonSize = UIButtonConfigurationSizeSmall;
-    xcfg.baseForegroundColor = UIColor.secondaryLabelColor;
-    UIButton *x = [UIButton buttonWithConfiguration:xcfg primaryAction:[UIAction actionWithHandler:^(UIAction *__unused a) {
-        [UIApplication.sharedApplication openURL:[NSURL URLWithString:@"https://x.com/_kolbicz"] options:@{} completionHandler:nil];
-    }]];
-
-    UIStackView *links = [[UIStackView alloc] initWithArrangedSubviews:@[github, x]];
-    links.axis = UILayoutConstraintAxisHorizontal;
-    links.spacing = 12;
-    links.alignment = UIStackViewAlignmentCenter;
-
-    UIButtonConfiguration *creditCfg = [UIButtonConfiguration plainButtonConfiguration];
-    creditCfg.attributedTitle = [[NSAttributedString alloc] initWithString:WQLocalized(@"Sandbox escape: worse_query by @forcequitOS")
-        attributes:@{NSFontAttributeName: [UIFont preferredFontForTextStyle:UIFontTextStyleCaption2]}];
-    creditCfg.buttonSize = UIButtonConfigurationSizeSmall;
-    creditCfg.baseForegroundColor = UIColor.tertiaryLabelColor;
-    UIButton *credit = [UIButton buttonWithConfiguration:creditCfg primaryAction:[UIAction actionWithHandler:^(UIAction *__unused a) {
-        [UIApplication.sharedApplication openURL:[NSURL URLWithString:@"https://x.com/forcequitOS"] options:@{} completionHandler:nil];
-    }]];
-
-    UIStackView *stack = [[UIStackView alloc] initWithArrangedSubviews:@[version, links, credit]];
-    stack.axis = UILayoutConstraintAxisVertical;
-    stack.alignment = UIStackViewAlignmentCenter;
-    stack.spacing = 7;
-    return stack;
+    UILabel *notice = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, 320, 70)];
+    notice.numberOfLines = 0; notice.textAlignment = NSTextAlignmentCenter;
+    notice.font = [UIFont preferredFontForTextStyle:UIFontTextStyleCaption2];
+    notice.text = @"WQFiles © kolbicz · worse_query © Taj C (forcequit)\nGPL-3.0-or-later";
+    return notice;
 }
 
 - (void)rebuildLocations
@@ -5036,6 +4998,7 @@ static void wq_apply_design(void);
 
 - (void)checkForUpdate
 {
+    if (WQSilentRefresh()) return;
     NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
     if ([defaults boolForKey:kWQUpdateCheckOffPref]) return;
     NSDate *last = [defaults objectForKey:kWQUpdateCheckedPref];
@@ -5071,6 +5034,7 @@ static void wq_apply_design(void);
 
 - (void)showUpdateBanner:(NSString *)version
 {
+    if (WQSilentRefresh()) return;
     if ([_availableVersion isEqualToString:version] && _updateBanner) return;
     _availableVersion = version;
     if (_updateBanner) {
@@ -5157,7 +5121,7 @@ static NSString *const kWQTroubleshootingFooter =
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section
 {
-    return section == 0 ? 6 : section == 1 ? 3 : 1;
+    return section == 0 ? (WQSilentRefresh() ? 5 : 6) : section == 1 ? 3 : 1;
 }
 
 - (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section
@@ -5172,11 +5136,12 @@ static NSString *const kWQTroubleshootingFooter =
     return [NSString stringWithFormat:@"%@\n\n%@\n\n%@",
             WQLocalized(@"Allow Deleting: when off, nothing can be deleted: no Delete or swipe to delete in folders and backups, no Clear Data in Apps and no cleaning in the Cache Cleaner. Saving, moving and restoring still work.\n\nShow Item Counts: shows how many items each folder holds. Every subfolder has to be listed for this, which slows down folders with many subfolders, especially in other apps' data."),
             WQLocalized(@"Keep Data Before Restore: restoring an app or file backup first backs up what's there now, so a failed restore can be undone. When off, that backup is deleted once the restore succeeded."),
-            WQLocalized(@"Reopen Last Folder: WQ Files starts in the folder you were in. Check for Updates: twice a day WQ Files reads the public release list on GitHub and shows a note when a new version is out; nothing about your device is sent.")];
+            (WQSilentRefresh() ? WQLocalized(@"Reopen Last Folder") : WQLocalized(@"Reopen Last Folder: WQ Files starts in the folder you were in. Check for Updates: twice a day WQ Files reads the public release list on GitHub and shows a note when a new version is out; nothing about your device is sent."))];
 }
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath
 {
+    if (WQSilentRefresh() && indexPath.section == 0 && indexPath.row >= 4) indexPath = [NSIndexPath indexPathForRow:indexPath.row + 1 inSection:indexPath.section];
     UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:@"prism-settings"]
         ?: [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:@"prism-settings"];
     cell.accessoryView = nil;
@@ -5244,13 +5209,13 @@ static NSString *const kWQTroubleshootingFooter =
     } else if (indexPath.row == 1) {
         [self.navigationController pushViewController:[WQLogViewController new] animated:YES];
     } else {
-        NSString *version = [NSString stringWithFormat:@"%@\n\n%@", wq_app_version_line(), WQLocalizedNullable(@"Sandbox escape: worse_query by @forcequitOS")];
-        UIAlertController *alert = wq_alert_controller(@"WQ Files", version, UIAlertControllerStyleAlert);
-        [alert addAction:wq_alert_action(@"GitHub", UIAlertActionStyleDefault, ^(UIAlertAction *__unused a) {
-            [UIApplication.sharedApplication openURL:[NSURL URLWithString:@"https://github.com/kolbicz/WQFiles"] options:@{} completionHandler:nil];
-        })];
-        [alert addAction:wq_alert_action(@"OK", UIAlertActionStyleCancel, nil)];
-        [self presentViewController:alert animated:YES completion:nil];
+    UITextView *text = [UITextView new];
+    text.editable = NO;
+    text.font = [UIFont preferredFontForTextStyle:UIFontTextStyleFootnote];
+    NSBundle *resources = [NSBundle bundleWithPath:[NSBundle.mainBundle pathForResource:@"WQFilesResources" ofType:@"bundle"]];
+    text.text = [NSString stringWithContentsOfFile:[resources pathForResource:@"OPEN_SOURCE_LICENSES" ofType:@"txt"] encoding:NSUTF8StringEncoding error:nil] ?: @"WQFiles © kolbicz; worse_query © Taj C (forcequit). GPL-3.0-or-later.";
+    UIViewController *licenses = [UIViewController new]; licenses.title = WQLocalized(@"About"); licenses.view = text;
+    [self.navigationController pushViewController:licenses animated:YES];
     }
 }
 
@@ -5462,7 +5427,8 @@ static NSString *const kWQTroubleshootingFooter =
     NSDictionary *last = [NSUserDefaults.standardUserDefaults dictionaryForKey:kWQLastFolderPref];
     if (![NSUserDefaults.standardUserDefaults boolForKey:kWQReopenOffPref] && [last[@"path"] isKindOfClass:NSString.class])
         _reopenFolder = last;
-    [self checkForUpdate];
+    // Application-version networking disabled in the integrated build.
+    if (!WQSilentRefresh()) [self checkForUpdate];
     _checkingAccess = YES;
     // A spinner in the bar while it runs: unlike a text row, it doesn't move
     // the list when it goes away.
@@ -5521,6 +5487,7 @@ static NSString *const kWQTroubleshootingFooter =
 // shows a banner at the top of the start screen.
 - (void)checkForUpdate
 {
+    if (WQSilentRefresh()) return;
     NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
     if ([defaults boolForKey:kWQUpdateCheckOffPref]) return;
     NSDate *last = [defaults objectForKey:kWQUpdateCheckedPref];
@@ -5556,6 +5523,7 @@ static NSString *const kWQTroubleshootingFooter =
 
 - (void)showUpdateBanner:(NSString *)version
 {
+    if (WQSilentRefresh()) return;
     if ([_availableVersion isEqualToString:version]) return;
     _availableVersion = version;
     UIButtonConfiguration *config = [UIButtonConfiguration tintedButtonConfiguration];
@@ -5643,50 +5611,11 @@ static NSString *const kWQTroubleshootingFooter =
 // "by kolbicz" with GitHub and X links, under the last section.
 - (UIView *)authorFooter
 {
-    UIView *footer = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 320, 128)];
-    UILabel *by = [UILabel new];
-    NSDictionary *info = NSBundle.mainBundle.infoDictionary;
-    by.text = WQLocalizedFormat(@"WQ Files %@ (%@) by kolbicz",
-               info[@"CFBundleShortVersionString"] ?: @"?", info[@"CFBundleVersion"] ?: @"?");
-    by.font = [UIFont preferredFontForTextStyle:UIFontTextStyleFootnote];
-    by.textColor = UIColor.secondaryLabelColor;
-
-    UIButton *(^link)(NSString *, NSString *, NSString *) = ^UIButton *(NSString *title, NSString *symbol, NSString *url) {
-        UIButtonConfiguration *cfg = [UIButtonConfiguration tintedButtonConfiguration];
-        cfg.title = title;
-        cfg.image = [UIImage systemImageNamed:symbol];
-        cfg.imagePadding = 6;
-        cfg.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
-        cfg.buttonSize = UIButtonConfigurationSizeSmall;
-        return [UIButton buttonWithConfiguration:cfg primaryAction:[UIAction actionWithHandler:^(UIAction *__unused a) {
-            [UIApplication.sharedApplication openURL:[NSURL URLWithString:url] options:@{} completionHandler:nil];
-        }]];
-    };
-    UIStackView *links = [[UIStackView alloc] initWithArrangedSubviews:@[
-        link(@"GitHub", @"chevron.left.forwardslash.chevron.right", @"https://github.com/kolbicz"),
-        link(@"@_kolbicz", @"at", @"https://x.com/_kolbicz"),
-    ]];
-    links.spacing = 12;
-
-    UIButtonConfiguration *creditCfg = [UIButtonConfiguration plainButtonConfiguration];
-    creditCfg.attributedTitle = [[NSAttributedString alloc] initWithString:WQLocalized(@"Sandbox escape: worse_query by @forcequitOS")
-        attributes:@{NSFontAttributeName: [UIFont preferredFontForTextStyle:UIFontTextStyleFootnote]}];
-    creditCfg.buttonSize = UIButtonConfigurationSizeSmall;
-    UIButton *credit = [UIButton buttonWithConfiguration:creditCfg primaryAction:[UIAction actionWithHandler:^(UIAction *__unused a) {
-        [UIApplication.sharedApplication openURL:[NSURL URLWithString:@"https://x.com/forcequitOS"] options:@{} completionHandler:nil];
-    }]];
-
-    UIStackView *stack = [[UIStackView alloc] initWithArrangedSubviews:@[by, links, credit]];
-    stack.axis = UILayoutConstraintAxisVertical;
-    stack.alignment = UIStackViewAlignmentCenter;
-    stack.spacing = 8;
-    stack.translatesAutoresizingMaskIntoConstraints = NO;
-    [footer addSubview:stack];
-    [NSLayoutConstraint activateConstraints:@[
-        [stack.centerXAnchor constraintEqualToAnchor:footer.centerXAnchor],
-        [stack.topAnchor constraintEqualToAnchor:footer.topAnchor constant:8],
-    ]];
-    return footer;
+    UILabel *notice = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, 320, 70)];
+    notice.numberOfLines = 0; notice.textAlignment = NSTextAlignmentCenter;
+    notice.font = [UIFont preferredFontForTextStyle:UIFontTextStyleCaption2];
+    notice.text = @"WQFiles © kolbicz · worse_query © Taj C (forcequit)\nGPL-3.0-or-later";
+    return notice;
 }
 
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView { return 4; }
@@ -5695,7 +5624,7 @@ static NSString *const kWQTroubleshootingFooter =
 {
     // System Groups is the extra last row, on iOS 27 only.
     if (section == 3) return 1;
-    if (section == 2) return 7;
+    if (section == 2) return WQSilentRefresh() ? 6 : 7;
     return section == 0 ? (NSInteger)_locations.count + (wq_system_areas_reachable() ? 1 : 0) : 8;
 }
 
@@ -5714,7 +5643,7 @@ static NSString *const kWQTroubleshootingFooter =
         return [NSString stringWithFormat:@"%@\n\n%@",
                 WQLocalized(@"Allow Deleting: when off, nothing can be deleted: no Delete or swipe to delete in folders and backups, no Clear Data in Apps and no cleaning in the Cache Cleaner. Saving, moving and restoring still work.\n\nShow Item Counts: shows how many items each folder holds. Every subfolder has to be listed for this, which slows down folders with many subfolders, especially in other apps' data."),
                 [NSString stringWithFormat:@"%@\n\n%@", WQLocalized(@"Keep Data Before Restore: restoring an app or file backup first backs up what's there now, so a failed restore can be undone. When off, that backup is deleted once the restore succeeded."),
-                 WQLocalized(@"Reopen Last Folder: WQ Files starts in the folder you were in. Check for Updates: twice a day WQ Files reads the public release list on GitHub and shows a note when a new version is out; nothing about your device is sent.")]];
+                 (WQSilentRefresh() ? WQLocalized(@"Reopen Last Folder") : WQLocalized(@"Reopen Last Folder: WQ Files starts in the folder you were in. Check for Updates: twice a day WQ Files reads the public release list on GitHub and shows a note when a new version is out; nothing about your device is sent."))]];
     return section == 1
         ? WQLocalized(@"Overwritten and deleted files are copied to Backups first (also visible in the Files app). Long-press a backup to restore it.")
         : nil;
@@ -5722,6 +5651,7 @@ static NSString *const kWQTroubleshootingFooter =
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath
 {
+    if (WQSilentRefresh() && indexPath.section == 2 && indexPath.row >= 5) indexPath = [NSIndexPath indexPathForRow:indexPath.row + 1 inSection:indexPath.section];
     UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:@"r"]
         ?: [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:@"r"];
     UIListContentConfiguration *c = cell.defaultContentConfiguration;

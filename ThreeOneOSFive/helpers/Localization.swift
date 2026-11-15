@@ -38,7 +38,7 @@ enum AppLanguage: String, CaseIterable, Identifiable {
 }
 
 private struct AppLanguageEnvironmentKey: EnvironmentKey {
-    static let defaultValue = AppLanguage.english
+    static let defaultValue = AppLanguage.spanish
 }
 
 extension EnvironmentValues {

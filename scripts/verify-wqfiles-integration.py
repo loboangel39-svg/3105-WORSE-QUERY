@@ -4,7 +4,7 @@ import hashlib, json, re
 root = Path(__file__).resolve().parents[1]
 vendor = root/'Vendor/WQFiles'
 manifest = json.loads((vendor/'UPSTREAM.json').read_text())
-adapted = {'main.m', 'WQLocalization.m', 'WQApps.m', 'WQCache.m'}
+adapted = {'main.m', 'WQLocalization.m', 'WQApps.m', 'WQCache.m', 'es.lproj/Localizable.strings'}
 for name, expected in manifest['sha256'].items():
     path = vendor/name
     assert path.is_file(), f'missing upstream dependency: {name}'

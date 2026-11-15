@@ -667,3 +667,6 @@
 "settings.developer_mode_footer" = "Chế độ nhà phát triển thêm mục Tệp vào thanh điều hướng chính. Tệp có thể duyệt và chỉnh sửa container ứng dụng.";
 "wallpaper.package_details" = "Chi tiết gói";
 "wallpaper.package_files" = "%lld tệp";
+
+"settings.open_source_licenses" = "Giấy phép nguồn mở";
+"settings.wqfiles_tools" = "WQFiles · Tệp, ứng dụng, dọn dẹp và sao lưu";

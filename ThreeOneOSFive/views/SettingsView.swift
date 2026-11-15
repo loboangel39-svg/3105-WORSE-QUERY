@@ -35,6 +35,7 @@ struct SettingsView: View {
                     }
                     .pickerStyle(.segmented)
                     .labelsHidden()
+                    .onChange(of: languageCode) { code in UserDefaults.standard.set(code, forKey: "WQLanguage") }
                 }
 
                 Section {
@@ -74,7 +75,7 @@ struct SettingsView: View {
 
                 if #available(iOS 26.0, *) {
                     Section("WQFiles") {
-                        NavigationLink("WQFiles · Files, Apps, Cleaner & Backups") {
+                        NavigationLink(language.text("settings.wqfiles_tools")) {
                             WQFilesIntegratedView().ignoresSafeArea()
                                 .navigationBarTitleDisplayMode(.inline)
                         }
@@ -112,10 +113,11 @@ struct SettingsView: View {
                     Text(language.text("settings.supported_versions_footer"))
                 }
 
-                Section("Licencias de código abierto") {
-                    Text("3105 y WQFiles: GPL-3.0-or-later. Se conservan los avisos de copyright y los archivos LICENSE del código fuente.")
-                        .font(.caption)
-                    Link("Código fuente y avisos legales", destination: URL(string: "https://github.com/loboangel39-svg/3105-WORSE-QUERY")!)
+                Section(language.text("settings.open_source_licenses")) {
+                    NavigationLink(language.text("settings.open_source_licenses")) {
+                        ScrollView { Text(openSourceLicenses).font(.caption).textSelection(.enabled).padding() }
+                            .navigationTitle(language.text("settings.open_source_licenses"))
+                    }
                 }
             }
             .tint(AppTheme.accent)
@@ -128,6 +130,13 @@ struct SettingsView: View {
                 }
             }
         }
+    }
+
+    private var openSourceLicenses: String {
+        guard let bundleURL = Bundle.main.url(forResource: "WQFilesResources", withExtension: "bundle"),
+              let bundle = Bundle(url: bundleURL), let url = bundle.url(forResource: "OPEN_SOURCE_LICENSES", withExtension: "txt"),
+              let text = try? String(contentsOf: url, encoding: .utf8) else { return "GPL-3.0-or-later" }
+        return text
     }
 
     private var appVersion: String {
@@ -154,30 +163,6 @@ struct SettingsView: View {
         )
     }
 
-    @ViewBuilder
-    private func creditsRow(name: String, role: String, url: String) -> some View {
-        if let destination = URL(string: url) {
-            Link(destination: destination) {
-                HStack(spacing: 12) {
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(name)
-                            .font(.headline)
-                            .foregroundStyle(.primary)
-                        Text(role)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    Spacer()
-                    Image(systemName: "arrow.up.right")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(AppTheme.accent)
-                        .frame(width: 28, height: 28)
-                }
-                .contentShape(Rectangle())
-            }
-            .accessibilityLabel(language.text("accessibility.open_profile", name))
-        }
-    }
 }
 
 private struct WQFilesIntegratedView: UIViewControllerRepresentable {

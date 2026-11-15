@@ -18,9 +18,9 @@ struct ContentView: View {
         let arguments = ProcessInfo.processInfo.arguments
         let initialTab: Int
         if arguments.contains("--simulate-new-tab") {
-            initialTab = 1
+            initialTab = AppSection.installed.rawValue
         } else if arguments.contains("--simulate-sources-tab") {
-            initialTab = 2
+            initialTab = AppSection.installed.rawValue
         } else if arguments.contains("--simulate-installed-tab")
                     || arguments.contains("--simulate-patch-tab")
                     || arguments.contains("--simulate-wallpaper-tab") {

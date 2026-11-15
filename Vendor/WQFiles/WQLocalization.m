@@ -41,7 +41,13 @@ NSString *WQLocalized(NSString *key)
 {
     if (!key.length || WQIsVerbatim(key)) return key;
     NSBundle *bundle = [NSBundle bundleWithPath:[NSBundle.mainBundle pathForResource:@"WQFilesResources" ofType:@"bundle"]];
-    return bundle ? [bundle localizedStringForKey:key value:key table:nil] : NSLocalizedString(key, nil);
+    if (!bundle) return NSLocalizedString(key, nil); // standalone regression/runtime bundle
+    NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
+    NSString *code = [defaults stringForKey:@"WQLanguage"] ?: [defaults stringForKey:@"appLanguage"] ?: @"es";
+    NSString *path = [bundle pathForResource:code ofType:@"lproj"];
+    if (!path) path = [bundle pathForResource:@"es" ofType:@"lproj"];
+    NSBundle *localized = path ? [NSBundle bundleWithPath:path] : bundle;
+    return [localized localizedStringForKey:key value:key table:nil];
 }
 
 NSString *WQLocalizedNullable(NSString *text)

@@ -246,6 +246,7 @@
 		AB105000000000000000002A /* WQUI.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = WQUI.h; sourceTree = "<group>"; };
 		AB105000000000000000002B /* WQUI.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = WQUI.m; sourceTree = "<group>"; };
 		AB1050020000000000000001 = {isa = PBXFileReference; lastKnownFileType = wrapper.cfbundle; path = WQFilesResources.bundle; sourceTree = "<group>"; };
+		3105ES01 /* es */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = es; path = es.lproj/Localizable.strings; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -488,9 +489,10 @@
 			};
 			buildConfigurationList = 3105AA00;
 			compatibilityVersion = "Xcode 14.0";
-			developmentRegion = en;
+			developmentRegion = es;
 			hasScannedForEncodings = 0;
 			knownRegions = (
+                es,
 				en,
 				vi,
 				"zh-Hans",
@@ -611,7 +613,8 @@
 		3105A120 /* Localizable.strings */ = {
 			isa = PBXVariantGroup;
 			children = (
-				3105A121 /* en */,
+				3105ES01 /* es */,
+                3105A121 /* en */,
 				3105A122 /* vi */,
 				3105B123 /* zh-Hans */,
 			);

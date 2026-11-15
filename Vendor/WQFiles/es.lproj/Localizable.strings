@@ -10,7 +10,7 @@
 "Restore recovery" = "Recuperación de la restauración";
 "WQ Files" = "WQ Files";
 "Containers" = "Contenedores";
-"Tools" = "Tools";
+"Tools" = "Herramientas";
 "App Data" = "Datos de apps";
 "App Groups" = "Grupos de apps";
 "Extension Data" = "Datos de extensiones";
@@ -18,12 +18,12 @@
 "App Bundles" = "Paquetes de apps";
 "System Data" = "Datos del sistema";
 "System Groups" = "Grupos del sistema";
-"Apps" = "Apps";
+"Apps" = "Aplicaciones";
 "Cache Cleaner" = "Limpiador de caché";
 "Go to Path…" = "Ir a ruta…";
 "App Backups" = "Copias de apps";
 "Backups" = "Copias de seguridad";
-"Log" = "Log";
+"Log" = "Registro";
 "Home" = "Inicio";
 "Loading…" = "Cargando…";
 "Open As" = "Abrir como";
@@ -55,7 +55,7 @@
 "Stop" = "Detener";
 "Clean" = "Limpiar";
 "Cancel" = "Cancelar";
-"OK" = "OK";
+"OK" = "Aceptar";
 "Not found" = "No encontrado";
 "Path copied" = "Ruta copiada";
 "Search this folder" = "Buscar en esta carpeta";
@@ -78,7 +78,7 @@
 "unknown" = "desconocido";
 "unknown error" = "error desconocido";
 "Unknown error" = "Error desconocido";
-"see Log" = "ver Log";
+"see Log" = "ver el registro";
 "The file changed while it was being read. Open it again." = "El archivo ha cambiado mientras se leía. Vuelve a abrirlo.";
 "Could not establish a stable file version. Open it again." = "No se ha podido obtener una versión estable del archivo. Vuelve a abrirlo.";
 "Cannot read this file.\n\n%@" = "No se puede leer este archivo.\n\n%@";
@@ -139,7 +139,7 @@
 "Cannot delete" = "No se puede eliminar";
 "Cannot delete backup" = "No se puede eliminar la copia de seguridad";
 "Cannot delete backups" = "No se pueden eliminar las copias de seguridad";
-"Cannot list this folder. Container enumeration failed; see Log." = "No se puede listar esta carpeta. La enumeración de contenedores ha fallado; consulta el Log.";
+"Cannot list this folder. Container enumeration failed; see Log." = "No se puede listar esta carpeta. La enumeración de contenedores ha fallado; consulta el registro.";
 "Cannot open this folder" = "No se puede abrir esta carpeta";
 "Replace existing file?" = "¿Reemplazar el archivo existente?";
 "%@ already exists. It is backed up before being replaced." = "%@ ya existe. Se hará una copia de seguridad antes de reemplazarlo.";
@@ -279,12 +279,12 @@
 "Finding apps… %lld%%" = "Buscando apps… %lld%%";
 "Measuring %lu/%lu…" = "Midiendo %lu/%lu…";
 "Unknown container (%@)" = "Contenedor desconocido (%@)";
-"Container enumeration failed. See Log for the statfs/inode reason." = "Error en la enumeración de contenedores. Consulta el Log para ver el motivo de statfs/inode.";
-"No app containers were found. Refresh, and check Log for the enumeration reason." = "No se han encontrado contenedores de apps. Actualiza y consulta el Log para ver el motivo de la enumeración.";
-"%lu containers · %lu with limited access, identity, size, or no identifier. See Log." = "%lu contenedores · %lu con acceso, identidad o tamaño limitados, o sin identificador. Consulta el Log.";
+"Container enumeration failed. See Log for the statfs/inode reason." = "Error en la enumeración de contenedores. Consulta el registro para ver el motivo de statfs/inode.";
+"No app containers were found. Refresh, and check Log for the enumeration reason." = "No se han encontrado contenedores de apps. Actualiza y consulta el registro para ver el motivo de la enumeración.";
+"%lu containers · %lu with limited access, identity, size, or no identifier. See Log." = "%lu contenedores · %lu con acceso, identidad o tamaño limitados, o sin identificador. Consulta el registro.";
 "The container identity is unavailable or changed. Backup, restore and clear are disabled for this entry." = "La identidad del contenedor no está disponible o ha cambiado. La copia de seguridad, la restauración y el borrado están desactivados para esta entrada.";
 "The container identifier is unavailable. Backup, restore and clear are disabled for this entry." = "El identificador del contenedor no está disponible. La copia de seguridad, la restauración y el borrado están desactivados para esta entrada.";
-"Sandbox access is unavailable. Check the App Group and see Log; only the container path can be copied." = "El acceso al sandbox no está disponible. Comprueba el App Group y consulta el Log; solo se puede copiar la ruta del contenedor.";
+"Sandbox access is unavailable. Check the App Group and see Log; only the container path can be copied." = "El acceso al sandbox no está disponible. Comprueba el App Group y consulta el registro; solo se puede copiar la ruta del contenedor.";
 "Open Data Folder" = "Abrir carpeta de datos";
 "Open App Bundle" = "Abrir paquete de la app";
 "Copy Container Path" = "Copiar ruta del contenedor";
@@ -301,7 +301,7 @@
 "Partly cleared" = "Borrado parcial";
 "Freed about %@.%@ Open %@ to start fresh." = "Se han liberado unos %@.%@ Abre %@ para empezar de cero.";
 " %@. Keep the app closed and try again." = " %@. Mantén la app cerrada e inténtalo de nuevo.";
-"Some items could not be removed (see Log)" = "No se han podido eliminar algunos elementos (consulta el Log)";
+"Some items could not be removed (see Log)" = "No se han podido eliminar algunos elementos (consulta el registro)";
 "Clear %@?" = "¿Borrar los datos de %@?";
 "Deletes everything in the app's Documents, Library and tmp, like a fresh install. The optional backup covers Documents and Library only; tmp is discarded and cannot be restored. Logins, settings and offline content are lost. Close the app first." = "Elimina todo el contenido de Documents, Library y tmp de la app, como en una instalación nueva. La copia de seguridad opcional solo incluye Documents y Library; tmp se descarta y no se puede restaurar. Se perderán los inicios de sesión, los ajustes y el contenido sin conexión. Cierra primero la app.";
 "Back Up, Then Clear" = "Hacer copia y borrar";
@@ -324,7 +324,7 @@
 "Some files couldn't be written" = "No se han podido escribir algunos archivos";
 " Recovery will run again at the next launch because the journal could not be removed." = " La recuperación se volverá a ejecutar en el próximo inicio porque no se ha podido eliminar el diario.";
 " Recovery will run again at the next launch." = " La recuperación se volverá a ejecutar en el próximo inicio.";
-"Automatic recovery of %@ failed: %@. The safety backup is %@; see Log." = "Error en la recuperación automática de %@: %@. La copia de seguridad de protección es %@; consulta el Log.";
+"Automatic recovery of %@ failed: %@. The safety backup is %@; see Log." = "Error en la recuperación automática de %@: %@. La copia de seguridad de protección es %@; consulta el registro.";
 "An interrupted restore was found with an unknown recovery state. The journal was retained for manual recovery." = "Se ha encontrado una restauración interrumpida con un estado de recuperación desconocido. El diario se ha conservado para una recuperación manual.";
 "An interrupted restore was found, but its recovery journal is invalid. The journal was retained for manual recovery%@." = "Se ha encontrado una restauración interrumpida, pero su diario de recuperación no es válido. El diario se ha conservado para una recuperación manual%@.";
 "An interrupted restore of %@ was recovered, but its journal could not be committed (%@). It will be checked again at the next launch." = "Se ha recuperado una restauración interrumpida de %@, pero no se ha podido confirmar su diario (%@). Se volverá a comprobar en el próximo inicio.";
@@ -348,7 +348,7 @@
 "Select app caches or Crash Logs to see the deletion scope. No backup is kept." = "Selecciona cachés de apps o registros de fallos para ver qué se eliminará. No se conserva ninguna copia de seguridad.";
 "Select None" = "No seleccionar nada";
 "Select Large Caches (50 MB+)" = "Seleccionar cachés grandes (50 MB o más)";
-"Scan incomplete: %@. See Log." = "Análisis incompleto: %@. Consulta el Log.";
+"Scan incomplete: %@. See Log." = "Análisis incompleto: %@. Consulta el registro.";
 "limited rows are excluded; the remaining rows can still be cleaned" = "las filas limitadas se excluyen; las demás filas se pueden seguir limpiando";
 "Crash Logs" = "Registros de fallos";
 "Crash Logs · osanalytics" = "Registros de fallos · osanalytics";
@@ -370,7 +370,7 @@
 "Clean cancelled: %@. Scan again before retrying." = "Limpieza cancelada: %@. Vuelve a analizar antes de reintentarlo.";
 "Cleaning %lu of %lu: %@" = "Limpiando %lu de %lu: %@";
 "Stopped. Freed %@.%@" = "Detenido. Se han liberado %@.%@";
-" Some items could not be removed (see Log)." = " No se han podido eliminar algunos elementos (consulta el Log).";
+" Some items could not be removed (see Log)." = " No se han podido eliminar algunos elementos (consulta el registro).";
 "Clean stopped: %@. Scan again before retrying." = "Limpieza detenida: %@. Vuelve a analizar antes de reintentarlo.";
 "Freed %@.%@" = "Se han liberado %@.%@";
 " Close running apps first." = " Cierra primero las apps abiertas.";
@@ -727,7 +727,7 @@
 "%lu containers had limited access" = "%lu contenedores tenían acceso limitado";
 "%lu containers had no identifier or identity" = "%lu contenedores no tenían identificador ni identidad";
 "Allow Deleting" = "Permitir eliminar";
-"Allow Deleting: when off, nothing can be deleted: no Delete or swipe to delete in folders and backups, no Clear Data in Apps and no cleaning in the Cache Cleaner. Saving, moving and restoring still work.\n\nShow Item Counts: shows how many items each folder holds. Every subfolder has to be listed for this, which slows down folders with many subfolders, especially in other apps' data." = "Permitir eliminar: si está desactivado, no se puede eliminar nada: no se puede usar Eliminar ni deslizar para eliminar en carpetas y copias de seguridad, ni “Borrar datos” en Apps, ni limpiar en el Limpiador de caché. Guardar, mover y restaurar siguen funcionando.\n\nMostrar número de elementos: muestra cuántos elementos contiene cada carpeta. Para ello hay que listar cada subcarpeta, lo que ralentiza las carpetas con muchas subcarpetas, sobre todo en los datos de otras apps.";
+"Allow Deleting: when off, nothing can be deleted: no Delete or swipe to delete in folders and backups, no Clear Data in Apps and no cleaning in the Cache Cleaner. Saving, moving and restoring still work.\n\nShow Item Counts: shows how many items each folder holds. Every subfolder has to be listed for this, which slows down folders with many subfolders, especially in other apps' data." = "Permitir eliminar: si está desactivado, no se puede eliminar nada: no se puede usar Eliminar ni deslizar para eliminar en carpetas y copias de seguridad, ni “Borrar datos” en Aplicaciones, ni limpiar en el Limpiador de caché. Guardar, mover y restaurar siguen funcionando.\n\nMostrar número de elementos: muestra cuántos elementos contiene cada carpeta. Para ello hay que listar cada subcarpeta, lo que ralentiza las carpetas con muchas subcarpetas, sobre todo en los datos de otras apps.";
 "App not found" = "App no encontrada";
 "Created %@. %lu symbolic link or special file was left out." = "Se ha creado %@. Se ha omitido %lu enlace simbólico o archivo especial.";
 "Created %@. %lu symbolic links or special files were left out." = "Se ha creado %@. Se han omitido %lu enlaces simbólicos o archivos especiales.";
@@ -765,7 +765,7 @@
 "%@ Nothing was changed." = "%@ No se ha cambiado nada.";
 "The import failed." = "La importación ha fallado.";
 "Imported" = "Importado";
-"Saved as backup %@ of %@. It's verified like any other backup and can be restored from Apps.%@" = "Guardado como copia de seguridad %@ de %@. Se verifica como cualquier otra copia de seguridad y se puede restaurar desde Apps.%@";
+"Saved as backup %@ of %@. It's verified like any other backup and can be restored from Apps.%@" = "Guardado como copia de seguridad %@ de %@. Se verifica como cualquier otra copia de seguridad y se puede restaurar desde Aplicaciones.%@";
 "\n\nLeft out (only Documents and Library are backed up): %@." = "\n\nOmitido (solo se incluyen Documents y Library en la copia de seguridad): %@.";
 "Restore Now…" = "Restaurar ahora…";
 "It holds data of several apps (%@). Pick one of these folders instead." = "Contiene datos de varias apps (%@). Elige una de estas carpetas.";
@@ -847,11 +847,11 @@
 "Recently Deleted" = "Eliminado recientemente";
 "Sandbox access" = "Acceso al sandbox";
 "The app database can't be read properly on iOS %@ (%lu of %lu sampled folders identified). Apps show folder IDs instead of names; backups and restores need the right app, so check before restoring." = "La base de datos de apps no se puede leer correctamente en iOS %@ (identificadas %lu de %lu carpetas de muestra). Las apps muestran IDs de carpeta en lugar de nombres; las copias de seguridad y las restauraciones necesitan la app correcta, así que compruébalo antes de restaurar.";
-"The scan for them was declined; Apps and the Cache Cleaner stay empty until it runs." = "Se ha rechazado el análisis; Apps y el Limpiador de caché seguirán vacíos hasta que se ejecute.";
-"They can't be found on this device (see Log for the reason)." = "No se encuentran en este dispositivo (consulta el Log para ver el motivo).";
+"The scan for them was declined; Apps and the Cache Cleaner stay empty until it runs." = "Se ha rechazado el análisis; Aplicaciones y el Limpiador de caché seguirán vacíos hasta que se ejecute.";
+"They can't be found on this device (see Log for the reason)." = "No se encuentran en este dispositivo (consulta el registro para ver el motivo).";
 "Try Again" = "Reintentar";
 "WQ Files can't work properly here" = "WQ Files no puede funcionar correctamente aquí";
-"WQ Files stopped here instead of showing empty or wrong lists. A new iOS version can block its sandbox access; please send the Log with your device and iOS version." = "WQ Files se ha detenido aquí en lugar de mostrar listas vacías o incorrectas. Una nueva versión de iOS puede bloquear su acceso al sandbox; envía el Log indicando tu dispositivo y tu versión de iOS.";
+"WQ Files stopped here instead of showing empty or wrong lists. A new iOS version can block its sandbox access; please send the Log with your device and iOS version." = "WQ Files se ha detenido aquí en lugar de mostrar listas vacías o incorrectas. Una nueva versión de iOS puede bloquear su acceso al sandbox; envía el registro indicando tu dispositivo y tu versión de iOS.";
 "iOS %@ hasn't been tested with this version of WQ Files." = "iOS %@ no se ha probado con esta versión de WQ Files.";
 "iOS version" = "Versión de iOS";
 "Reset Access Cache" = "Restablecer caché de acceso";
@@ -965,4 +965,4 @@
 "Troubleshooting" = "Solución de problemas";
 "Reset Access Cache: use it when folders stay empty or the startup check says sandbox access failed. It repairs WQ Files' own cache folder in its App Group; nothing is deleted." = "Restablecer caché de acceso: úsalo cuando las carpetas sigan vacías o la comprobación de inicio indique que falló el acceso al sandbox. Repara la carpeta de caché propia de WQ Files en su App Group; no se elimina nada.";
 "Access Cache Reset" = "Caché de acceso restablecida";
-"The access cache was repaired. If folders still stay empty, send the Log." = "La caché de acceso se ha reparado. Si las carpetas siguen vacías, envía el Log.";
+"The access cache was repaired. If folders still stay empty, send the Log." = "La caché de acceso se ha reparado. Si las carpetas siguen vacías, envía el registro.";

@@ -2,9 +2,26 @@
 #import "WQEmbedded.h"
 #import "WQAccess.h"
 #import "WQCore.h"
+#import "WQLocalization.h"
 #import "WQArchive.h"
 extern BOOL WQScanConsentPolicyTests(void);
 extern void WQInternalRetryExercise(void (^completion)(BOOL));
+
+static NSUInteger VersionRequestCount = 0;
+@interface WQVersionRequestTrap : NSURLProtocol
+@end
+@implementation WQVersionRequestTrap
++ (BOOL)canInitWithRequest:(NSURLRequest *)request {
+    NSString *url = request.URL.absoluteString;
+    BOOL version = [url isEqual:@"https://raw.githubusercontent.com/kolbicz/WQFiles/main/source.json"] ||
+      [url isEqual:@"https://api.github.com/repos/YangJiiii/3105/releases/latest"];
+    if (version) @synchronized(self) { VersionRequestCount++; }
+    return version;
+}
++ (NSURLRequest *)canonicalRequestForRequest:(NSURLRequest *)request { return request; }
+- (void)startLoading { [self.client URLProtocol:self didFailWithError:[NSError errorWithDomain:NSURLErrorDomain code:NSURLErrorCancelled userInfo:nil]]; }
+- (void)stopLoading {}
+@end
 
 static BOOL HasRefreshChrome(UIView *view) {
     if (view.hidden || view.alpha == 0) return NO;
@@ -19,6 +36,7 @@ static BOOL HasRefreshChrome(UIView *view) {
 @implementation WQSmokeScene
 - (void)scene:(UIScene *)scene willConnectToSession:(UISceneSession *)session options:(UISceneConnectionOptions *)options {
     NSLog(@"WQ integration smoke scene connected");
+    [NSURLProtocol registerClass:WQVersionRequestTrap.class];
     self.window = [[UIWindow alloc] initWithWindowScene:(UIWindowScene *)scene];
     self.window.rootViewController = WQIntegratedMakeViewController();
     [self.window makeKeyAndVisible];
@@ -50,6 +68,15 @@ static BOOL HasRefreshChrome(UIView *view) {
         ok &= copied && [wq_read([copy stringByAppendingPathComponent:@"sample.txt"], 0, nil) isEqualToData:second];
         [checks addObject:@{ @"copyActualTree": @(copied) }];
         dispatch_async(dispatch_get_main_queue(), ^{
+            NSUserDefaults *prefs = NSUserDefaults.standardUserDefaults;
+            NSString *savedLanguage = [prefs stringForKey:@"WQLanguage"];
+            [prefs removeObjectForKey:@"WQLanguage"];
+            BOOL spanish = [WQLocalized(@"Files") isEqual:@"Archivos"] && [WQLocalized(@"Tools") isEqual:@"Herramientas"];
+            [prefs setObject:@"en" forKey:@"WQLanguage"];
+            BOOL english = [WQLocalized(@"Files") isEqual:@"Files"];
+            if (savedLanguage) [prefs setObject:savedLanguage forKey:@"WQLanguage"]; else [prefs removeObjectForKey:@"WQLanguage"];
+            ok &= spanish && english;
+            [checks addObject:@{ @"UIKitSpanishDefaultAndExplicitEnglish": @(spanish && english) }];
             BOOL consentPolicy = WQScanConsentPolicyTests();
             ok &= consentPolicy;
             [checks addObject:@{ @"scanConsentExpiryScopeAndGrowth": @(consentPolicy) }];
@@ -73,7 +100,9 @@ static BOOL HasRefreshChrome(UIView *view) {
             [checks addObject:@{ @"boundedInternalRetriesActuallyExecuted": @(retried) }];
             BOOL stillSilent = !HasRefreshChrome(self.window.rootViewController.view) && self.window.rootViewController.presentedViewController == nil;
             [checks addObject:@{ @"noRefreshChromeAfterRetries": @(stillSilent) }];
-            ok &= retried && stillSilent;
+            BOOL noVersionRequest = VersionRequestCount == 0;
+            [checks addObject:@{ @"noAutomaticAppVersionRequests": @(noVersionRequest) }];
+            ok &= retried && stillSilent && noVersionRequest;
             NSDictionary *report = @{ @"passed": @(ok && hosted), @"checks": checks,
                 @"environment": @"iOS Simulator, real WQFiles implementations and local files",
                 @"deviceSandboxEscapeValidated": @NO };

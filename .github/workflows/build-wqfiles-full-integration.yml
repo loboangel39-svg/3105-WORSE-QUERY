@@ -1,8 +1,8 @@
-name: Build WQFiles scan UX
+name: Build Spanish UI cleanup
 
 on:
   push:
-    branches: [experiment/wqfiles-scan-ux]
+    branches: [experiment/3105-ui-cleanup-es]
   workflow_dispatch:
 
 permissions:
@@ -29,6 +29,7 @@ jobs:
         run: |
           git diff --check
           python3 scripts/verify-wqfiles-integration.py
+          python3 scripts/verify-ui-cleanup.py
 
       - name: Build unsigned experimental device app
         shell: bash
@@ -135,3 +136,34 @@ jobs:
           path: |
             build-smoke/integration-smoke.json
             build-smoke/simulator.log
+
+  spanish-navigation-ui:
+    runs-on: macos-15
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare Xcode and test target in disposable checkout
+        run: |
+          XCODE_APP="$(find /Applications -maxdepth 1 -type d -name 'Xcode*.app' -print | sort | tail -n 1)"
+          sudo xcode-select --switch "$XCODE_APP/Contents/Developer"
+          sudo xcodebuild -runFirstLaunch
+          gem install --user-install xcodeproj --no-document
+          ruby scripts/prepare-ui-tests.rb
+      - name: Test real SwiftUI app and patch codec in simulator
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build-ui
+          xcrun simctl list devices available -j > build-ui/devices.json
+          DEVICE=$(python3 -c 'import json; d=json.load(open("build-ui/devices.json")); print(next(x["udid"] for r,items in d["devices"].items() if "iOS-26" in r or "iOS-27" in r for x in items if "iPhone" in x["name"]))')
+          xcodebuild -project ThreeOneOSFive.xcodeproj -scheme UICleanupTests \
+            -configuration Debug -sdk iphonesimulator -destination "platform=iOS Simulator,id=$DEVICE" \
+            -derivedDataPath build-ui/DerivedData -resultBundlePath build-ui/UICleanup.xcresult \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO test | tee build-ui/xcodebuild.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Spanish-UI-regressions
+          path: |
+            build-ui/UICleanup.xcresult
+            build-ui/xcodebuild.log
