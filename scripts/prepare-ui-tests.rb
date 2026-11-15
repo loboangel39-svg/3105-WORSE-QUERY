@@ -8,6 +8,7 @@ files = ['Tests/UICleanupTests.swift', 'ThreeOneOSFive/helpers/AppTabNavigationS
 files.each { |file| t.source_build_phase.add_file_reference(p.main_group.new_file(file)) }
 t.build_configurations.each do |c|
  c.build_settings['PRODUCT_BUNDLE_IDENTIFIER'] = 'org.3105.UICleanupTests'
+ c.build_settings['PRODUCT_NAME'] = '$(TARGET_NAME)'
  c.build_settings['GENERATE_INFOPLIST_FILE'] = 'YES'
  c.build_settings['SWIFT_VERSION'] = '5.0'
  c.build_settings['TEST_TARGET_NAME'] = '3105'
