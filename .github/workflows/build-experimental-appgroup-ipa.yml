@@ -5,6 +5,7 @@ on:
     branches:
       - experiment/ios27-appgroup-entitlements
       - experiment/wqfiles-launchservices
+      - experiment/wqfiles-bundleid-complete
   workflow_dispatch:
 
 permissions:
@@ -39,6 +40,7 @@ jobs:
           test -f ThreeOneOSFive/exploit/WQLaunchServicesPhase1.m
           test -f ThreeOneOSFive/exploit/WQLaunchServicesPhase1.h
           ! grep -q '#import "WQAccess.h"' ThreeOneOSFive/exploit/WQLaunchServicesPhase1.m
+          test -f ThreeOneOSFive/helpers/WQBundleIdentityCoordinator.swift
 
       - name: Build unsigned experimental device app
         shell: bash
