@@ -7,6 +7,10 @@ enum VINIAuthenticationPhase: Equatable { case checking, login, validating, auth
     @Published private(set) var phase: VINIAuthenticationPhase = .checking
     @Published private(set) var authorizationDeadline: TimeInterval = 0
     @Published private(set) var fixtureState = "Sin ensayo"
+    @Published private(set) var preparedFixture = false
+    @Published private(set) var fixtureCanApply = false
+    @Published private(set) var fixtureCanRestore = false
+    @Published private(set) var fixtureEvidence: URL?
     private let fixture = VINIIsolatedFixture()
     @Published private(set) var profile: VINIStagingProfile?
     @Published private(set) var status = "Sin sesión"
@@ -35,6 +39,7 @@ enum VINIAuthenticationPhase: Equatable { case checking, login, validating, auth
             verified = p.licenseStatus == "active"; status = verified ? "Activa" : "Sin autorización vigente"
             do { packages = try await client.catalog() }
             catch { packageResult = "Catálogo temporalmente no disponible" }
+            await inspectFixture()
         } catch {
             verified = false
             phase = (error as? VINIStagingError) == .offline ? .blocked : .login
@@ -51,22 +56,30 @@ enum VINIAuthenticationPhase: Equatable { case checking, login, validating, auth
     func download(_ patch: VINIStagingPatch) async {
         guard !busy, verified else { return }
         busy = true; defer { busy = false }
-        do { let name = try await client.downloadTestPackage(id: patch.id); packageResult = "Descargado y decodificado: " + name }
-        catch { packageResult = (error as? VINIStagingError)?.message ?? "El codec rechazó el paquete" }
+        do { let name = try await client.downloadTestPackage(id: patch.id); packageResult = "Descargado y decodificado: " + name; preparedFixture = true; await inspectFixture() }
+        catch { preparedFixture = false; packageResult = (error as? VINIStagingError)?.message ?? "El codec rechazó el paquete" }
+    }
+    private func inspectFixture() async {
+        do {
+            let (state, canApply, canRestore, evidence) = try await fixture.inspection()
+            fixtureState = state; fixtureCanApply = canApply; fixtureCanRestore = canRestore; fixtureEvidence = evidence
+        } catch { fixtureState = "Recuperación requerida"; fixtureCanApply = false; fixtureCanRestore = false; fixtureEvidence = nil }
     }
     func applyFixture() async {
-        guard !busy, phase == .authorized else { return }
+        guard !busy, phase == .authorized, preparedFixture, fixtureCanApply else { return }
         busy = true; defer { busy = false }
         do {
             let p = try await client.profile(); _ = try await client.authorizationLifetime(p)
             let bytes = try await client.verifiedTestBytes(id: VINIStagingEnvironment.fixtureID)
+            let finalProfile = try await client.profile(); _ = try await client.authorizationLifetime(finalProfile)
             fixtureState = try await fixture.apply(bytes: bytes)
-        } catch { fixtureState = "Apply no confirmado; revisar receipt del ensayo" }
+            await inspectFixture()
+        } catch { preparedFixture = false; await inspectFixture(); packageResult = "Apply no confirmado; revisar receipt del ensayo" }
     }
     func restoreFixture() async {
-        guard !busy else { return }; busy = true; defer { busy = false }
-        do { fixtureState = try await fixture.restore() }
-        catch { fixtureState = "Restore no confirmado; recuperación conservada" }
+        guard !busy, fixtureCanRestore else { return }; busy = true; defer { busy = false }
+        do { fixtureState = try await fixture.restore(); await inspectFixture() }
+        catch { await inspectFixture(); packageResult = "Restore no confirmado; recuperación conservada" }
     }
     var presentation: VINIDashboardPresentation {
         var remaining: TimeInterval?
@@ -110,8 +123,9 @@ struct VINIStagingAccountView: View {
                 Section("Ensayo aislado · archivos propios") {
                     Text(store.fixtureState).font(.caption)
                     Button("Apply del fixture autorizado") { Task { await store.applyFixture() } }
-                        .disabled(store.busy || !store.verified || !store.packages.contains { $0.id == VINIStagingEnvironment.fixtureID })
-                    Button("Restore del fixture") { Task { await store.restoreFixture() } }.disabled(store.busy)
+                        .disabled(store.busy || !store.verified || !store.preparedFixture || !store.fixtureCanApply || !store.packages.contains { $0.id == VINIStagingEnvironment.fixtureID })
+                    Button("Restore del fixture") { Task { await store.restoreFixture() } }.disabled(store.busy || !store.fixtureCanRestore)
+                    if let evidence = store.fixtureEvidence { ShareLink("Exportar evidencia del fixture", item: evidence) }
                 }
                 Section("Paquetes autorizados") {
                     ForEach(store.packages) { patch in

@@ -21,8 +21,27 @@ actor VINIIsolatedFixture {
     private func digest(_ bytes: Data) -> Data { Data(SHA256.hash(data: bytes)) }
     private func hash(_ bytes: Data) -> String { digest(bytes).map { String(format: "%02x", $0) }.joined() }
     private func roots() throws -> [String: URL] {
-        guard !FileManager.default.fileExists(atPath: directory.path) || (try directory.resourceValues(forKeys: [.isSymbolicLinkKey])).isSymbolicLink != true else { throw VINIPatchFailure.invalidScope }
+        if FileManager.default.fileExists(atPath: directory.path) {
+            let properties = try directory.resourceValues(forKeys: [.isSymbolicLinkKey])
+            guard properties.isSymbolicLink != true else { throw VINIPatchFailure.invalidScope }
+        }
         return [Self.bundleID: container]
+    }
+    func inspection() throws -> (String, Bool, Bool, URL?) {
+        guard let record = try store.loadRecord(Self.projectID) else { return ("Sin ensayo aplicado", true, false, nil) }
+        try store.validateRoots(record, try roots())
+        let receipt = try store.receipt(record)
+        if record.phase == .restored {
+            let valid = try PatchTransaction.verifyState(receipt: receipt, original: true, containerResolver: resolver)
+            return (valid ? "Restore verificado" : "Archivo propio cambiado después del Restore", valid, false,
+                    directory.appendingPathComponent("restore-evidence.json"))
+        }
+        if record.phase == .applied {
+            let valid = try PatchTransaction.verifyState(receipt: receipt, original: false, containerResolver: resolver)
+            return (valid ? "Apply verificado" : "Cambios posteriores; Restore preservará su copia", false, true,
+                    directory.appendingPathComponent("apply-evidence.json"))
+        }
+        return ("Recuperación requerida; journal conservado", false, true, nil)
     }
     private func resolver(_ id: String) throws -> URL {
         guard id == Self.bundleID else { throw VINIPatchFailure.invalidScope }

@@ -21,7 +21,7 @@ const form=new FormData();form.set('name','TEST2D-'+tag+'-revoked-patch');
 const created=await fetch(base+'/api/patches',{method:'POST',redirect:'error',headers:{Authorization:'Bearer '+token},body:form});
 if(!created.ok)throw Error('Synthetic patch creation failed');
 const patch=await created.json();await api('/api/access',{userId:proID,patchId:patch.id});
-const policy=await fetch(base+'/api/admin-v2/patch-policies',{method:'PUT',redirect:'error',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({patchId:patch.id,targetId:'synthetic.revoked',capabilityId:'patch.pro',enabled:true,revoked:true,compatible:true,compatibilityDescription:'Synthetic revoked fixture; no file'})});
+const policy=await fetch(base+'/api/admin-v2/patch-policies',{method:'PUT',redirect:'error',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({patchId:patch.id,targetId:'synthetic.revoked.'+patch.id,capabilityId:'patch.pro',enabled:true,revoked:true,compatible:true,compatibilityDescription:'Synthetic revoked fixture; no file'})});
 if(!policy.ok)throw Error('Synthetic revoked policy failed status='+policy.status+' code='+String((await policy.json()).error));licenses.revokedPatchID=patch.id;
 const targetID='package.E4F7CF4A-D0D9-4150-93DE-17AACCD5F037';
 const assignment={patchId:'c0df8b65-a64d-4dca-b262-f12b39831768',targetId:targetID,capabilityId:'patch.pro',enabled:true,revoked:false,compatible:true,compatibilityDescription:'2F isolated owned fixture only; package/project E4F7CF4A-D0D9-4150-93DE-17AACCD5F037'};
