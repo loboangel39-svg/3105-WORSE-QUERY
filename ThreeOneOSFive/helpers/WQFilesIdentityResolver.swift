@@ -1,5 +1,4 @@
 import Foundation
-import Security
 
 struct WQFilesResolvedIdentity: Equatable {
     let containerPath: String
@@ -72,19 +71,13 @@ enum WQFilesIdentityResolver {
 
     static func logExperimentalAppGroupStatus() {
         let requested = "group.pigtjing.top"
-        let entitled: [String]
-        if let task = SecTaskCreateFromSelf(nil),
-           let value = SecTaskCopyValueForEntitlement(task, "com.apple.security.application-groups" as CFString, nil) as? [String] {
-            entitled = value
-        } else {
-            entitled = []
-        }
-        let hasEntitlement = entitled.contains(requested)
+        let entitled = WQAuthorizedAppGroup() ?? ""
+        let hasEntitlement = entitled == requested
         let usable = FileManager.default.containerURL(
             forSecurityApplicationGroupIdentifier: requested
         ) != nil
         log("appgroup: requested=\(requested)")
-        log("appgroup: entitled=\(entitled.sorted().joined(separator: ","))")
+        log("appgroup: entitled=\(entitled)")
         log("appgroup: usable=\(usable) effective_requested=\(hasEntitlement)")
     }
 
