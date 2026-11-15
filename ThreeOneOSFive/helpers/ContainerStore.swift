@@ -455,7 +455,7 @@ enum ContainerStore {
         }
 
         var pathC = clean.utf8CString.map { Int8($0) }
-        guard let result = bad_query_list(&pathC, maxInode) else {
+        guard let result = bad_query_list(&pathC, maxInode == 0 ? 2_000_000 : maxInode) else {
             log("enumerate: NULL for \(clean)")
             return []
         }
