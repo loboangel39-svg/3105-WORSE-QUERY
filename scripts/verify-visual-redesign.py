@@ -9,7 +9,7 @@ allowed={'ThreeOneOSFive/ContentView.swift','ThreeOneOSFive/views/DesignSystem.s
 style_only=['AppDataBrowserView.swift','FileBrowserView.swift','PatchProjectsView.swift','RepositoryHomeView.swift','RepositoryMarketplaceView.swift']
 for name in style_only:
  p='ThreeOneOSFive/views/'+name
- assert trim(read(p))==old(p), 'non-presentation change: '+p
+ assert trim(read(p)).replace('.buttonStyle(ControllerButtonStyle())', '.buttonStyle(.bordered)')==old(p), 'non-presentation change: '+p
  allowed.add(p)
 paths=subprocess.check_output(['git','ls-tree','-r','--name-only','18d3694','ThreeOneOSFive','Vendor/WQFiles'],cwd=root,text=True).splitlines()
 count=0
@@ -27,3 +27,18 @@ assert 'case .installed, .files, .search: return true' in read('ThreeOneOSFive/h
 assert 'ControllerNavigation(' in read('ThreeOneOSFive/ContentView.swift')
 assert 'interface.appearance' in read('ThreeOneOSFive/views/SettingsView.swift')
 print(f'PASS: {count} executable/identity files identical to 18d3694; five view files differ only by explicit styling modifiers; existing localized text unchanged')
+
+settings=trim(read('ThreeOneOSFive/views/SettingsView.swift'))
+settings=settings.replace('    @AppStorage("interface.appearance") private var appearance = "dark"\n','')
+start=settings.index('                Section(language.text("appearance.title")) {')
+end=settings.index('                Section(language.text("settings.language")) {',start)
+settings=settings[:start]+settings[end:]
+assert settings==old('ThreeOneOSFive/views/SettingsView.swift'), 'settings behavior changed outside new presentation preferences'
+content=read('ThreeOneOSFive/ContentView.swift')
+for line in ['    @AppStorage("interface.appearance") private var appearance = "dark"','        AppTheme.configure()','        .font(AppTheme.sans())','        .preferredColorScheme(appearance == "system" ? nil : appearance == "light" ? .light : .dark)','        .background(ControllerCanvas())','                    .toolbar(.hidden, for: .tabBar)']:
+ content=content.replace(line+'\n','')
+start=content.index('        .safeAreaInset(edge: .top, spacing: 0) {')
+end=content.index('    private var regularLayout:',start)
+content=content[:start]+'    }\n\n'+content[end:]
+assert content==old('ThreeOneOSFive/ContentView.swift'), 'navigation behavior changed outside presentation'
+print('PASS: settings callbacks and all navigation/import/session wiring identical after removing explicit presentation additions')

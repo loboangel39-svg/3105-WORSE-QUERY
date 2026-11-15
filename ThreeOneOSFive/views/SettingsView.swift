@@ -27,6 +27,7 @@ struct SettingsView: View {
                     }
                     .padding(.vertical, 4)
                 }
+                .controllerRow()
 
                 Section(language.text("appearance.title")) {
                     Picker(language.text("appearance.title"), selection: $appearance) {
@@ -35,6 +36,7 @@ struct SettingsView: View {
                         Text(language.text("appearance.system")).tag("system")
                     }.pickerStyle(.segmented)
                 }
+                .controllerRow()
                 Section(language.text("settings.language")) {
                     Picker(language.text("settings.language"), selection: $languageCode) {
                         ForEach(AppLanguage.allCases) { option in
@@ -45,6 +47,7 @@ struct SettingsView: View {
                     .labelsHidden()
                     .onChange(of: languageCode) { code in UserDefaults.standard.set(code, forKey: "WQLanguage") }
                 }
+                .controllerRow()
 
                 Section {
                     Toggle(isOn: $cleanerEnabled) {
@@ -61,6 +64,7 @@ struct SettingsView: View {
                 } footer: {
                     Text(language.text("settings.developer_mode_footer"))
                 }
+                .controllerRow()
 
                 if WallpaperFeatureSupportPolicy.isSupported(
                     major: AppInfo.versionTuple.major
@@ -79,6 +83,7 @@ struct SettingsView: View {
                     } footer: {
                         Text(language.text("wallpaper.reset_settings_footer"))
                     }
+                    .controllerRow()
                 }
 
                 if #available(iOS 26.0, *) {
@@ -88,12 +93,14 @@ struct SettingsView: View {
                                 .navigationBarTitleDisplayMode(.inline)
                         }
                     }
+                    .controllerRow()
                 }
 
                 Section(language.text("common.device")) {
                     LabeledContent(language.text("dashboard.hardware_model"), value: AppInfo.displayMachineName)
                     LabeledContent(language.text("settings.ios_version"), value: "\(AppInfo.osVersion) (\(AppInfo.osBuild))")
                 }
+                .controllerRow()
 
                 Section {
                     HStack {
@@ -120,6 +127,7 @@ struct SettingsView: View {
                 } footer: {
                     Text(language.text("settings.supported_versions_footer"))
                 }
+                .controllerRow()
 
                 Section(language.text("settings.open_source_licenses")) {
                     NavigationLink(language.text("settings.open_source_licenses")) {
@@ -127,6 +135,7 @@ struct SettingsView: View {
                             .navigationTitle(language.text("settings.open_source_licenses"))
                     }
                 }
+                .controllerRow()
             }
             .controllerSurface()
             .tint(AppTheme.accent)

@@ -100,12 +100,15 @@ struct PatchProjectsView: View {
                     if !hasLocalContent && (store.isBusy || isImportingWallpapers) {
                         loadingState
                             .listRowSeparator(.hidden)
+                            .controllerRow()
                     } else if !hasLocalContent {
                         emptyState
                             .listRowSeparator(.hidden)
+                            .controllerRow()
                     } else if !hasSearchResults && !store.isBusy {
                         searchEmptyState
                             .listRowSeparator(.hidden)
+                            .controllerRow()
                     } else {
                         if !filteredItems.isEmpty {
                             Section(language.text("patch.title")) {
@@ -450,7 +453,7 @@ struct PatchProjectsView: View {
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
             Button(language.text("patch.new")) { showCreate = true }
-                .buttonStyle(.bordered)
+                .buttonStyle(ControllerButtonStyle())
                 .controlSize(.large)
         }
         .frame(maxWidth: .infinity)
