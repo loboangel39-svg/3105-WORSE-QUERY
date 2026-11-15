@@ -6,6 +6,7 @@ on:
       - experiment/ios27-appgroup-entitlements
       - experiment/wqfiles-launchservices
       - experiment/wqfiles-bundleid-complete
+      - experiment/wqfiles-sandbox-completeness-audit
   workflow_dispatch:
 
 permissions:
@@ -40,7 +41,13 @@ jobs:
           test -f ThreeOneOSFive/exploit/WQLaunchServicesPhase1.m
           test -f ThreeOneOSFive/exploit/WQLaunchServicesPhase1.h
           ! grep -q '#import "WQAccess.h"' ThreeOneOSFive/exploit/WQLaunchServicesPhase1.m
-          test -f ThreeOneOSFive/helpers/WQBundleIdentityCoordinator.swift
+           test -f ThreeOneOSFive/helpers/WQBundleIdentityCoordinator.swift
+
+      - name: Run sandbox completeness audit checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash scripts/verify-wqfiles-sandbox-audit.sh
 
       - name: Build unsigned experimental device app
         shell: bash
