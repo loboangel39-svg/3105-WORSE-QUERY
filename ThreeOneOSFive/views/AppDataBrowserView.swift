@@ -317,7 +317,9 @@ private final class SilentAppDataRefresh: ObservableObject {
     private var observers: [NSObjectProtocol] = []
 
     private init() {
-        observers.append(NotificationCenter.default.addObserver(forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in self?.open() })
+        observers.append(NotificationCenter.default.addObserver(forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
+            guard let self, self.opened else { return }; self.open()
+        })
         observers.append(NotificationCenter.default.addObserver(forName: UIApplication.didEnterBackgroundNotification, object: nil, queue: .main) { [weak self] _ in
             self?.pendingRetry?.cancel(); self?.pendingRetry = nil
         })
@@ -533,7 +535,8 @@ private final class SilentAppDataRefresh: ObservableObject {
                 WQIntegratedEndRefresh()
                 log("wqfiles: files displayed=\(result.count)")
                 let blocked = (WQIntegratedScanState()["status"] as? String) == "blocked"
-                scheduleRetry(transient: WQIntegratedRefreshHadTransientError() && !blocked)
+                let interrupted = state == "stopped" && UIApplication.shared.applicationState == .active
+                scheduleRetry(transient: (WQIntegratedRefreshHadTransientError() && !blocked) || interrupted)
                 lastFinished = Date()
             }
         }
