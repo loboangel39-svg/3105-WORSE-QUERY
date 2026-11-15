@@ -143,6 +143,9 @@ jobs:
           path: |
             build-smoke/integration-smoke.json
             build-smoke/simulator.log
+            build-smoke/boot.log
+            build-smoke/selected-device.json
+            build-smoke/runtimes.json
 
   spanish-navigation-ui:
     runs-on: macos-15
@@ -163,8 +166,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p build-ui
-          xcrun simctl list devices available -j > build-ui/devices.json
-          DEVICE=$(python3 -c 'import json; d=json.load(open("build-ui/devices.json")); print(next(x["udid"] for r,items in d["devices"].items() if "iOS-26" in r or "iOS-27" in r for x in items if "iPhone" in x["name"]))')
+          DEVICE=$(python3 scripts/prepare-visual-simulator.py "$PWD/build-ui")
           xcodebuild -project ThreeOneOSFive.xcodeproj -scheme UICleanupTests \
             -configuration Debug -sdk iphonesimulator -destination "platform=iOS Simulator,id=$DEVICE" \
             -derivedDataPath build-ui/DerivedData -resultBundlePath build-ui/UICleanup.xcresult \
@@ -178,3 +180,6 @@ jobs:
             build-ui/UICleanup.xcresult
             build-ui/xcodebuild.log
             build-ui/screenshots
+            build-ui/boot.log
+            build-ui/selected-device.json
+            build-ui/runtimes.json

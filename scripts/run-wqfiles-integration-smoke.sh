@@ -31,19 +31,7 @@ cp -R ThreeOneOSFive/WQFilesResources.bundle "$APP/"
 codesign --force --sign - "$APP"
 echo 'Initializing CoreSimulator for the selected Xcode'
 sudo xcodebuild -runFirstLaunch
-# Keep the initialized simulator service, as in the successful SwiftUI UI test job.
-python3 - <<'PY'
-import subprocess
-result = subprocess.run(['xcrun', 'simctl', 'list', 'devices', 'available', '-j'], capture_output=True, text=True, timeout=180, check=True)
-open('build-smoke/devices.json', 'w').write(result.stdout)
-PY
-DEVICE=$(python3 -c 'import json; d=json.load(open("build-smoke/devices.json")); print(next(x["udid"] for runtime,items in d["devices"].items() if "iOS-26" in runtime or "iOS-27" in runtime for x in items if "iPhone" in x["name"]))')
-python3 - "$DEVICE" <<'PY'
-import subprocess,sys
-# Boot returns a nonzero status if the simulator was already booted.
-subprocess.run(['xcrun','simctl','boot',sys.argv[1]], timeout=120)
-subprocess.run(['xcrun','simctl','bootstatus',sys.argv[1],'-b'], timeout=420, check=True)
-PY
+DEVICE=$(python3 scripts/prepare-visual-simulator.py "$OUT")
 xcrun simctl install "$DEVICE" "$APP"
 python3 - "$DEVICE" <<'PY'
 import subprocess,sys
