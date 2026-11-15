@@ -3,6 +3,7 @@ import SwiftUI
 enum AppLanguage: String, CaseIterable, Identifiable {
     static let storageKey = "appLanguage"
 
+    case spanish = "es"
     case english = "en"
     case vietnamese = "vi"
     case simplifiedChinese = "zh-Hans"
@@ -12,6 +13,7 @@ enum AppLanguage: String, CaseIterable, Identifiable {
 
     var displayName: String {
         switch self {
+        case .spanish: return "Español"
         case .english: return "English"
         case .vietnamese: return "Tiếng Việt"
         case .simplifiedChinese: return "简体中文"

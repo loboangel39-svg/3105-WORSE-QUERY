@@ -5,7 +5,7 @@ struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.appLanguage) private var language
     @EnvironmentObject private var appState: AppState
-    @AppStorage(AppLanguage.storageKey) private var languageCode = AppLanguage.english.rawValue
+    @AppStorage(AppLanguage.storageKey) private var languageCode = AppLanguage.spanish.rawValue
     @AppStorage(FeatureVisibility.cleanerStorageKey) private var cleanerEnabled = true
     @AppStorage(FeatureVisibility.developerModeStorageKey)
     private var developerModeEnabled = false
@@ -112,45 +112,10 @@ struct SettingsView: View {
                     Text(language.text("settings.supported_versions_footer"))
                 }
 
-                Section(language.text("settings.social_media")) {
-                    creditsRow(
-                        name: "GitHub",
-                        role: language.text("social.github_role"),
-                        url: "https://github.com/YangJiiii/3105"
-                    )
-                    creditsRow(
-                        name: "Cộng Đồng IOSVN",
-                        role: language.text("social.iosvn_role"),
-                        url: "https://t.me/ioscrackvn"
-                    )
-                }
-
-                Section(language.text("settings.credits")) {
-                    creditsRow(
-                        name: "YangJiii",
-                        role: language.text("credit.yangjiii"),
-                        url: "https://x.com/duongduong0908"
-                    )
-                    creditsRow(
-                        name: "0xjohnnydev",
-                        role: language.text("credit.filzaslop"),
-                        url: "https://github.com/0xjohnnydev/FilzaSlop"
-                    )
-                    creditsRow(
-                        name: "LeminLimez",
-                        role: language.text("credit.pocket_poster"),
-                        url: "https://github.com/leminlimez/Pocket-Poster"
-                    )
-                    creditsRow(
-                        name: "CrazyMind90",
-                        role: language.text("credit.sandbox_escape"),
-                        url: "https://github.com/CrazyMind90"
-                    )
-                    creditsRow(
-                        name: "forcequitOS",
-                        role: language.text("credit.forcequit"),
-                        url: "https://github.com/forcequitOS"
-                    )
+                Section("Licencias de código abierto") {
+                    Text("3105 y WQFiles: GPL-3.0-or-later. Se conservan los avisos de copyright y los archivos LICENSE del código fuente.")
+                        .font(.caption)
+                    Link("Código fuente y avisos legales", destination: URL(string: "https://github.com/loboangel39-svg/3105-WORSE-QUERY")!)
                 }
             }
             .tint(AppTheme.accent)
