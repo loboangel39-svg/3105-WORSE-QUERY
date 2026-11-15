@@ -5,12 +5,12 @@ final class UICleanupTests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments = ["--simulate-access", "-feature.developer_mode.enabled", "NO"]
         app.launch()
-        let tabs = app.tabBars.firstMatch
-        XCTAssertTrue(tabs.waitForExistence(timeout: 30), app.debugDescription)
-        XCTAssertEqual(tabs.buttons.count, 3)
-        XCTAssertTrue(tabs.buttons["Instalados"].isSelected)
+        XCTAssertTrue(app.buttons["main-tab-3"].waitForExistence(timeout: 30), app.debugDescription)
+        XCTAssertEqual(app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "main-tab-")).count, 3)
+        XCTAssertTrue(app.buttons["main-tab-3"].isSelected)
         for title in ["Archivos", "Buscar", "Instalados"] {
-            let tab = tabs.buttons[title]
+            let id = title == "Archivos" ? 4 : title == "Buscar" ? 5 : 3
+            let tab = app.buttons["main-tab-\(id)"]
             XCTAssertTrue(tab.exists, title)
             tab.tap()
             XCTAssertTrue(tab.isSelected, app.debugDescription)
@@ -31,9 +31,10 @@ final class UICleanupTests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments = ["--simulate-access", "-appLanguage", "en"]
         app.launch()
-        XCTAssertTrue(app.tabBars.buttons["Installed"].waitForExistence(timeout: 30), app.debugDescription)
-        XCTAssertTrue(app.tabBars.buttons["Files"].exists)
-        XCTAssertTrue(app.tabBars.buttons["Search"].exists)
+        XCTAssertTrue(app.buttons["main-tab-3"].waitForExistence(timeout: 30), app.debugDescription)
+        XCTAssertEqual(app.buttons["main-tab-3"].label, "Installed")
+        XCTAssertTrue(app.buttons["main-tab-4"].exists)
+        XCTAssertTrue(app.buttons["main-tab-5"].exists)
     }
     func testNavigationStateAndHiddenLegacyRoutes() {
         for developer in [false, true] {
@@ -63,4 +64,68 @@ final class UICleanupTests: XCTestCase {
         let imported = try PatchPackageCodec.decode(Data(contentsOf: path), password: nil)
         XCTAssertEqual(imported.project.rules.first?.replacementData, Data("contenido".utf8))
     }
+    private func capture(_ name: String, app: XCUIApplication) {
+        let image = XCTAttachment(screenshot: app.screenshot())
+        image.name = name
+        image.lifetime = .keepAlways
+        add(image)
+    }
+    func testVisualScreensAndRealFolderNavigation() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--simulate-access", "-appLanguage", "es", "-interface.appearance", "dark"]
+        app.launch()
+        XCTAssertTrue(app.buttons["main-tab-3"].waitForExistence(timeout: 30))
+        capture("01-Instalados-oscuro", app: app)
+        app.buttons["main-tab-4"].tap()
+        let workspace = app.buttons["files-workspace"]
+        XCTAssertTrue(workspace.waitForExistence(timeout: 15), app.debugDescription)
+        capture("02-Archivos-oscuro", app: app)
+        workspace.tap()
+        XCTAssertTrue(app.collectionViews["folder-browser"].waitForExistence(timeout: 15) || app.tables["folder-browser"].exists || app.otherElements["folder-browser"].exists, app.debugDescription)
+        capture("04-Explorador-carpetas", app: app)
+        app.buttons["main-tab-5"].tap()
+        let search = app.textFields["controller-search-field"]
+        XCTAssertTrue(search.waitForExistence(timeout: 10))
+        search.tap()
+        search.typeText("consulta-3105-sin-coincidencias")
+        XCTAssertTrue(app.staticTexts["No hay paquetes coincidentes"].waitForExistence(timeout: 10))
+        capture("03-Buscar-consulta-real", app: app)
+        app.buttons["Borrar búsqueda"].tap()
+        XCTAssertEqual(search.value as? String, "Buscar paquetes, autores o bundles")
+        app.buttons["main-tab-3"].tap()
+        app.buttons["Añadir proyecto de parche"].tap()
+        XCTAssertTrue(app.buttons["Importar .3105"].waitForExistence(timeout: 5))
+        capture("06-Menu-importacion", app: app)
+    }
+    func testSettingsAndIntegratedUIKitPresentation() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--simulate-access", "--simulate-settings", "-appLanguage", "es", "-interface.appearance", "dark"]
+        app.launch()
+        XCTAssertTrue(app.navigationBars["Ajustes"].waitForExistence(timeout: 30))
+        capture("05-Ajustes-oscuro", app: app)
+        let tools = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "WQFiles ·")).firstMatch
+        for _ in 0..<5 {
+            if tools.isHittable { break }
+            app.swipeUp()
+        }
+        XCTAssertTrue(tools.isHittable, app.debugDescription)
+        tools.tap()
+        XCTAssertFalse(app.alerts.firstMatch.waitForExistence(timeout: 2))
+        capture("07-WQFiles-UIKit", app: app)
+    }
+    func testLightModeLargeTypeAndTouchTargets() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--simulate-access", "-appLanguage", "es", "-interface.appearance", "light", "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
+        app.launch()
+        XCTAssertTrue(app.buttons["main-tab-3"].waitForExistence(timeout: 30))
+        let tabs = [3,4,5].map { app.buttons["main-tab-\($0)"] }
+        for tab in tabs {
+            XCTAssertTrue(tab.isHittable)
+            XCTAssertGreaterThanOrEqual(tab.frame.height, 44)
+        }
+        XCTAssertLessThanOrEqual(tabs[0].frame.maxX, tabs[1].frame.minX)
+        XCTAssertLessThanOrEqual(tabs[1].frame.maxX, tabs[2].frame.minX)
+        capture("08-Claro-DynamicType-accesibilidad", app: app)
+    }
+
 }

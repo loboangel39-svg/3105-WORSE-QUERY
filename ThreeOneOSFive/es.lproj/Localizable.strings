@@ -655,3 +655,8 @@
 
 "settings.open_source_licenses" = "Licencias de código abierto";
 "settings.wqfiles_tools" = "WQFiles · Archivos, aplicaciones, limpieza y copias";
+
+"appearance.title" = "Aspecto";
+"appearance.dark" = "Oscuro";
+"appearance.light" = "Claro";
+"appearance.system" = "Sistema";

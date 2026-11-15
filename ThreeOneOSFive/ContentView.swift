@@ -12,8 +12,10 @@ struct ContentView: View {
     @State private var tabNavigation: AppTabNavigationState
     @State private var showSettings = false
     @State private var showLogs = false
+    @AppStorage("interface.appearance") private var appearance = "dark"
 
     init() {
+        AppTheme.configure()
 #if targetEnvironment(simulator)
         let arguments = ProcessInfo.processInfo.arguments
         let initialTab: Int
@@ -49,6 +51,9 @@ struct ContentView: View {
                 compactLayout
             }
         }
+        .font(AppTheme.sans())
+        .preferredColorScheme(appearance == "system" ? nil : appearance == "light" ? .light : .dark)
+        .background(ControllerCanvas())
         .tint(AppTheme.accent)
         .imageScale(.small)
         .onChange(of: patchDraftCoordinator.request?.id) { requestID in
@@ -73,6 +78,7 @@ struct ContentView: View {
         TabView(selection: tabSelection) {
             ForEach(featureVisibility.visibleSections) { section in
                 sectionContent(section)
+                    .toolbar(.hidden, for: .tabBar)
                     .tabItem {
                         CompactTabLabel(
                             title: language.text(section.titleKey),
@@ -81,6 +87,12 @@ struct ContentView: View {
                     }
                     .tag(section.rawValue)
             }
+        }
+        .safeAreaInset(edge: .top, spacing: 0) {
+            VStack(spacing: 0) {
+                ControllerHeader()
+                ControllerNavigation(sections: featureVisibility.visibleSections, language: language, selection: tabSelection)
+            }.background(ControllerCanvas())
         }
     }
 

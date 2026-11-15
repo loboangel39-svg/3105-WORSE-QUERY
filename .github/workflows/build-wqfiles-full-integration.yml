@@ -1,8 +1,8 @@
-name: Build Spanish UI cleanup
+name: Build native visual redesign
 
 on:
   push:
-    branches: [experiment/3105-ui-cleanup-es]
+    branches: [experiment/3105-visual-redesign]
   workflow_dispatch:
 
 permissions:
@@ -32,6 +32,7 @@ jobs:
           git diff --check
           python3 scripts/verify-wqfiles-integration.py
           python3 scripts/verify-ui-cleanup.py
+          python3 scripts/verify-visual-redesign.py
 
       - name: Build unsigned experimental device app
         shell: bash
@@ -167,7 +168,8 @@ jobs:
           xcodebuild -project ThreeOneOSFive.xcodeproj -scheme UICleanupTests \
             -configuration Debug -sdk iphonesimulator -destination "platform=iOS Simulator,id=$DEVICE" \
             -derivedDataPath build-ui/DerivedData -resultBundlePath build-ui/UICleanup.xcresult \
-            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO test | tee build-ui/xcodebuild.log
+            -parallel-testing-enabled NO CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO test | tee build-ui/xcodebuild.log
+          xcrun xcresulttool export attachments --path build-ui/UICleanup.xcresult --output-path build-ui/screenshots
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -175,3 +177,4 @@ jobs:
           path: |
             build-ui/UICleanup.xcresult
             build-ui/xcodebuild.log
+            build-ui/screenshots

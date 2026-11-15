@@ -94,6 +94,7 @@ struct FileBrowserView: View {
                 Section {
                     ForEach(filteredEntries) { entry in
                         fileRow(entry)
+                            .controllerRow()
                     }
                 } header: {
                     Text(language.text("browser.items_count", Int64(filteredEntries.count)))
@@ -103,6 +104,8 @@ struct FileBrowserView: View {
                 }
             }
             .listStyle(.insetGrouped)
+            .controllerSurface()
+            .accessibilityIdentifier("folder-browser")
             .environment(\.defaultMinListRowHeight, AppTheme.fileRowHeight)
             .scrollDismissesKeyboard(.interactively)
             .overlay {

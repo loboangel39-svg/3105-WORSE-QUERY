@@ -111,6 +111,7 @@ struct PatchProjectsView: View {
                             Section(language.text("patch.title")) {
                                 ForEach(filteredItems) { item in
                                     itemRow(item)
+                                        .controllerRow()
                                 }
                                 .onDelete { offsets in
                                     offsets.map { filteredItems[$0] }.forEach(store.delete)
@@ -127,6 +128,7 @@ struct PatchProjectsView: View {
                                         )
                                     } label: {
                                         wallpaperRow(package)
+                                            .controllerRow()
                                     }
                                     .swipeActions(
                                         edge: .trailing,
@@ -148,10 +150,12 @@ struct PatchProjectsView: View {
                     if cleanerEnabled {
                         Section(language.text("repository.utilities")) {
                             cleanerRow
+                                .controllerRow()
                         }
                     }
                 }
                 .listStyle(.insetGrouped)
+            .controllerSurface()
             }
             .navigationTitle(language.text("tab.installed"))
             .navigationBarTitleDisplayMode(.inline)
@@ -831,6 +835,7 @@ private struct PatchProjectDetailView: View {
             }
         }
         .listStyle(.insetGrouped)
+            .controllerSurface()
         .navigationTitle(item?.project?.name ?? language.text("patch.title"))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {

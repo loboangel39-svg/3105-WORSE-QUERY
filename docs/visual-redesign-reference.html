@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VINI PRO Controller</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background: radial-gradient(circle at 50% 10%, #0d1222 0%, #05070e 55%, #020307 100%);
+      min-height: 100vh;
+      margin: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #e2e8f0;
+      overflow-x: hidden;
+      padding: 1rem 0.5rem;
+    }
+
+    .font-mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* iPhone Frame Shell */
+    .iphone-frame {
+      position: relative;
+      width: 400px;
+      max-width: 96vw;
+      height: 840px;
+      background: #080b13;
+      border-radius: 54px;
+      box-shadow: 
+        0 0 0 4px #1b2234,
+        0 0 0 8px #0c101b,
+        0 30px 80px -15px rgba(0, 0, 0, 0.95),
+        0 0 50px rgba(0, 210, 255, 0.12);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      user-select: none;
+    }
+
+    /* Ambient Cyan Glow */
+    .ambient-glow {
+      position: absolute;
+      top: -40px;
+      left: -40px;
+      width: 260px;
+      height: 260px;
+      background: radial-gradient(circle, rgba(0, 210, 255, 0.14) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    /* Glass card container */
+    .patch-row-card {
+      background: rgba(16, 21, 34, 0.65);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      transition: all 0.2s ease;
+    }
+
+    .patch-row-card:hover {
+      background: rgba(22, 28, 46, 0.8);
+      border-color: rgba(0, 210, 255, 0.15);
+    }
+
+    /* Active Glowing Switch (Matches exact screenshot) */
+    .ios-switch {
+      width: 48px;
+      height: 27px;
+      border-radius: 9999px;
+      background: #202637;
+      position: relative;
+      cursor: pointer;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      flex-shrink: 0;
+    }
+
+    .ios-switch.active {
+      background: #00c3ff;
+      border-color: #38d6ff;
+      box-shadow: 0 0 16px rgba(0, 195, 255, 0.7), inset 0 0 4px rgba(255, 255, 255, 0.4);
+    }
+
+    .ios-thumb {
+      width: 21px;
+      height: 21px;
+      border-radius: 50%;
+      background: #ffffff;
+      position: absolute;
+      top: 2px;
+      left: 3px;
+      transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+    }
+
+    .ios-switch.active .ios-thumb {
+      transform: translateX(21px);
+    }
+
+    /* Segmented Tab Indicator */
+    .tab-pill {
+      transition: all 0.2s ease;
+    }
+    .tab-pill.active {
+      background: rgba(0, 195, 255, 0.15);
+      color: #00d2ff;
+      border-color: rgba(0, 210, 255, 0.4);
+      box-shadow: 0 0 12px rgba(0, 210, 255, 0.25);
+    }
+
+    /* Scrollbar */
+    .scroll-container::-webkit-scrollbar {
+      width: 3px;
+    }
+    .scroll-container::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Mockup Phone Shell -->
+  <div class="iphone-frame relative">
+    
+    <!-- Ambient Halo Background -->
+    <div class="ambient-glow"></div>
+
+    <!-- Status Bar + Dynamic Island -->
+    <div class="pt-3 px-7 flex items-center justify-between text-xs font-semibold text-white/80 z-30 select-none">
+      <span class="font-mono text-sm tracking-tight text-white/90">15:00</span>
+      
+      <!-- Dynamic Island with camera + sensors -->
+      <div class="w-28 h-6 bg-black rounded-full flex items-center justify-between px-3 border border-white/10 shadow-inner">
+        <div class="w-2 h-2 rounded-full bg-emerald-400"></div>
+        <div class="w-2 h-2 rounded-full bg-blue-500/80"></div>
+      </div>
+
+      <!-- Native Battery & 5G Icons -->
+      <div class="flex items-center gap-1.5 text-[11px] text-white/80 font-mono">
+        <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+        <span class="text-xs font-semibold">5G</span>
+        <div class="w-5 h-2.5 border border-white/80 rounded-[3px] p-[1px] flex items-center">
+          <div class="h-full w-4/5 bg-white rounded-[1px]"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Header (Matching Screenshot) -->
+    <div class="px-5 pt-3 pb-2 z-20 flex items-center justify-between">
+      <div>
+        <div class="flex items-center gap-2">
+          <h1 class="text-2xl font-black tracking-wider text-white">VINI</h1>
+          <span class="px-2 py-0.5 rounded-md bg-[#0d2a3d] text-[#00d2ff] font-mono text-[10.5px] font-bold border border-[#00d2ff]/40">PRO v2.6</span>
+        </div>
+        <div class="flex items-center gap-2 mt-1">
+          <div class="flex items-center gap-1.5 text-xs text-white/70 font-medium">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]"></span>
+            <span class="text-emerald-400 font-medium">Kernel Hook Active</span>
+          </div>
+          <span class="text-white/30 text-xs">•</span>
+          <span class="text-white/50 text-xs font-mono">FreeFire TH 1.108</span>
+        </div>
+      </div>
+
+      <!-- Close Button -->
+      <button class="w-8 h-8 rounded-full bg-[#161c2d] border border-white/10 flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 transition">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- User & Countdown Bar (Real-time live countdown) -->
+    <div class="px-5 pt-1 pb-2 z-20">
+      <div class="flex items-center justify-between px-3.5 py-2 rounded-xl bg-[#0e1422]/80 border border-white/[0.07] backdrop-blur-md">
+        <div class="flex items-center gap-2">
+          <div class="w-6 h-6 rounded-lg bg-cyan-500/20 text-[#00d2ff] flex items-center justify-center font-bold text-xs border border-cyan-400/30">
+            V
+          </div>
+          <span class="text-xs font-semibold text-white">vini_dev</span>
+          <span class="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">VIP</span>
+        </div>
+
+        <div class="flex items-center gap-1.5 text-xs font-mono text-white/70">
+          <svg class="w-3.5 h-3.5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          <span id="countdown-timer" class="text-cyan-300 font-semibold">6d 23h 59m 45s</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Search Input Bar -->
+    <div class="px-5 pt-1 pb-2 z-20">
+      <div class="relative flex items-center">
+        <span class="absolute left-3.5 text-white/40">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+          </svg>
+        </span>
+        <input 
+          id="search-input" 
+          type="text" 
+          placeholder="Buscar parches o variables..." 
+          class="w-full pl-10 pr-4 py-2.5 rounded-xl bg-[#0f1423] border border-white/[0.08] text-xs text-white placeholder-white/40 focus:outline-none focus:border-[#00d2ff]/50 focus:ring-1 focus:ring-[#00d2ff]/30 transition"
+        >
+      </div>
+    </div>
+
+    <!-- Segmented Tabs (Combat, Visuals, Offsets) -->
+    <div class="px-5 pt-1 pb-2 z-20">
+      <div class="grid grid-cols-3 p-1 rounded-xl bg-[#0c101c] border border-white/[0.06] text-xs font-semibold">
+        <button data-tab="combat" class="tab-pill active py-2 rounded-lg text-center border border-transparent font-medium">Combat</button>
+        <button data-tab="visuals" class="tab-pill py-2 rounded-lg text-white/50 text-center border border-transparent font-medium hover:text-white">Visuals</button>
+        <button data-tab="offsets" class="tab-pill py-2 rounded-lg text-white/50 text-center border border-transparent font-medium hover:text-white">Offsets</button>
+      </div>
+    </div>
+
+    <!-- Section Title & Counter -->
+    <div class="px-5 pt-1 pb-1 flex items-center justify-between z-20 text-[11px] font-mono uppercase tracking-wider">
+      <span id="section-title" class="text-[#00d2ff] font-bold">COMBAT DIRECTIVES</span>
+      <span class="text-white/40"><span id="active-count" class="text-[#00d2ff] font-bold">2</span> aplicados</span>
+    </div>
+
+    <!-- Scrollable Patch List -->
+    <div id="patch-container" class="scroll-container flex-1 overflow-y-auto px-5 py-2 space-y-2.5 z-20">
+
+      <!-- ================= COMBAT PATCHES ================= -->
+      <div class="patch-item" data-category="combat">
+        <div class="patch-row-card rounded-2xl p-3 flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-[#0b2436] text-[#00d2ff] flex items-center justify-center border border-[#00d2ff]/30 shadow-[0_0_12px_rgba(0,210,255,0.25)] flex-shrink-0">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+            </div>
+            <div>
+              <div class="text-sm font-semibold text-white tracking-wide">Aim Drag Pro</div>
+              <div class="text-[11px] text-white/50">Interpolación de arrastre adaptativa</div>
+            </div>
+          </div>
+          <div class="ios-switch active" data-patch="aim_drag">
+            <div class="ios-thumb"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="patch-item" data-category="combat">
+        <div class="patch-row-card rounded-2xl p-3 flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-[#0b2436] text-[#00d2ff] flex items-center justify-center border border-[#00d2ff]/30 shadow-[0_0_12px_rgba(0,210,255,0.25)] flex-shrink-0">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" stroke-width="2"/><circle cx="12" cy="12" r="3" fill="currentColor"/><path stroke-linecap="round" stroke-width="2" d="M12 3v3m0 12v3m-9-9h3m12 0h3"/></svg>
+            </div>
+            <div>
+              <div class="text-sm font-semibold text-white tracking-wide">Aimbot Cabeza (High Priority)</div>
+              <div class="text-[11px] text-white/50">Bone ID: 0x0C • Smooth Lock 98%</div>
+            </div>
+          </div>
+          <div class="ios-switch active" data-patch="aim_head">
+            <div class="ios-thumb"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="patch-item" data-category="combat">
+        <div class="patch-row-card rounded-2xl p-3 flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-[#141a29] text-white/50 flex items-center justify-center border border-white/[0.08] flex-shrink-0">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+            </div>
+            <div>
+              <div class="text-sm font-semibold text-white tracking-wide">Aimbot Cuello (Safe Curve)</div>
+              <div class="text-[11px] text-white/50">FOV: 14.5° • Humanized Drag</div>
+            </div>
+          </div>
+          <div class="ios-switch" data-patch="aim_neck">
+            <div class="ios-thumb"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="patch-item" data-category="combat">
+        <div class="patch-row-card rounded-2xl p-3 flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-[#141a29] text-white/50 flex items-center justify-center border border-white/[0.08] flex-shrink-0">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+            </div>
+            <div>
+              <div class="text-sm font-semibold text-white tracking-wide">Aimbot Pecho</div>
+              <div class="text-[11px] text-white/50">Anchor de torso con amortiguación</div>
+            </div>
+          </div>
+          <div class="ios-switch" data-patch="aim_chest">
+            <div class="ios-thumb"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="patch-item" data-category="combat">
+        <div class="patch-row-card rounded-2xl p-3 flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-[#141a29] text-white/50 flex items-center justify-center border border-white/[0.08] flex-shrink-0">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>
+            </div>
+            <div>
+              <div class="text-sm font-semibold text-white tracking-wide">Balas Mágicas / Direct Hit</div>
+              <div class="text-[11px] text-white/50">Offset Spread: 0.00 • Hitbox Expander</div>
+            </div>
+          </div>
+          <div class="ios-switch" data-patch="magic_bullet">
+            <div class="ios-thumb"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= VISUALS PATCHES ================= -->
+      <div class="patch-item hidden" data-category="visuals">
+        <div class="patch-row-card rounded-2xl p-3 flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-[#141a29] text-white/50 flex items-center justify-center border border-white/[0.08] flex-shrink-0">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+            </div>
+            <div>
+              <div class="text-sm font-semibold text-white tracking-wide">Chams Wireframe GL</div>
+              <div class="text-[11px] text-white/50">Renderizado de siluetas tras cobertura</div>
+            </div>
+          </div>
+          <div class="ios-switch" data-patch="chams_gl">
+            <div class="ios-thumb"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="patch-item hidden" data-category="visuals">
+        <div class="patch-row-card rounded-2xl p-3 flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-[#141a29] text-white/50 flex items-center justify-center border border-white/[0.08] flex-shrink-0">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
+            </div>
+            <div>
+              <div class="text-sm font-semibold text-white tracking-wide">ESP Box 2D</div>
+              <div class="text-[11px] text-white/50">Delimitadores vectoriales en pantalla</div>
+            </div>
+          </div>
+          <div class="ios-switch" data-patch="esp_box">
+            <div class="ios-thumb"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="patch-item hidden" data-category="visuals">
+        <div class="patch-row-card rounded-2xl p-3 flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-[#141a29] text-white/50 flex items-center justify-center border border-white/[0.08] flex-shrink-0">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
+            </div>
+            <div>
+              <div class="text-sm font-semibold text-white tracking-wide">Distance Radar</div>
+              <div class="text-[11px] text-white/50">Medición de proximidad en tiempo real</div>
+            </div>
+          </div>
+          <div class="ios-switch" data-patch="distance_radar">
+            <div class="ios-thumb"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= OFFSETS PATCHES ================= -->
+      <div class="patch-item hidden" data-category="offsets">
+        <div class="patch-row-card rounded-2xl p-3 flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-[#141a29] text-white/50 flex items-center justify-center border border-white/[0.08] flex-shrink-0">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+            </div>
+            <div>
+              <div class="text-sm font-semibold text-white tracking-wide">Bypass Integrity Check</div>
+              <div class="text-[11px] text-white/50">Offset: 0x1A402 • SigScan Override</div>
+            </div>
+          </div>
+          <div class="ios-switch" data-patch="bypass_integrity">
+            <div class="ios-thumb"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="patch-item hidden" data-category="offsets">
+        <div class="patch-row-card rounded-2xl p-3 flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-[#141a29] text-white/50 flex items-center justify-center border border-white/[0.08] flex-shrink-0">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"/></svg>
+            </div>
+            <div>
+              <div class="text-sm font-semibold text-white tracking-wide">Memory Allocation Fix</div>
+              <div class="text-[11px] text-white/50">Heap Sanitizer • Zero-Day Patch</div>
+            </div>
+          </div>
+          <div class="ios-switch" data-patch="mem_alloc">
+            <div class="ios-thumb"></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Bottom Telemetry Card (Exact from Screenshot) -->
+    <div class="px-5 pt-2 pb-3 z-20">
+      <div class="rounded-2xl p-3.5 bg-[#0e1322]/80 border border-white/[0.06] backdrop-blur-md space-y-2 font-mono text-[11px]">
+        
+        <div class="flex items-center justify-between text-white/50">
+          <span>TARGET DEVICE</span>
+          <span class="text-white/80 font-medium">iPhone 15 Pro (A17 Pro)</span>
+        </div>
+
+        <div class="flex items-center justify-between text-white/50">
+          <span>DAEMON STATUS</span>
+          <span class="flex items-center gap-1.5 text-emerald-400 font-semibold">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+            Injected (0.4ms)
+          </span>
+        </div>
+
+        <div class="flex items-center justify-between text-white/50">
+          <span>MEMORY INTEGRITY</span>
+          <span class="px-2 py-0.5 rounded bg-[#092233] text-[#00d2ff] border border-[#00d2ff]/40 text-[10px] font-bold">
+            CRC32: 0x9F42A1
+          </span>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Home Indicator Bar -->
+    <div class="py-1 flex justify-center z-30 select-none">
+      <div class="w-36 h-1 bg-white/20 rounded-full"></div>
+    </div>
+
+  </div>
+
+  <script>
+    // 1. Live Countdown Timer (6d 23h 59m 45s)
+    let totalSeconds = (6 * 86400) + (23 * 3600) + (59 * 60) + 45;
+    const timerElem = document.getElementById('countdown-timer');
+
+    function updateCountdown() {
+      if (totalSeconds > 0) totalSeconds--;
+      const days = Math.floor(totalSeconds / 86400);
+      const hours = Math.floor((totalSeconds % 86400) / 3600);
+      const mins = Math.floor((totalSeconds % 3600) / 60);
+      const secs = totalSeconds % 60;
+      timerElem.innerText = `${days}d ${hours}h ${mins < 10 ? '0' + mins : mins}m ${secs < 10 ? '0' + secs : secs}s`;
+    }
+    setInterval(updateCountdown, 1000);
+
+    // 2. Interactive Switch Logic & Active Counter
+    const switches = document.querySelectorAll('.ios-switch');
+    const counterElem = document.getElementById('active-count');
+
+    function updateActiveCounter() {
+      const activeCurrentTab = document.querySelectorAll('.patch-item:not(.hidden) .ios-switch.active').length;
+      counterElem.innerText = activeCurrentTab;
+    }
+
+    switches.forEach(sw => {
+      sw.addEventListener('click', () => {
+        sw.classList.toggle('active');
+        
+        // Update Icon background/color glow
+        const row = sw.closest('.patch-row-card');
+        const iconContainer = row.querySelector('.w-10');
+        if (sw.classList.contains('active')) {
+          iconContainer.className = 'w-10 h-10 rounded-xl bg-[#0b2436] text-[#00d2ff] flex items-center justify-center border border-[#00d2ff]/30 shadow-[0_0_12px_rgba(0,210,255,0.25)] flex-shrink-0 transition-all';
+        } else {
+          iconContainer.className = 'w-10 h-10 rounded-xl bg-[#141a29] text-white/50 flex items-center justify-center border border-white/[0.08] flex-shrink-0 transition-all';
+        }
+
+        updateActiveCounter();
+      });
+    });
+
+    // 3. Segmented Tabs Filter
+    const tabButtons = document.querySelectorAll('.tab-pill');
+    const patchItems = document.querySelectorAll('.patch-item');
+    const sectionTitle = document.getElementById('section-title');
+
+    const tabTitles = {
+      combat: 'COMBAT DIRECTIVES',
+      visuals: 'VISUAL ENHANCEMENTS',
+      offsets: 'OFFSET INJECTIONS'
+    };
+
+    tabButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const tab = btn.getAttribute('data-tab');
+        
+        // Active tab button styling
+        tabButtons.forEach(b => {
+          b.className = 'tab-pill py-2 rounded-lg text-white/50 text-center border border-transparent font-medium hover:text-white';
+        });
+        btn.className = 'tab-pill active py-2 rounded-lg text-center font-medium';
+
+        // Update Section Title
+        sectionTitle.innerText = tabTitles[tab] || 'DIRECTIVES';
+
+        // Filter Rows
+        patchItems.forEach(item => {
+          if (item.getAttribute('data-category') === tab) {
+            item.classList.remove('hidden');
+          } else {
+            item.classList.add('hidden');
+          }
+        });
+
+        // Clear search input on tab change
+        document.getElementById('search-input').value = '';
+        updateActiveCounter();
+      });
+    });
+
+    // 4. Live Search Filtering
+    const searchInput = document.getElementById('search-input');
+    searchInput.addEventListener('input', (e) => {
+      const q = e.target.value.toLowerCase().trim();
+      const currentActiveTab = document.querySelector('.tab-pill.active').getAttribute('data-tab');
+
+      patchItems.forEach(item => {
+        const isCurrentCategory = item.getAttribute('data-category') === currentActiveTab;
+        const textContent = item.innerText.toLowerCase();
+
+        if (isCurrentCategory && textContent.includes(q)) {
+          item.classList.remove('hidden');
+        } else {
+          item.classList.add('hidden');
+        }
+      });
+
+      updateActiveCounter();
+    });
+
+    // Initial counter load
+    updateActiveCounter();
+  </script>
+</body>
+</html>

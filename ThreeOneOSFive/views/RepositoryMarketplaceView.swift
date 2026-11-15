@@ -43,6 +43,7 @@ struct LegacyRepositoryExploreView: View {
                 }
             }
             .listStyle(.insetGrouped)
+            .controllerSurface()
             .navigationTitle(language.text("repository.explore"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -232,6 +233,7 @@ struct LegacyRepositorySourcesView: View {
                 }
             }
             .listStyle(.insetGrouped)
+            .controllerSurface()
             .navigationTitle(language.text("repository.sources"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

@@ -670,3 +670,8 @@
 
 "settings.open_source_licenses" = "开源许可证";
 "settings.wqfiles_tools" = "WQFiles · 文件、应用、清理与备份";
+
+"appearance.title" = "外观";
+"appearance.dark" = "深色";
+"appearance.light" = "浅色";
+"appearance.system" = "系统";

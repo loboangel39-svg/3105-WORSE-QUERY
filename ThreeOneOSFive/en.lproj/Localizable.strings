@@ -670,3 +670,8 @@
 
 "settings.open_source_licenses" = "Open source licenses";
 "settings.wqfiles_tools" = "WQFiles · Files, Apps, Cleaner & Backups";
+
+"appearance.title" = "Appearance";
+"appearance.dark" = "Dark";
+"appearance.light" = "Light";
+"appearance.system" = "System";

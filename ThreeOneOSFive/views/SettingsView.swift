@@ -5,6 +5,7 @@ struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.appLanguage) private var language
     @EnvironmentObject private var appState: AppState
+    @AppStorage("interface.appearance") private var appearance = "dark"
     @AppStorage(AppLanguage.storageKey) private var languageCode = AppLanguage.spanish.rawValue
     @AppStorage(FeatureVisibility.cleanerStorageKey) private var cleanerEnabled = true
     @AppStorage(FeatureVisibility.developerModeStorageKey)
@@ -27,6 +28,13 @@ struct SettingsView: View {
                     .padding(.vertical, 4)
                 }
 
+                Section(language.text("appearance.title")) {
+                    Picker(language.text("appearance.title"), selection: $appearance) {
+                        Text(language.text("appearance.dark")).tag("dark")
+                        Text(language.text("appearance.light")).tag("light")
+                        Text(language.text("appearance.system")).tag("system")
+                    }.pickerStyle(.segmented)
+                }
                 Section(language.text("settings.language")) {
                     Picker(language.text("settings.language"), selection: $languageCode) {
                         ForEach(AppLanguage.allCases) { option in
@@ -120,6 +128,7 @@ struct SettingsView: View {
                     }
                 }
             }
+            .controllerSurface()
             .tint(AppTheme.accent)
             .navigationTitle(language.text("settings.title"))
             .navigationBarTitleDisplayMode(.inline)

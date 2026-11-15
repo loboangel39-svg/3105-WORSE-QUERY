@@ -670,3 +670,8 @@
 
 "settings.open_source_licenses" = "Giấy phép nguồn mở";
 "settings.wqfiles_tools" = "WQFiles · Tệp, ứng dụng, dọn dẹp và sao lưu";
+
+"appearance.title" = "Giao diện";
+"appearance.dark" = "Tối";
+"appearance.light" = "Sáng";
+"appearance.system" = "Hệ thống";

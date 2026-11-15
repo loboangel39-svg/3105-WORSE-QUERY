@@ -136,6 +136,8 @@ struct AppDataBrowserView: View {
                         }
                         .padding(.vertical, 2)
                     }
+                    .controllerRow()
+                    .accessibilityIdentifier("files-workspace")
                     .contextMenu {
                         openInNewTabButton(workspaceDestination)
                     }
@@ -172,6 +174,7 @@ struct AppDataBrowserView: View {
             }
         }
         .listStyle(.insetGrouped)
+            .controllerSurface()
         .environment(\.defaultMinListRowHeight, 48)
         .scrollDismissesKeyboard(.interactively)
         .overlay {
@@ -214,6 +217,7 @@ struct AppDataBrowserView: View {
             }
         }
         .padding(.vertical, 2)
+        .controllerRow()
         .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 12))
     }
 

@@ -246,6 +246,7 @@ struct RepositoryNewView: View {
                 }
             }
             .listStyle(.insetGrouped)
+            .controllerSurface()
             .navigationTitle(language.text("tab.new"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -384,12 +385,14 @@ struct RepositorySearchView: View {
                             ForEach(results) { record in
                                 NavigationLink(value: record) {
                                     RepositoryPackageRow(record: record)
+                                        .controllerRow()
                                 }
                             }
                         }
                     }
                 }
                 .listStyle(.insetGrouped)
+            .controllerSurface()
                 .scrollDismissesKeyboard(.interactively)
                 .refreshable {
                     await store.refreshAllAndWait()
