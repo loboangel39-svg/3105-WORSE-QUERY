@@ -1,3 +1,4 @@
+#import "WQRefreshPolicy.h"
 //
 //  WQCache.m
 //  WQ Files cache cleaner
@@ -405,7 +406,7 @@ static BOOL WQCacheValidateItem(WQCacheItem *item, NSString **reason)
     self.navigationItem.searchController = search;
     self.navigationItem.hidesSearchBarWhenScrolling = NO;
     self.definesPresentationContext = YES;
-    self.refreshControl = [UIRefreshControl new];
+    self.refreshControl = WQSilentRefresh() ? nil : [UIRefreshControl new];
     [self.refreshControl addTarget:self action:@selector(userRefresh) forControlEvents:UIControlEventValueChanged];
     [self scan];
 }
@@ -747,7 +748,7 @@ static BOOL WQCacheValidateItem(WQCacheItem *item, NSString **reason)
                wq_size_text(foundBytes), crashLimited ? @", Crash Logs limited" : @"");
         dispatch_async(dispatch_get_main_queue(), ^{
             if (generation != self->_scanGeneration || cancellation.isCancelled) return;
-            self->_items = items;
+            if (!WQSilentRefresh() || items.count || !scanLimited) self->_items = items;
             [self rebuildVisibleItems];
             self->_scanning = NO;
             self->_scanLimited = scanLimited;
@@ -806,6 +807,12 @@ static BOOL WQCacheValidateItem(WQCacheItem *item, NSString **reason)
         cell.statusLabel.text = _status ?: _result
             ?: WQLocalizedFormat(n == 1 ? @"%@ selected in %lu item" : @"%@ selected in %lu items",
                                  wq_size_text(selected), (unsigned long)n);
+        if (WQSilentRefresh() && !_cleaning) {
+            cell.captionLabel.text = WQLocalized(@"Reclaimable");
+            [cell.spinner stopAnimating]; cell.spinner.hidden = YES;
+            cell.bar.hidden = YES; cell.statusLabel.text = nil;
+            cell.totalLabel.text = wq_size_text(total);
+        }
         return cell;
     }
     WQCleanerCell *cell = [tableView dequeueReusableCellWithIdentifier:@"item"]

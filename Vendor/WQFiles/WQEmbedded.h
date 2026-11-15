@@ -10,4 +10,6 @@ void WQIntegratedScanCancel(void);
 BOOL WQIntegratedBeginRefresh(void);
 void WQIntegratedEndRefresh(void);
 void WQIntegratedPrepareRefresh(void);
+NSTimeInterval WQIntegratedRefreshRetryDelay(NSUInteger attempt, BOOL transient);
+BOOL WQIntegratedRefreshHadTransientError(void);
 NS_ASSUME_NONNULL_END

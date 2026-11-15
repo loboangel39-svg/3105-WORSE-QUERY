@@ -1,3 +1,4 @@
+#import "WQRefreshPolicy.h"
 //
 //  WQApps.m
 //  WQ Files app backup and restore manager
@@ -580,7 +581,7 @@ static BOOL wq_dir_size_cancellable(NSString *dir, WQScanCancellation *cancellat
     self.navigationItem.hidesSearchBarWhenScrolling = NO;
     self.definesPresentationContext = YES;
     self.tableView.tableHeaderView = wq_device_header(self.view.bounds.size.width);
-    self.refreshControl = [UIRefreshControl new];
+    self.refreshControl = WQSilentRefresh() ? nil : [UIRefreshControl new];
     [self.refreshControl addTarget:self action:@selector(userRefresh) forControlEvents:UIControlEventValueChanged];
     [self scan];
 }
@@ -817,7 +818,7 @@ static void WQAppScanWatch(WQScanCancellation *cancellation, NSUInteger lastSeri
             if (generation != self->_scanGeneration || cancellation.isCancelled) return;
             self->_scanning = NO;
             self->_lastScanFinished = NSDate.date.timeIntervalSinceReferenceDate;
-            self->_apps = apps;
+            if (!WQSilentRefresh() || containers) self->_apps = apps;
             [self rebuildVisibleApps];
             [self.refreshControl endRefreshing];
             [self setBusy:NO status:note];
@@ -982,12 +983,12 @@ static void WQAppScanWatch(WQScanCancellation *cancellation, NSUInteger lastSeri
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section
 {
-    return (_busy && !_apps.count) ? 1 : (NSInteger)self.visibleApps.count;
+    return (_busy && !_apps.count && !WQSilentRefresh()) ? 1 : (NSInteger)self.visibleApps.count;
 }
 
 - (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section
 {
-    if (_status) return _status;
+    if (_status && !WQSilentRefresh()) return _status;
     unsigned long long total = 0;
     for (WQAppItem *a in _apps) total += a.bytes;
     if (_query.length || [NSUserDefaults.standardUserDefaults integerForKey:kWQAppsFilterPref] > 0)

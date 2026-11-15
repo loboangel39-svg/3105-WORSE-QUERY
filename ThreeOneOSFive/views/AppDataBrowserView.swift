@@ -6,15 +6,10 @@ struct AppDataBrowserView: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    @State private var scanState: [String: Any] = [:]
-    @State private var apps: [InstalledApp] = []
-    @State private var isLoading = false
-    @State private var isResolving = false
+    @StateObject private var refresh = SilentAppDataRefresh.shared
+    private var apps: [InstalledApp] { refresh.apps }
     @State private var searchText = ""
-    @State private var errorMessage: String?
-    @State private var hasLoaded = false
     @State private var workspaceURL: URL?
-    @State private var reloadToken = UUID()
     @Binding private var tabSession: FilesTabSession
     let onOpenSettings: () -> Void
     let onOpenLogs: () -> Void
@@ -38,7 +33,6 @@ struct AppDataBrowserView: View {
     }
 
     private var overlayState: AppBrowserOverlayState {
-        if (isLoading || isResolving) && apps.isEmpty { return .loading }
         if apps.isEmpty { return .empty }
         if filteredApps.isEmpty { return .noResults }
         return .none
@@ -51,13 +45,7 @@ struct AppDataBrowserView: View {
     var body: some View {
         navigationContent(tabID: tabSession.selectedTabID)
             .id(tabSession.selectedTabID)
-            .onReceive(NotificationCenter.default.publisher(for: Notification.Name("WQScanPresentationChanged"))) { _ in
-                scanState = WQIntegratedScanState()
-            }
-            .onReceive(NotificationCenter.default.publisher(for: Notification.Name("WQScanRetryRequested"))) { _ in
-                reload()
-            }
-            .onAppear { scanState = WQIntegratedScanState() }
+
     }
 
     private func navigationContent(tabID: UUID) -> some View {
@@ -68,17 +56,6 @@ struct AppDataBrowserView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     FilesTabToolbarButton(session: $tabSession)
-                }
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button { reload() } label: {
-                        if isResolving {
-                            ProgressView()
-                        } else {
-                            Image(systemName: "arrow.clockwise")
-                        }
-                    }
-                    .disabled(isResolving)
-                    .accessibilityLabel(language.text("browser.retry"))
                 }
                 AppUtilityToolbar(
                     language: language,
@@ -91,10 +68,7 @@ struct AppDataBrowserView: View {
                     workspaceURL = try? PatchWorkspaceService.documentsRootURL()
                     _ = try? PatchWorkspaceService.patchesRootURL()
                 }
-                if !hasLoaded {
-                    hasLoaded = true
-                    reload()
-                }
+                refresh.open()
             }
             .navigationDestination(for: FileBrowserDestination.self) { destination in
                 if destination.startPath == destination.containerPath {
@@ -134,7 +108,6 @@ struct AppDataBrowserView: View {
                 prompt: language.text("browser.search"),
                 clearLabel: language.text("common.clear")
             )
-            scanActivity
             Divider()
             appRows
         }
@@ -191,11 +164,7 @@ struct AppDataBrowserView: View {
                 HStack(spacing: 8) {
                     Text(language.text("browser.apps_count", Int64(filteredApps.count)))
                     Spacer()
-                    if isResolving {
-                        ProgressView()
-                            .controlSize(.mini)
-                        Text(language.text("browser.mha_scanning"))
-                    }
+
                 }
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -208,9 +177,6 @@ struct AppDataBrowserView: View {
         .overlay {
             Group {
                 switch overlayState {
-                case .loading:
-                    ProgressView(language.text("browser.loading"))
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                 case .empty:
                     emptyView
                 case .noResults:
@@ -264,13 +230,11 @@ struct AppDataBrowserView: View {
             Image(systemName: "folder.badge.questionmark")
                 .font(.system(size: AppTheme.emptyIconSize, weight: .light))
                 .foregroundStyle(.secondary)
-            Text(errorMessage ?? language.text("browser.empty"))
+            Text(language.text("browser.empty"))
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
                 .padding()
-            Button(language.text("browser.retry")) { reload() }
-                .buttonStyle(.borderedProminent)
         }
         .padding()
     }
@@ -291,61 +255,114 @@ struct AppDataBrowserView: View {
         .padding()
     }
 
+
+}
+
+private enum AppBrowserOverlayState: Equatable {
+    case empty
+    case noResults
+    case none
+}
+
+struct BrowserAppIcon: View {
+    let app: InstalledApp
+    @State private var resolvedIcon: UIImage?
+    @State private var didRequestIcon = false
+
+    init(app: InstalledApp) {
+        self.app = app
+        _resolvedIcon = State(initialValue: app.icon)
+    }
+
+    var body: some View {
+        Group {
+            if let resolvedIcon {
+                Image(uiImage: resolvedIcon)
+                    .resizable()
+                    .scaledToFill()
+            } else {
+                Image(systemName: "app")
+                    .font(.system(size: AppTheme.rowIconSize, weight: .medium))
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .frame(width: AppTheme.appIconSize, height: AppTheme.appIconSize)
+        .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+        .accessibilityHidden(true)
+        .onAppear {
+            guard resolvedIcon == nil, !didRequestIcon else { return }
+            didRequestIcon = true
+            let bundleID = app.bundleID
+            DispatchQueue.global(qos: .utility).async {
+                let icon = iconForBundleID(bundleID)
+                DispatchQueue.main.async {
+                    resolvedIcon = icon
+                }
+            }
+        }
+    }
+}
+
+// No presentation, navigation or permission UI belongs to the refresh owner.
+private final class SilentAppDataRefresh: ObservableObject {
+    static let shared = SilentAppDataRefresh()
+    @Published private(set) var apps: [InstalledApp] = []
+    private var isLoading = false
+    private var isResolving = false
+    private var reloadToken = UUID()
+    private var retryAttempt: UInt = 0
+    private var lastFinished = Date.distantPast
+    private var pendingRetry: DispatchWorkItem?
+    private var opened = false
+    private var observers: [NSObjectProtocol] = []
+
+    private init() {
+        observers.append(NotificationCenter.default.addObserver(forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in self?.open() })
+        observers.append(NotificationCenter.default.addObserver(forName: UIApplication.didEnterBackgroundNotification, object: nil, queue: .main) { [weak self] _ in
+            self?.pendingRetry?.cancel(); self?.pendingRetry = nil
+        })
+    }
+    func open() {
+        let wasOpened = opened
+        opened = true
+        guard !isResolving, pendingRetry == nil,
+              !wasOpened || Date().timeIntervalSince(lastFinished) >= 60 else { return }
+        retryAttempt = 0
+        reload()
+    }
+    private func scheduleRetry(transient: Bool) {
+        let delay = WQIntegratedRefreshRetryDelay(retryAttempt, transient)
+        guard delay >= 0 else {
+            if transient { log("refresh.internal: retry budget exhausted; cached rows retained") }
+            return
+        }
+        retryAttempt += 1
+        let work = DispatchWorkItem { [weak self] in
+            guard let self else { return }
+            self.pendingRetry = nil
+            self.reload()
+        }
+        pendingRetry = work
+        log("refresh.internal: transient failure; retry \(retryAttempt) in \(delay)s")
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: work)
+    }
     private func mergeVisible(_ incoming: [InstalledApp]) {
         var byPath = Dictionary(apps.map { ($0.containerPath, $0) }, uniquingKeysWith: { first, _ in first })
         for app in incoming { byPath[app.containerPath] = app }
         apps = byPath.values.sorted { $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending }
     }
 
-    private var scanActivity: some View {
-        let status = scanState["status"] as? String ?? ""
-        let spanish = language.locale.languageCode == "es"
-        let scope = scanState["scope"] as? String ?? ""
-        let total = (scanState["total"] as? NSNumber)?.doubleValue ?? 0
-        let done = (scanState["done"] as? NSNumber)?.doubleValue ?? 0
-        return VStack(alignment: .leading, spacing: 6) {
-            if status == "permission" {
-                Text(spanish ? "Autorizar escaneo: \(scope)" : "Allow scan: \(scope)").font(.subheadline.bold())
-                Text(spanish
-                    ? "Se comprobarán hasta \(Int64(total)) identificadores de archivos para localizar estos contenedores. Puede tardar varios minutos. No modifica archivos. La autorización dura 7 días para este ámbito; un aumento superior al 50 % requiere confirmación. Puedes seguir buscando y cancelar."
-                    : "Checks up to \(Int64(total)) file IDs to locate these containers. This can take several minutes and does not modify files. Permission lasts 7 days for this scope; growth above 50% requires confirmation. You can keep searching and cancel.")
-                    .font(.caption).foregroundStyle(.secondary)
-                HStack {
-                    Button(spanish ? "Autorizar" : "Allow") { WQIntegratedScanAuthorize() }
-                    Button(spanish ? "Ahora no" : "Not now") { WQIntegratedScanCancel() }
-                }
-            } else if status == "running" {
-                HStack {
-                    ProgressView(value: total > 0 ? min(1, done / total) : 0)
-                    Text("\(Int(total > 0 ? done / total * 100 : 0)) %").font(.caption.monospacedDigit())
-                    Button(spanish ? "Cancelar" : "Cancel") { WQIntegratedScanCancel() }
-                }
-                Text(scope).font(.caption).foregroundStyle(.secondary)
-            } else if status == "stopped" {
-                HStack {
-                    Text(spanish ? "Escaneo detenido. Se conservan los resultados." : "Scan stopped. Previous results are retained.").font(.caption)
-                    Button(spanish ? "Reintentar" : "Retry") { reload() }.disabled(isResolving)
-                }
-            } else if isResolving {
-                HStack { ProgressView(); Text(spanish ? "Actualizando…" : "Updating…").font(.caption) }
-            }
-        }
-        .padding(.horizontal)
-        .padding(.vertical, status.isEmpty && !isResolving ? 0 : 8)
-        .accessibilityElement(children: .contain)
-    }
-
     private func reload() {
-        guard !isResolving, WQIntegratedBeginRefresh() else { return }
+        guard !isResolving, UIApplication.shared.applicationState == .active, WQIntegratedBeginRefresh() else { return }
+        pendingRetry?.cancel(); pendingRetry = nil
         let requestToken = UUID()
         reloadToken = requestToken
         WQFilesIdentityResolver.logExperimentalAppGroupStatus()
         log("wqfiles: reload scheduled token=\(requestToken.uuidString) enabled=\(WQFilesIdentityResolver.isEnabled) os=\(AppInfo.osVersion) build=\(AppInfo.osBuild)")
         isLoading = true
         isResolving = true
-        errorMessage = nil
-        let emptyMessage = language.text("browser.empty")
-        DispatchQueue.global(qos: .userInitiated).async {
+
+        DispatchQueue.global(qos: .userInitiated).async { [self] in
             WQIntegratedPrepareRefresh()
             let bundleMetadata = ContainerStore.applicationBundleMetadataCatalog()
             let apiApps = ContainerStore.applyingBundleMetadata(
@@ -373,7 +390,7 @@ struct AppDataBrowserView: View {
             let preliminary = result.filter {
                 ContainerPresentationPolicy.shouldShow(bundleID: $0.bundleID)
             }
-            DispatchQueue.main.async {
+            DispatchQueue.main.async { [self] in
                 guard reloadToken == requestToken else {
                     log("wqfiles: async result discarded phase=preliminary token=\(requestToken.uuidString)")
                     return
@@ -423,7 +440,7 @@ struct AppDataBrowserView: View {
             result.sort {
                 $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending
             }
-            DispatchQueue.main.async {
+            DispatchQueue.main.async { [self] in
                 guard reloadToken == requestToken else {
                     log("wqfiles: async result discarded phase=provider token=\(requestToken.uuidString)")
                     return
@@ -461,7 +478,7 @@ struct AppDataBrowserView: View {
                 progressiveResult.sort {
                     $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending
                 }
-            DispatchQueue.main.async {
+            DispatchQueue.main.async { [self] in
                 guard reloadToken == requestToken else {
                     log("wqfiles: async result discarded phase=progressive token=\(requestToken.uuidString)")
                     return
@@ -499,14 +516,14 @@ struct AppDataBrowserView: View {
                 $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending
             }
 
-            DispatchQueue.main.async {
+            DispatchQueue.main.async { [self] in
                 guard reloadToken == requestToken else {
                     log("wqfiles: async result discarded phase=final token=\(requestToken.uuidString)")
                     return
                 }
                 if !result.isEmpty && !wq_full_scan_was_declined()
                     && (WQIntegratedScanState()["status"] as? String) != "stopped" {
-                    apps = result
+                    mergeVisible(result)
                 } else {
                     mergeVisible(result)
                 }
@@ -514,55 +531,9 @@ struct AppDataBrowserView: View {
                 isResolving = false
                 WQIntegratedEndRefresh()
                 log("wqfiles: files displayed=\(result.count)")
-                if apps.isEmpty {
-                    errorMessage = emptyMessage
-                }
-            }
-        }
-    }
-}
-
-private enum AppBrowserOverlayState: Equatable {
-    case loading
-    case empty
-    case noResults
-    case none
-}
-
-struct BrowserAppIcon: View {
-    let app: InstalledApp
-    @State private var resolvedIcon: UIImage?
-    @State private var didRequestIcon = false
-
-    init(app: InstalledApp) {
-        self.app = app
-        _resolvedIcon = State(initialValue: app.icon)
-    }
-
-    var body: some View {
-        Group {
-            if let resolvedIcon {
-                Image(uiImage: resolvedIcon)
-                    .resizable()
-                    .scaledToFill()
-            } else {
-                Image(systemName: "app")
-                    .font(.system(size: AppTheme.rowIconSize, weight: .medium))
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .frame(width: AppTheme.appIconSize, height: AppTheme.appIconSize)
-        .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
-        .accessibilityHidden(true)
-        .onAppear {
-            guard resolvedIcon == nil, !didRequestIcon else { return }
-            didRequestIcon = true
-            let bundleID = app.bundleID
-            DispatchQueue.global(qos: .utility).async {
-                let icon = iconForBundleID(bundleID)
-                DispatchQueue.main.async {
-                    resolvedIcon = icon
-                }
+                let blocked = (WQIntegratedScanState()["status"] as? String) == "blocked"
+                scheduleRetry(transient: WQIntegratedRefreshHadTransientError() && !blocked)
+                lastFinished = Date()
             }
         }
     }

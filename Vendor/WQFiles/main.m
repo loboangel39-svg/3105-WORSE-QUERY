@@ -1,3 +1,4 @@
+#import "WQRefreshPolicy.h"
 //
 //  main.m
 //  WQ Files
@@ -1309,7 +1310,7 @@ static NSString *wq_info_date(struct timespec ts)
         wq_prism_install_background(self);
         self.tableView.backgroundColor = [UIColor clearColor];
     }
-    self.refreshControl = [UIRefreshControl new];
+    self.refreshControl = WQSilentRefresh() ? nil : [UIRefreshControl new];
     [self.refreshControl addTarget:self action:@selector(userRefresh) forControlEvents:UIControlEventValueChanged];
     __weak typeof(self) weakSelf = self;
     NSString *path = _path;
@@ -1485,7 +1486,7 @@ static NSString *wq_info_date(struct timespec ts)
     }
     // Zero-width spaces after each slash let lines break between components.
     NSString *breakable = [_path stringByReplacingOccurrencesOfString:@"/" withString:@"/\u200B"];
-    _pathLabel.text = _scanStatus ? [NSString stringWithFormat:@"%@\n%@", breakable, _scanStatus] : breakable;
+    _pathLabel.text = (_scanStatus && !WQSilentRefresh()) ? [NSString stringWithFormat:@"%@\n%@", breakable, _scanStatus] : breakable;
     CGFloat side = 16, top = kWQDeviceStripHeight + 8;
     CGSize fit = [_pathLabel sizeThatFits:CGSizeMake(width - 2 * side, CGFLOAT_MAX)];
     CGFloat height = top + ceil(fit.height) + 10;
@@ -2355,7 +2356,7 @@ static NSString *wq_info_date(struct timespec ts)
                 [self updateHeader];
                 return;
             }
-            self->_all = items;
+            if (!WQSilentRefresh() || names || childPaths != nil) self->_all = items;
             [self applyFilter];
             [self countChildrenOf:items generation:generation cancellation:cancellation];
             self->_error = (names || childPaths != nil) ? nil
@@ -2363,6 +2364,7 @@ static NSString *wq_info_date(struct timespec ts)
                    : !wq_app_group() ? WQLocalized(@"WQ Files has no App Group, so it can't open other apps' folders. Re-sign it with a tool that keeps the App Group (see Signing in the README).")
                    : wq_full_scan_was_declined() ? WQLocalized(@"Not listed yet: this needs a scan of all files. Pull down to start it.")
                    : WQLocalized(@"Cannot list this folder. Container enumeration failed; see Log."));
+            if (WQSilentRefresh() && self->_error) { wq_log(@"refresh.internal: %@", self->_error); self->_error = nil; }
             self->_scanStatus = nil;
             self->_lastReloadFinished = NSDate.date.timeIntervalSinceReferenceDate;
             [self.refreshControl endRefreshing];
@@ -3414,7 +3416,7 @@ static NSString *const kSystemGroupRoot = @"/private/var/containers/Shared/Syste
 {
     [super viewDidLoad];
     self.title = WQLocalizedNullable(@"Recently Deleted");
-    self.refreshControl = [UIRefreshControl new];
+    self.refreshControl = WQSilentRefresh() ? nil : [UIRefreshControl new];
     [self.refreshControl addTarget:self action:@selector(load) forControlEvents:UIControlEventValueChanged];
     [self load];
 }
@@ -4900,6 +4902,7 @@ static void wq_apply_design(void);
     [self rebuildLocations];
     [self rebuildContainers];
     [self rebuildSystem];
+    if (WQSilentRefresh()) { wq_log(@"refresh.internal: health outcome=%ld", (long)wq_health_worst(checks)); _pendingHealthFailure = nil; return; }
     WQHealthState worst = wq_health_worst(checks);
     if (worst >= WQHealthFailed) _pendingHealthFailure = checks;
     [self updateHealthUI];
@@ -4912,6 +4915,7 @@ static void wq_apply_design(void);
 
 - (void)updateHealthUI
 {
+    if (WQSilentRefresh()) { _statusPill.hidden = YES; _quickButton.hidden = YES; return; }
     UIColor *tint = UIColor.systemGreenColor;
     if (_checkingAccess) {
         tint = UIColor.systemOrangeColor;
@@ -4949,6 +4953,7 @@ static void wq_apply_design(void);
 
 - (void)presentPendingHealthFailure
 {
+    if (WQSilentRefresh()) return;
     NSArray<WQHealthCheck *> *checks = _pendingHealthFailure;
     if (!checks) return;
     if (![self healthFailureCanPresent]) {
@@ -5457,7 +5462,7 @@ static NSString *const kWQTroubleshootingFooter =
     [spinner sizeToFit];
     [spinner startAnimating];
     spinner.accessibilityLabel = WQLocalized(@"Checking access…");
-    self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithCustomView:spinner];
+    if (!WQSilentRefresh()) self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithCustomView:spinner];
     dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
         NSArray<WQHealthCheck *> *checks = wq_health_run(nil);
         dispatch_async(dispatch_get_main_queue(), ^{ [self healthCheckFinished:checks]; });
@@ -5470,6 +5475,7 @@ static NSString *const kWQTroubleshootingFooter =
     self.navigationItem.rightBarButtonItem = nil;
     [self rebuildLocations];   // App Bundles depends on the result
     [self.tableView reloadData];
+    if (WQSilentRefresh()) { wq_log(@"refresh.internal: health outcome=%ld", (long)wq_health_worst(checks)); _pendingHealthFailure = nil; return; }
     WQHealthState worst = wq_health_worst(checks);
     if (worst < WQHealthFailed) [self reopenLastFolder];
     else _reopenFolder = nil;
@@ -5573,6 +5579,7 @@ static NSString *const kWQTroubleshootingFooter =
 
 - (void)presentPendingHealthFailure
 {
+    if (WQSilentRefresh()) return;
     NSArray<WQHealthCheck *> *checks = _pendingHealthFailure;
     if (!checks) return;
     if (![self healthFailureCanPresent]) {

@@ -1,16 +1,15 @@
-// 3105 presentation adapter. All mutable UI state is confined to the main queue.
-// No container access, parser, scan algorithm or cache format is changed here.
+// Internal refresh coordination only. No UI publication, permission prompts,
+// authorization writes or background execution entitlement.
 static NSString *const WQScanConsentKey = @"3105.WQScanConsent.v1";
 static NSString *const WQScanRunningKey = @"3105.WQScanRunning.v1";
 static NSMutableDictionary *WQScanState;
 static BOOL WQScanStopped;
 static BOOL WQScanBusy;
-static BOOL WQScanDeferredRetry;
 static BOOL WQScanNeedsRetry;
+static BOOL WQScanForeground;
+static BOOL WQScanTransient;
 
-static void WQScanPublish(void) {
-    [NSNotificationCenter.defaultCenter postNotificationName:@"WQScanPresentationChanged" object:nil];
-}
+BOOL WQInternalRefreshEnabled(void) { return YES; }
 static NSString *WQScanScope(NSString *what) {
     return [NSString stringWithFormat:@"%ld:%@", (long)NSProcessInfo.processInfo.operatingSystemVersion.majorVersion, what];
 }
@@ -21,98 +20,69 @@ static BOOL WQScanConsentValid(NSDictionary *consent, int64_t ids, NSDate *now) 
         ids > 0 && approved > 0 && (double)ids <= (double)approved * 1.5;
 }
 NSDictionary *WQIntegratedScanState(void) {
-    NSCAssert(NSThread.isMainThread, @"UI state requires main queue");
-    return [WQScanState copy] ?: @{};
+    @synchronized (WQScanConsentKey) { return [WQScanState copy] ?: @{}; }
 }
 void WQIntegratedScanCancel(void) {
-    NSCAssert(NSThread.isMainThread, @"UI action requires main queue");
-    WQScanStopped = YES;
-    WQScanDeferredRetry = NO;
+    @synchronized (WQScanConsentKey) {
+        WQScanStopped = YES;
+        WQScanState[@"status"] = @"stopped";
+        [NSUserDefaults.standardUserDefaults removeObjectForKey:WQScanRunningKey];
+    }
     wq_full_scan_stop();
-    WQScanState[@"status"] = @"stopped";
-    [NSUserDefaults.standardUserDefaults removeObjectForKey:WQScanRunningKey];
-    WQScanPublish();
+    wq_log(@"refresh.internal: cancelled; cached results retained");
 }
 void WQIntegratedPrepareRefresh(void) {
-    NSCAssert(!NSThread.isMainThread, @"Refresh preparation requires worker queue");
-    __block BOOL retry;
-    dispatch_sync(dispatch_get_main_queue(), ^{ retry = WQScanNeedsRetry; WQScanNeedsRetry = NO; });
-    if (retry) wq_enumerate_invalidate();
+    BOOL retry;
+    @synchronized (WQScanConsentKey) { retry = WQScanNeedsRetry; WQScanNeedsRetry = NO; }
+    if (retry) wq_enumerate_invalidate(); // original cache lifecycle, no cache deletion
 }
 BOOL WQIntegratedBeginRefresh(void) {
-    NSCAssert(NSThread.isMainThread, @"UI action requires main queue");
-    if (WQScanBusy) return NO;
-    if ([WQScanState[@"status"] isEqual:@"stopped"]) WQScanNeedsRetry = YES;
-    WQScanBusy = YES;
-    WQScanStopped = NO;
-    WQScanState[@"refreshing"] = @YES;
-    WQScanPublish();
-    return YES;
-}
-void WQIntegratedEndRefresh(void) {
-    WQScanBusy = NO;
-    WQScanState[@"refreshing"] = @NO;
-    WQScanPublish();
-    if (WQScanDeferredRetry && UIApplication.sharedApplication.applicationState == UIApplicationStateActive) {
-        WQScanDeferredRetry = NO;
-        [NSNotificationCenter.defaultCenter postNotificationName:@"WQScanRetryRequested" object:nil];
+    @synchronized (WQScanConsentKey) {
+        if (WQScanBusy || !WQScanForeground) return NO;
+        if ([WQScanState[@"status"] isEqual:@"stopped"]) WQScanNeedsRetry = YES;
+        WQScanBusy = YES; WQScanStopped = NO; WQScanTransient = NO;
+        WQScanState[@"status"] = @"idle";
+        return YES;
     }
 }
-void WQIntegratedScanAuthorize(void) {
-    NSCAssert(NSThread.isMainThread, @"UI action requires main queue");
-    if (![WQScanState[@"status"] isEqual:@"permission"]) return;
-    NSMutableDictionary *consents = [[NSUserDefaults.standardUserDefaults dictionaryForKey:WQScanConsentKey] mutableCopy] ?: [NSMutableDictionary new];
-    consents[WQScanScope(WQScanState[@"scope"])] = @{
-        @"ids": WQScanState[@"total"], @"until": [NSDate dateWithTimeIntervalSinceNow:7 * 86400]
-    };
-    [NSUserDefaults.standardUserDefaults setObject:consents forKey:WQScanConsentKey];
-    WQScanState[@"status"] = @"ready";
-    WQScanStopped = NO;
-    WQScanDeferredRetry = YES;
-    WQScanNeedsRetry = YES;
-    WQScanPublish();
-    if (!WQScanBusy) WQIntegratedEndRefresh();
+void WQIntegratedEndRefresh(void) {
+    @synchronized (WQScanConsentKey) { WQScanBusy = NO; }
 }
-
-// Returns immediately after a short main-queue state update. Never waits for
-// user input. A declined attempt unwinds through wq_full_scan_begin's gate.
+void WQIntegratedScanAuthorize(void) {
+    // Retained for binary/source compatibility only; automatic refresh cannot grant consent.
+    wq_log(@"refresh.internal: new authorization required; automatic grant refused");
+}
+NSTimeInterval WQIntegratedRefreshRetryDelay(NSUInteger attempt, BOOL transient) {
+    const NSTimeInterval delays[] = {2, 8, 30};
+    return transient && attempt < 3 ? delays[attempt] : -1;
+}
+BOOL WQIntegratedRefreshHadTransientError(void) {
+    @synchronized (WQScanConsentKey) { return WQScanTransient; }
+}
+static void WQRefreshRecordError(int code) {
+    if (code == EINTR || code == EAGAIN || code == EBUSY || code == ETIMEDOUT) {
+        @synchronized (WQScanConsentKey) { WQScanTransient = YES; }
+    }
+    if (code) wq_log(@"refresh.internal: source errno=%d", code);
+}
 static BOOL WQScanConfirmPresentation(NSString *what, int64_t ids, double seconds) {
-    if (NSThread.isMainThread) return NO;
-    __block BOOL allowed = NO;
-    dispatch_sync(dispatch_get_main_queue(), ^{
-        if (WQScanStopped || UIApplication.sharedApplication.applicationState != UIApplicationStateActive) return;
+    if (NSThread.isMainThread || !wq_app_group()) return NO;
+    @synchronized (WQScanConsentKey) {
         NSDictionary *consent = [NSUserDefaults.standardUserDefaults dictionaryForKey:WQScanConsentKey][WQScanScope(what)];
-        allowed = WQScanConsentValid(consent, ids, NSDate.date);
-        // Keep the first pending scope visible until the user decides.
-        if ([WQScanState[@"status"] isEqual:@"permission"]) { allowed = NO; return; }
-        WQScanState[@"scope"] = what;
-        WQScanState[@"total"] = @(ids);
-        WQScanState[@"done"] = @0;
-        WQScanState[@"seconds"] = @(seconds);
-        WQScanState[@"status"] = allowed ? @"running" : @"permission";
+        BOOL allowed = !WQScanStopped && WQScanForeground && WQScanConsentValid(consent, ids, NSDate.date);
+        WQScanState[@"status"] = allowed ? @"running" : @"blocked";
         if (allowed) [NSUserDefaults.standardUserDefaults setObject:what forKey:WQScanRunningKey];
-        WQScanPublish();
-    });
-    return allowed;
+        wq_log(@"refresh.internal: scope=%@ full scan %@ (ids=%lld)", what, allowed ? @"previously authorized" : @"skipped: permission/scope/foreground", ids);
+        return allowed;
+    }
 }
 static void WQScanProgressPresentation(int64_t done, int64_t total, BOOL finished) {
-    // The engine may call concurrently. Throttle updates before enqueuing UI work.
-    static CFAbsoluteTime last;
     @synchronized (WQScanConsentKey) {
-        CFAbsoluteTime now = CFAbsoluteTimeGetCurrent();
-        if (!finished && now - last < 0.25) return;
-        last = now;
-        dispatch_async(dispatch_get_main_queue(), ^{
-            if (WQScanStopped) wq_full_scan_stop();
-            if (finished) {
-                [NSUserDefaults.standardUserDefaults removeObjectForKey:WQScanRunningKey];
-                if (!WQScanStopped) WQScanState[@"status"] = @"complete";
-            } else if (!WQScanStopped) {
-                WQScanState[@"done"] = @(done);
-                WQScanState[@"total"] = @(total);
-            }
-            WQScanPublish();
-        });
+        if (finished) {
+            [NSUserDefaults.standardUserDefaults removeObjectForKey:WQScanRunningKey];
+            if (!WQScanStopped) WQScanState[@"status"] = @"complete";
+            wq_log(@"refresh.internal: scan finished (cancelled=%d)", WQScanStopped);
+        }
     }
 }
 static void WQScanRestorePresentationState(void) {
@@ -120,12 +90,18 @@ static void WQScanRestorePresentationState(void) {
     if ([NSUserDefaults.standardUserDefaults objectForKey:WQScanRunningKey]) {
         WQScanState[@"status"] = @"stopped";
         [NSUserDefaults.standardUserDefaults removeObjectForKey:WQScanRunningKey];
+        wq_log(@"refresh.internal: interrupted operation recovered; valid cache retained");
     }
 }
 static void WQScanInitializePresentation(void) {
     WQScanRestorePresentationState();
+    WQScanForeground = UIApplication.sharedApplication.applicationState == UIApplicationStateActive;
+    [NSNotificationCenter.defaultCenter addObserverForName:UIApplicationDidBecomeActiveNotification object:nil queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *note) {
+        @synchronized (WQScanConsentKey) { WQScanForeground = YES; }
+    }];
     [NSNotificationCenter.defaultCenter addObserverForName:UIApplicationDidEnterBackgroundNotification object:nil queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *note) {
-        if (WQScanBusy || [WQScanState[@"status"] isEqual:@"running"]) WQIntegratedScanCancel();
+        @synchronized (WQScanConsentKey) { WQScanForeground = NO; }
+        WQIntegratedScanCancel();
     }];
     wq_set_full_scan_ui(WQScanConfirmPresentation, WQScanProgressPresentation);
 }
@@ -155,6 +131,9 @@ BOOL WQScanConsentPolicyTests(void) {
     else [defaults removeObjectForKey:WQScanConsentKey];
     if (oldMarker) [defaults setObject:oldMarker forKey:WQScanRunningKey];
     else [defaults removeObjectForKey:WQScanRunningKey];
-    return policy && recovered;
+    BOOL backoff = WQIntegratedRefreshRetryDelay(0, YES) == 2 &&
+        WQIntegratedRefreshRetryDelay(1, YES) == 8 && WQIntegratedRefreshRetryDelay(2, YES) == 30 &&
+        WQIntegratedRefreshRetryDelay(3, YES) < 0 && WQIntegratedRefreshRetryDelay(0, NO) < 0;
+    return policy && recovered && backoff;
 }
 #endif

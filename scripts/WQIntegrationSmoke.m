@@ -5,6 +5,13 @@
 #import "WQArchive.h"
 extern BOOL WQScanConsentPolicyTests(void);
 
+static BOOL HasRefreshChrome(UIView *view) {
+    if (view.hidden || view.alpha == 0) return NO;
+    if ([view isKindOfClass:UIProgressView.class] || [view isKindOfClass:UIActivityIndicatorView.class] || [view isKindOfClass:UIRefreshControl.class]) return YES;
+    for (UIView *child in view.subviews) if (HasRefreshChrome(child)) return YES;
+    return NO;
+}
+
 @interface WQSmokeScene : UIResponder <UIWindowSceneDelegate>
 @property(nonatomic, strong) UIWindow *window;
 @end
@@ -54,6 +61,10 @@ extern BOOL WQScanConsentPolicyTests(void);
             BOOL lifecycle = refreshOwned && duplicateRejected && stopped && reusable;
             [checks addObject:@{ @"scanRefreshOwnershipCancelAndReuse": @(lifecycle) }];
             ok &= lifecycle;
+            BOOL silent = !HasRefreshChrome(self.window.rootViewController.view) &&
+                self.window.rootViewController.presentedViewController == nil;
+            [checks addObject:@{ @"noRefreshControlsOrModalInEmbeddedHost": @(silent) }];
+            ok &= silent;
             BOOL hosted = self.window.rootViewController.childViewControllers.count == 1;
             [checks addObject:@{ @"embeddedUIKitRoot": @(hosted) }];
             NSDictionary *report = @{ @"passed": @(ok && hosted), @"checks": checks,
