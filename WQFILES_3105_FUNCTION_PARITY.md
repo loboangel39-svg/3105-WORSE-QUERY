@@ -38,3 +38,39 @@
 
 No se encontró evidencia suficiente para afirmar que una función WQFiles de
 edición/backup haya sido necesaria para Bundle ID recognition.
+
+## Inventario público restante de `WQAccess.h`
+
+Para evitar que “no relacionado con Bundle ID” oculte una operación de acceso,
+se enumeran explícitamente las APIs restantes:
+
+| Símbolos | Clasificación en 3105 | Razón |
+|---|---|---|
+| `wq_log`, `wq_log_text` | Omitida | 3105 usa su logger; no cambia autorización |
+| `wq_file_version`, `wq_write*`, `wq_backup_local_copy`, `wq_create_file_from`, `wq_copy_to_local` | Omitida | mutación/backup, no identificación |
+| `wq_permission_hint` | Omitida | explicación de permisos POSIX para edición |
+| `wq_read_range` | Omitida | visor/editor de bytes |
+| `wq_patch*` | Omitida | Patches de WQFiles; 3105 conserva su motor |
+| `wq_create_file`, `wq_create_dir` | Omitida | operaciones de escritura |
+| `wq_item_identity`, `wq_identity_for_stat` | Parcial | 3105 usa `stat`/metadata, no el contrato fd-relative de WQFiles |
+| `wq_delete*`, `wq_is_protected_folder`, `wq_tree_count` | Omitida | delete/Recently Deleted |
+| `wq_backup_unit_deletable`, `wq_delete_backup`, `wq_backup_root`, `wq_app_backup_root`, `wq_backup_original_path`, `wq_is_backup_storage_path` | Omitida | almacenamiento de backup |
+| `wq_rename*`, `wq_move*` | Omitida | mutación de Files |
+| `wq_measure_tree` | Omitida | Cache Cleaner/tamaño, depende de grants |
+| `wq_purge_contents*` | Omitida | limpieza, depende de safe fd operations |
+| `wq_copy_contents`, `wq_copy_tree_new` | Omitida | copia/restore, depende de grants |
+
+El inventario confirma que estas funciones existen en WQFiles, pero ninguna se
+ejecuta en el camino de reconocimiento de Bundle IDs de 3105. Su ausencia no se
+presenta como compatibilidad parcial del parser; se clasifica como exclusión
+funcional deliberada.
+
+## Helpers privados de acceso inventariados
+
+También se revisaron `wq_query`, `wq_release_handle`, `wq_grant_opens`,
+`wq_open`, `wq_open_directory_flags`, `wq_volume_max_inode`,
+`wq_scan_children`, `wq_scan_cache_load/save`, `wq_scan_verify`,
+`wq_shared_scan_setup`, `wq_full_scan_acquire/end`,
+`wq_label_identity/matches`, `wq_container_identifier_lookup` y las funciones
+de recuperación `WQCacheSwapBegin/Recover/Reset`. No existe equivalente completo
+en 3105; los equivalentes parciales están señalados en la matriz principal.
