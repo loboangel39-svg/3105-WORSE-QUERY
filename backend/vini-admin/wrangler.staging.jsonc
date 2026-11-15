@@ -1,0 +1,8 @@
+{
+  "name": "vini-admin-plans-staging",
+  "main": "dist/worker.mjs",
+  "compatibility_date": "2026-09-01",
+  "workers_dev": false,
+  "d1_databases": [{"binding":"DB", "database_name":"vini-admin-local-staging", "database_id":"00000000-0000-0000-0000-000000000001", "migrations_dir":"migrations"}],
+  "r2_buckets": [{"binding":"R2", "bucket_name":"vini-admin-local-staging"}]
+}
