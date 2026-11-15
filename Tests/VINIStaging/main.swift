@@ -3,6 +3,15 @@ import CryptoKit
 
 // Host adapter for the existing platform logger, not the transaction engine.
 func log(_ message: String) { print(message) }
+// macOS binding of the existing read-only service method. Real journal/filesystem,
+// no container enumeration, no nil stub and no replacement transaction implementation.
+enum DevicePatchService {
+    static func latestReceipt(projectID: UUID) -> PatchTransactionReceipt? {
+        guard let root = try? PatchProjectLibrary.backupRootURL() else { return nil }
+        return PatchTransaction.latestReceipt(projectID:projectID,backupRoot:root)
+    }
+}
+
 
 final class MemoryVault: VINIStagingVault {
     var value: VINIStagingCredentials?
