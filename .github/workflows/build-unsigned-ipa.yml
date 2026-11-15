@@ -2,6 +2,12 @@ name: Build unsigned 3105 IPA
 
 on:
   workflow_dispatch:
+    inputs:
+      configuration:
+        description: Xcode configuration to build
+        required: false
+        default: Release
+        type: string
 
 permissions:
   contents: read
@@ -54,11 +60,19 @@ jobs:
       - name: Validate source before build
         shell: bash
         run: |
-          set -euo pipefail
-          git diff --check
+           set -euo pipefail
+           CONFIGURATION="${{ inputs.configuration || 'Release' }}"
+           test "$CONFIGURATION" = Release || test "$CONFIGURATION" = ExperimentalRelease
+           echo "CONFIGURATION=$CONFIGURATION" >> "$GITHUB_ENV"
+           git diff --check
           test "$(grep -c 'PRODUCT_BUNDLE_IDENTIFIER = "com.apple.mobile.MobileHouseArrest";' ThreeOneOSFive.xcodeproj/project.pbxproj)" -eq 2
           test "$(grep -c 'IPHONEOS_DEPLOYMENT_TARGET = 16.0;' ThreeOneOSFive.xcodeproj/project.pbxproj)" -ge 2
-          test "$(grep -c 'CODE_SIGN_ENTITLEMENTS = "";' ThreeOneOSFive.xcodeproj/project.pbxproj)" -eq 2
+           if [ "$CONFIGURATION" = "ExperimentalRelease" ]; then
+             grep -q 'CODE_SIGN_ENTITLEMENTS = "ThreeOneOSFive/3105-Experimental.entitlements";' ThreeOneOSFive.xcodeproj/project.pbxproj
+             grep -q 'group.pigtjing.top' ThreeOneOSFive/3105-Experimental.entitlements
+           else
+             test "$(grep -c 'CODE_SIGN_ENTITLEMENTS = "";' ThreeOneOSFive.xcodeproj/project.pbxproj)" -eq 2
+           fi
            grep -q 'ContainerAccessCoordinator.swift in Sources' ThreeOneOSFive.xcodeproj/project.pbxproj
            grep -q 'WQFilesIdentityResolver.swift in Sources' ThreeOneOSFive.xcodeproj/project.pbxproj
            grep -q 'worse_query_adapter.m in Sources' ThreeOneOSFive.xcodeproj/project.pbxproj
@@ -73,7 +87,7 @@ jobs:
             -project ThreeOneOSFive.xcodeproj \
             -scheme "$SCHEME" \
             -sdk iphoneos \
-            -configuration Release \
+             -configuration "$CONFIGURATION" \
             -destination 'generic/platform=iOS' \
             -derivedDataPath build/DerivedData \
             CONFIGURATION_BUILD_DIR="$PWD/build/Products/Release" \
@@ -106,7 +120,7 @@ jobs:
             echo "- Xcode: $(xcodebuild -version | tr '\n' ' ')"
             echo "- Scheme: $SCHEME"
             echo '- SDK: iphoneos'
-            echo '- Configuration: Release'
+             echo "- Configuration: $CONFIGURATION"
             echo '- Architecture: arm64'
             echo '- Signing: disabled for build; IPA is unsigned'
             echo '- Bundle ID: com.apple.mobile.MobileHouseArrest'
