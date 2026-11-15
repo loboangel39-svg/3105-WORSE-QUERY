@@ -3708,7 +3708,7 @@ static UIImage *wq_language_flag(NSString *code)
         // row per language.
         NSMutableArray *codes = [NSMutableArray new];
         NSMutableSet *seen = [NSMutableSet new];
-        for (NSString *code in NSBundle.mainBundle.localizations) {
+        for (NSString *code in ([NSBundle bundleWithPath:[NSBundle.mainBundle pathForResource:@"WQFilesResources" ofType:@"bundle"]] ?: NSBundle.mainBundle).localizations) {
             NSString *canonical = [NSLocale canonicalLanguageIdentifierFromString:code];
             if ([code isEqualToString:@"Base"] || [seen containsObject:canonical]) continue;
             [seen addObject:canonical];
