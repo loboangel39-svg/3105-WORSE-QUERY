@@ -1,4 +1,9 @@
 #import "WQRefreshPolicy.h"
+#ifndef WQ_EMBEDDED_HOST
+// Standalone WQFiles retains its original presentation and no internal retry adapter.
+BOOL WQInternalRefreshEnabled(void) { return NO; }
+void WQInternalRefreshRetry(id __unused owner, SEL __unused action, int __unused errorCode) {}
+#endif
 //
 //  main.m
 //  WQ Files

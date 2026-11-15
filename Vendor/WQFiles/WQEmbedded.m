@@ -1,3 +1,4 @@
+#define WQ_EMBEDDED_HOST 1
 #define main WQStandaloneMain
 #include "main.m"
 #undef main

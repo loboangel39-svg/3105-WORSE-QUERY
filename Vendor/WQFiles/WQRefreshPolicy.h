@@ -1,9 +1,9 @@
 #import <Foundation/Foundation.h>
-extern BOOL WQInternalRefreshEnabled(void) __attribute__((weak_import));
+extern BOOL WQInternalRefreshEnabled(void);
 static inline BOOL WQSilentRefresh(void) {
-    return WQInternalRefreshEnabled && WQInternalRefreshEnabled();
+    return WQInternalRefreshEnabled();
 }
-extern void WQInternalRefreshRetry(id owner, SEL action, int errorCode) __attribute__((weak_import));
+extern void WQInternalRefreshRetry(id owner, SEL action, int errorCode);
 static inline void WQRetryInternal(id owner, SEL action, int errorCode) {
-    if (WQSilentRefresh() && WQInternalRefreshRetry) WQInternalRefreshRetry(owner, action, errorCode);
+    if (WQSilentRefresh()) WQInternalRefreshRetry(owner, action, errorCode);
 }
