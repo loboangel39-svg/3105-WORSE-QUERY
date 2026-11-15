@@ -115,12 +115,15 @@ static void WQScanProgressPresentation(int64_t done, int64_t total, BOOL finishe
         });
     }
 }
-static void WQScanInitializePresentation(void) {
+static void WQScanRestorePresentationState(void) {
     WQScanState = [NSMutableDictionary new];
     if ([NSUserDefaults.standardUserDefaults objectForKey:WQScanRunningKey]) {
         WQScanState[@"status"] = @"stopped";
         [NSUserDefaults.standardUserDefaults removeObjectForKey:WQScanRunningKey];
     }
+}
+static void WQScanInitializePresentation(void) {
+    WQScanRestorePresentationState();
     [NSNotificationCenter.defaultCenter addObserverForName:UIApplicationDidEnterBackgroundNotification object:nil queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *note) {
         if (WQScanBusy || [WQScanState[@"status"] isEqual:@"running"]) WQIntegratedScanCancel();
     }];
@@ -132,10 +135,26 @@ BOOL WQScanConsentPolicyTests(void) {
     NSDate *now = NSDate.date;
     NSDictionary *valid = @{ @"ids": @1000, @"until": [now dateByAddingTimeInterval:60] };
     NSDictionary *expired = @{ @"ids": @1000, @"until": [now dateByAddingTimeInterval:-1] };
-    return !WQScanConsentValid(nil, 1000, now) &&
+    BOOL policy = !WQScanConsentValid(nil, 1000, now) &&
         WQScanConsentValid(valid, 1000, now) && WQScanConsentValid(valid, 1500, now) &&
         !WQScanConsentValid(valid, 1501, now) && !WQScanConsentValid(expired, 1000, now) &&
         !WQScanConsentValid(valid, 0, now) &&
         ![WQScanScope(@"Internal Daemons") isEqual:WQScanScope(@"System")];
+    NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
+    NSDictionary *oldConsent = [defaults dictionaryForKey:WQScanConsentKey];
+    id oldMarker = [defaults objectForKey:WQScanRunningKey];
+    NSMutableDictionary *oldState = WQScanState;
+    [defaults setObject:@{ WQScanScope(@"test"): valid } forKey:WQScanConsentKey];
+    [defaults setObject:@"interrupted-test" forKey:WQScanRunningKey];
+    WQScanRestorePresentationState();
+    BOOL recovered = [WQScanState[@"status"] isEqual:@"stopped"] &&
+        ![defaults objectForKey:WQScanRunningKey] &&
+        WQScanConsentValid([defaults dictionaryForKey:WQScanConsentKey][WQScanScope(@"test")], 1000, now);
+    WQScanState = oldState;
+    if (oldConsent) [defaults setObject:oldConsent forKey:WQScanConsentKey];
+    else [defaults removeObjectForKey:WQScanConsentKey];
+    if (oldMarker) [defaults setObject:oldMarker forKey:WQScanRunningKey];
+    else [defaults removeObjectForKey:WQScanRunningKey];
+    return policy && recovered;
 }
 #endif
