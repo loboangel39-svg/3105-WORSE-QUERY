@@ -42,7 +42,7 @@ python3 - "$DEVICE" <<'PY'
 import subprocess,sys
 # Boot returns a nonzero status if the simulator was already booted.
 subprocess.run(['xcrun','simctl','boot',sys.argv[1]], timeout=120)
-subprocess.run(['xcrun','simctl','bootstatus',sys.argv[1],'-b'], timeout=180, check=True)
+subprocess.run(['xcrun','simctl','bootstatus',sys.argv[1],'-b'], timeout=420, check=True)
 PY
 xcrun simctl install "$DEVICE" "$APP"
 python3 - "$DEVICE" <<'PY'
