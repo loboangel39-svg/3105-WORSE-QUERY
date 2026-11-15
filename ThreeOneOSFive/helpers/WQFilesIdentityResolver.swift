@@ -122,18 +122,24 @@ enum WQFilesIdentityResolver {
             guard let attributes = try? FileManager.default.attributesOfItem(atPath: url.path),
                   let size = (attributes[.size] as? NSNumber)?.uint64Value,
                   size >= 4 * 1024, size <= 64 * 1024 * 1024 else {
+                log("wqfiles: read attempted=\(url.lastPathComponent) read status=unavailable category=access_denied")
                 lastState = "access_denied"
                 continue
             }
+            log("wqfiles: read attempted=\(url.lastPathComponent) read status=started")
             guard let before = try? FileManager.default.attributesOfItem(atPath: url.path),
                   let data = try? Data(contentsOf: url, options: .mappedIfSafe),
                   let after = try? FileManager.default.attributesOfItem(atPath: url.path),
                   sameFile(before, after) else {
+                log("wqfiles: read attempted=\(url.lastPathComponent) read status=failed category=read_failed")
                 lastState = "read_failed"
                 continue
             }
 
+            log("wqfiles: read status=success bytes=\(data.count)")
+            log("wqfiles: parser started source=CSStore2")
             let parsed = parse(data: data)
+            log("wqfiles: parser completed state=\(parsed.state) records=\(parsed.recordsProcessed) rejected=\(parsed.recordsRejected) matches=\(parsed.identities.count)")
             lastState = parsed.state
             lastRecords = parsed.recordsProcessed
             lastRejected = parsed.recordsRejected
@@ -179,6 +185,9 @@ enum WQFilesIdentityResolver {
         var error: NSString?
         if let lsd = MCMActivateContainerPath(10, "com.apple.lsd", false, &error) {
             add((lsd as NSString).appendingPathComponent("Library/Caches"))
+            log("wqfiles: source origin=mcm_lsd_container status=available")
+        } else {
+            log("wqfiles: source origin=mcm_lsd_container status=unavailable category=access_denied")
         }
         // WQFiles remembers the exact store after locating it. Reuse only that
         // path if it is already available to this process; do not discover or
@@ -186,6 +195,9 @@ enum WQFilesIdentityResolver {
         if let remembered = UserDefaults.standard.string(forKey: "WQLaunchServicesStore"),
            remembered.hasSuffix(".csstore") {
             directStores.append(URL(fileURLWithPath: ContainerDiscoveryMerger.canonicalPath(remembered)))
+            log("wqfiles: source origin=persisted_store status=configured")
+        } else {
+            log("wqfiles: source origin=persisted_store status=not_configured")
         }
         add("/var/db/lsd")
         add("/var/mobile/Library/Caches")
@@ -195,8 +207,10 @@ enum WQFilesIdentityResolver {
         for root in cacheRoots {
             guard let names = try? FileManager.default.contentsOfDirectory(atPath: root) else {
                 inaccessibleRoots += 1
+                log("wqfiles: source origin=cache_root status=inaccessible category=access_denied")
                 continue
             }
+            log("wqfiles: source origin=cache_root status=readable entries=\(names.count)")
             // WQFiles accepts every LaunchServices CSStore suffix. The
             // suffix is not stable across iOS 27 point releases.
             for name in names where name.hasPrefix("com.apple.LaunchServices-") && name.hasSuffix(".csstore") {
@@ -207,6 +221,7 @@ enum WQFilesIdentityResolver {
         var unique: [URL] = []
         var paths = Set<String>()
         for url in result where paths.insert(url.path).inserted { unique.append(url) }
+        log("wqfiles: source status=inventory roots=\(cacheRoots.count) inaccessible=\(inaccessibleRoots) candidates=\(unique.count)")
         return SourceInventory(stores: unique.sorted { $0.path < $1.path }, rootsChecked: cacheRoots.count, inaccessibleRoots: inaccessibleRoots)
     }
 

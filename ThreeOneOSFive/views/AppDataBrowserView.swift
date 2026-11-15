@@ -435,6 +435,7 @@ struct AppDataBrowserView: View {
                 apps = result
                 isLoading = false
                 isResolving = false
+                log("wqfiles: files displayed=\(result.count)")
                 if result.isEmpty {
                     errorMessage = emptyMessage
                 }
