@@ -77,6 +77,9 @@ static BOOL WQScanConfirmPresentation(NSString *what, int64_t ids, double second
     }
 }
 static void WQScanProgressPresentation(int64_t done, int64_t total, BOOL finished) {
+    BOOL stop;
+    @synchronized (WQScanConsentKey) { stop = WQScanStopped; }
+    if (stop) wq_full_scan_stop();
     @synchronized (WQScanConsentKey) {
         if (finished) {
             [NSUserDefaults.standardUserDefaults removeObjectForKey:WQScanRunningKey];
@@ -101,7 +104,7 @@ static void WQScanInitializePresentation(void) {
     }];
     [NSNotificationCenter.defaultCenter addObserverForName:UIApplicationDidEnterBackgroundNotification object:nil queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *note) {
         @synchronized (WQScanConsentKey) { WQScanForeground = NO; }
-        WQIntegratedScanCancel();
+        if (WQScanBusy || [WQIntegratedScanState()[@"status"] isEqual:@"running"]) WQIntegratedScanCancel();
     }];
     wq_set_full_scan_ui(WQScanConfirmPresentation, WQScanProgressPresentation);
 }
@@ -137,3 +140,28 @@ BOOL WQScanConsentPolicyTests(void) {
     return policy && recovered && backoff;
 }
 #endif
+
+// Native screens retain their original worker and cache logic. Only retry
+// ownership/delay is added here, with weak lifetime and a foreground check.
+void WQInternalRefreshRetry(id owner, SEL action, int errorCode) {
+    NSCAssert(NSThread.isMainThread, @"Retry scheduling requires main queue");
+    static char retryKey;
+    BOOL transient = errorCode == EINTR || errorCode == EAGAIN || errorCode == EBUSY || errorCode == ETIMEDOUT;
+    NSMutableDictionary *state = objc_getAssociatedObject(owner, &retryKey);
+    if (!state) { state = [@{ @"attempt": @0, @"pending": @NO } mutableCopy]; objc_setAssociatedObject(owner, &retryKey, state, OBJC_ASSOCIATION_RETAIN_NONATOMIC); }
+    if ([state[@"pending"] boolValue]) return;
+    if (!errorCode) { state[@"attempt"] = @0; return; }
+    NSTimeInterval delay = WQIntegratedRefreshRetryDelay([state[@"attempt"] unsignedIntegerValue], transient);
+    if (delay < 0) { wq_log(@"refresh.internal: native retry stopped errno=%d", errorCode); return; }
+    state[@"attempt"] = @([state[@"attempt"] unsignedIntegerValue] + 1);
+    state[@"pending"] = @YES;
+    __weak id weakOwner = owner;
+    wq_log(@"refresh.internal: native transient errno=%d retry in %.0fs", errorCode, delay);
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(delay * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        state[@"pending"] = @NO;
+        id target = weakOwner;
+        if (!target || UIApplication.sharedApplication.applicationState != UIApplicationStateActive) return;
+        if ([target isKindOfClass:UIViewController.class] && !((UIViewController *)target).viewIfLoaded.window) return;
+        if ([target respondsToSelector:action]) ((void (*)(id, SEL))[target methodForSelector:action])(target, action);
+    });
+}

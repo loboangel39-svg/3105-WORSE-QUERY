@@ -808,6 +808,7 @@ static void WQAppScanWatch(WQScanCancellation *cancellation, NSUInteger lastSeri
         [apps sortUsingComparator:^NSComparisonResult(WQAppItem *a, WQAppItem *b) {
             return a.bytes > b.bytes ? NSOrderedAscending : (a.bytes < b.bytes ? NSOrderedDescending : NSOrderedSame);
         }];
+        int refreshError = containers ? 0 : errno;
         NSString *note = nil;
         if (!wq_app_group()) note = WQLocalized(@"WQ Files has no App Group, so it can't open other apps' folders. Re-sign it with a tool that keeps the App Group (see Signing in the README).");
         else if (!containers && wq_full_scan_was_declined()) note = WQLocalized(@"Apps aren't listed yet: this needs a scan of all files. Pull down to start it.");
@@ -818,6 +819,7 @@ static void WQAppScanWatch(WQScanCancellation *cancellation, NSUInteger lastSeri
             if (generation != self->_scanGeneration || cancellation.isCancelled) return;
             self->_scanning = NO;
             self->_lastScanFinished = NSDate.date.timeIntervalSinceReferenceDate;
+            WQRetryInternal(self, @selector(scan), refreshError);
             if (!WQSilentRefresh() || containers) self->_apps = apps;
             [self rebuildVisibleApps];
             [self.refreshControl endRefreshing];

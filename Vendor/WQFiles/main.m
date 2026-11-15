@@ -2178,6 +2178,7 @@ static NSString *wq_info_date(struct timespec ts)
 
 - (void)reload
 {
+    if (WQSilentRefresh() && _scanInFlight) return;
     [_scanCancellation cancel];
     WQScanCancellation *cancellation = [WQScanCancellation new];
     _scanCancellation = cancellation;
@@ -2201,6 +2202,7 @@ static NSString *wq_info_date(struct timespec ts)
     dispatch_async(wq_io(), ^{
         NSString *error = nil;
         NSArray *names = wq_list(path, &error);
+        int refreshError = names ? 0 : errno;
         NSArray *childPaths = nil;
         // App bundles: the app database knows every installed app's bundle
         // container, so no scan is needed when the folder can't be listed.
@@ -2356,6 +2358,7 @@ static NSString *wq_info_date(struct timespec ts)
                 [self updateHeader];
                 return;
             }
+            WQRetryInternal(self, @selector(reload), names || childPaths != nil ? 0 : refreshError);
             if (!WQSilentRefresh() || names || childPaths != nil) self->_all = items;
             [self applyFilter];
             [self countChildrenOf:items generation:generation cancellation:cancellation];

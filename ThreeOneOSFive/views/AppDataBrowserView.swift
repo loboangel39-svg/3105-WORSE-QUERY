@@ -326,7 +326,7 @@ private final class SilentAppDataRefresh: ObservableObject {
         let wasOpened = opened
         opened = true
         guard !isResolving, pendingRetry == nil,
-              !wasOpened || Date().timeIntervalSince(lastFinished) >= 60 else { return }
+              !wasOpened || Date().timeIntervalSince(lastFinished) >= 60 || (WQIntegratedScanState()["status"] as? String) == "stopped" else { return }
         retryAttempt = 0
         reload()
     }
