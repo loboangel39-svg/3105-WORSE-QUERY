@@ -663,23 +663,19 @@
 
 /* VINI Phase 1: explicitly identified preview presentation. */
 "vini.preview_mode" = "Vista previa local";
-"vini.demo_controls" = "DEMO VISUAL";
+"vini.demo_controls" = "TARGETS";
 "vini.license_unverified" = "Sin verificar";
 "vini.license_time" = "Tiempo restante de licencia";
-"vini.toggle_hint" = "Control de demostración; no aplica ni restaura parches.";
-"vini.preview_on" = "Activado, solo demostración";
-"vini.preview_off" = "Desactivado, solo demostración";
+"vini.toggle_hint" = "Requiere un patch asignado y autorizado.";
+"vini.preview_on" = "Activado";
+"vini.preview_off" = "Desactivado";
 "vini.device" = "Dispositivo";
 "vini.status" = "Estado";
 "vini.architecture" = "Arquitectura";
 "vini.unavailable" = "No disponible";
-"vini.target.aim_drag" = "Interpolación de arrastre de demostración";
-"vini.target.aim_head" = "Control visual de prioridad de cabeza";
-"vini.target.aim_neck" = "Curva de arrastre de demostración";
-"vini.target.aim_chest" = "Control visual de anclaje de torso";
-"vini.target.direct_hit" = "Control visual de impacto directo";
-"vini.target.wireframe" = "Vista previa de contornos";
-"vini.target.esp_box" = "Vista previa de delimitadores";
-"vini.target.radar" = "Vista previa de proximidad";
-"vini.target.integrity" = "Vista previa de integridad";
-"vini.target.memory" = "Vista previa de asignación de memoria";
+
+"vini.no_patch" = "Sin patch asignado";
+
+"vini.compatible" = "Compatible";
+
+"vini.not_verified" = "No verificado";

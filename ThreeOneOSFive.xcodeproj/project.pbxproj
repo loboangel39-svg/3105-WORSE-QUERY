@@ -7,6 +7,10 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		AA3105030000000000000004 /* VINIDualBackupStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA3105020000000000000004; };
+		AA3105030000000000000003 /* VINIPackageCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA3105020000000000000003; };
+		AA3105030000000000000002 /* VINIRemoteContract.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA3105020000000000000002; };
+		AA3105030000000000000001 /* VINICompatibility.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA3105020000000000000001; };
 		AA3105010000000000000001 /* VINIDashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA3105010000000000000002; };
 		3105A200 /* App.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3105A020; };
 		3105A201 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3105A021; };
@@ -105,6 +109,10 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		AA3105020000000000000004 /* VINIDualBackupStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VINIDualBackupStore.swift; sourceTree = "<group>"; };
+		AA3105020000000000000003 /* VINIPackageCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VINIPackageCatalog.swift; sourceTree = "<group>"; };
+		AA3105020000000000000002 /* VINIRemoteContract.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VINIRemoteContract.swift; sourceTree = "<group>"; };
+		AA3105020000000000000001 /* VINICompatibility.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VINICompatibility.swift; sourceTree = "<group>"; };
 		AA3105010000000000000002 /* VINIDashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VINIDashboardView.swift; sourceTree = "<group>"; };
 		3105A010 /* 3105.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "3105.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		3105A020 /* App.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App.swift; sourceTree = "<group>"; };
@@ -368,6 +376,10 @@
 				3105B117 /* PatchTransaction.swift */,
 				3105B118 /* DevicePatchService.swift */,
 				3105B119 /* PatchProjectLibrary.swift */,
+				AA3105020000000000000004 /* VINIDualBackupStore.swift */,
+				AA3105020000000000000003 /* VINIPackageCatalog.swift */,
+				AA3105020000000000000002 /* VINIRemoteContract.swift */,
+				AA3105020000000000000001 /* VINICompatibility.swift */,
 				3105B120 /* PatchProjectStore.swift */,
 				3105G103 /* PatchWorkspaceService.swift */,
 				3105H100 /* AppTabNavigationState.swift */,
@@ -548,6 +560,10 @@
 				AB1050010000000000000029,
 				AB105001000000000000002B,
 				AA3105010000000000000001,
+				AA3105030000000000000004,
+				AA3105030000000000000003,
+				AA3105030000000000000002,
+				AA3105030000000000000001,
 				3105A200, 3105A201, 3105A203, 3105A204,
 				3105A205, 3105A206, 3105A207, 3105A209,
 				3105A212, 3105A213, 3105A244,

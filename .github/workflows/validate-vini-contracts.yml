@@ -1,0 +1,53 @@
+name: Validate VINI contracts and physical arm64
+on:
+  push:
+    branches: [experiment/vini-silent-restore-dual-backup]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  contracts-and-device-build:
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Check preservation and metadata logic
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build-vini-contracts
+          git diff --check
+          python3 scripts/verify-vini-contracts.py | tee build-vini-contracts/static.log
+          swiftc ThreeOneOSFive/helpers/SupportPolicy.swift ThreeOneOSFive/helpers/VINICompatibility.swift ThreeOneOSFive/helpers/VINIRemoteContract.swift Tests/VINIContracts/main.swift -o build-vini-contracts/metadata-tests
+          build-vini-contracts/metadata-tests | tee build-vini-contracts/metadata.log
+          python3 Vendor/WQFiles/tests/test_localization.py 2>&1 | tee build-vini-contracts/localization.log
+          python3 Vendor/WQFiles/tests/browser_ui_regressions.py | tee build-vini-contracts/browser-static.log
+          plutil -lint ThreeOneOSFive.xcodeproj/project.pbxproj ThreeOneOSFive/Info.plist ThreeOneOSFive/3105-Experimental.entitlements | tee build-vini-contracts/plist.log
+      - name: Compile for physical iPhone without signing
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcodebuild -version | tee build-vini-contracts/xcode-version.txt
+          xcodebuild -project ThreeOneOSFive.xcodeproj -scheme 3105 -sdk iphoneos -configuration ExperimentalRelease -destination 'generic/platform=iOS' -derivedDataPath build-vini-contracts/DerivedData CONFIGURATION_BUILD_DIR="$PWD/build-vini-contracts/Products" ARCHS=arm64 ONLY_ACTIVE_ARCH=NO DEAD_CODE_STRIPPING=NO STRIP_INSTALLED_PRODUCT=NO COPY_PHASE_STRIP=NO CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build | tee build-vini-contracts/build.log
+          APP_PATH="$(find build-vini-contracts/Products -maxdepth 1 -type d -name '*.app' -print -quit)"
+          test -x "$APP_PATH/3105"
+          lipo -info "$APP_PATH/3105" | tee build-vini-contracts/architecture.txt
+          nm "$APP_PATH/3105" > build-vini-contracts/symbols.txt
+          for symbol in wq_grant wq_enumerate wq_reset_access_cache wq_write WQIntegratedMakeViewController; do
+            grep -q "_$symbol$" build-vini-contracts/symbols.txt
+          done
+          mkdir -p build-vini-contracts/Payload
+          cp -R "$APP_PATH" build-vini-contracts/Payload/
+          (cd build-vini-contracts && ditto -c -k --keepParent Payload VINI-Contracts-Unsigned.ipa)
+          git rev-parse HEAD > build-vini-contracts/commit.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: VINI-Contracts-Physical-arm64
+          path: |
+            build-vini-contracts/*.log
+            build-vini-contracts/*.txt
+            build-vini-contracts/*.ipa
+          retention-days: 30

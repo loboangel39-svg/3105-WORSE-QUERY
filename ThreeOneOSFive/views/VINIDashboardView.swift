@@ -1,7 +1,7 @@
 import SwiftUI
 import Foundation
 
-// Phase 1 presentation contracts. Preview IDs are not package mappings or server records.
+// Stable presentation IDs are not package assignments or authenticated server records.
 enum VINICategory: String, CaseIterable, Identifiable {
     case combat, visuals, offsets
     var id: String { rawValue }
@@ -16,7 +16,7 @@ struct VINITargetPresentation: Identifiable {
     let packageID: String?
     let categoryID: String
     let title: String
-    let descriptionKey: String
+    let patchDescription: String?
     let symbol: String
     let availability: VINITargetAvailability
     let patchState: VINIPatchState
@@ -37,12 +37,12 @@ struct VINIDashboardPresentation {
 
     static let preview: VINIDashboardPresentation = {
         func target(_ id: String, _ category: VINICategory, _ title: String, _ symbol: String) -> VINITargetPresentation {
-            VINITargetPresentation(targetID: "preview." + id, packageID: nil, categoryID: category.rawValue,
-                title: title, descriptionKey: "vini.target." + id, symbol: symbol,
-                availability: .preview, patchState: .unknown)
+            VINITargetPresentation(targetID: "vini." + id, packageID: nil, categoryID: category.rawValue,
+                title: title, patchDescription: nil, symbol: symbol,
+                availability: .unavailable, patchState: .unknown)
         }
         return VINIDashboardPresentation(isPreview: true,
-            license: VINILicensePresentation(userName: "vini_preview", plan: "PREVIEW", isPreview: true,
+            license: VINILicensePresentation(userName: "—", plan: "—", isPreview: true,
                 isVerified: false, verifiedRemainingSeconds: nil),
             targets: [
                 target("aim_drag", .combat, "Aim Drag Pro", "bolt"),
@@ -55,7 +55,7 @@ struct VINIDashboardPresentation {
                 target("radar", .visuals, "Distance Radar", "map"),
                 target("integrity", .offsets, "Bypass Integrity Check", "lock"),
                 target("memory", .offsets, "Memory Allocation Fix", "memorychip")
-            ], initialPreviewSelection: ["preview.aim_drag", "preview.aim_head"])
+            ], initialPreviewSelection: [])
     }()
 }
 
@@ -66,12 +66,9 @@ struct VINIDashboardView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @AppStorage("interface.appearance") private var appearance = "dark"
     @State private var category: VINICategory = .combat
-    // Demonstration selection only. It never represents applied patches and is never persisted.
-    @State private var previewSelection: Set<String>
 
     init(presentation: VINIDashboardPresentation = .preview) {
         self.presentation = presentation
-        _previewSelection = State(initialValue: presentation.isPreview ? presentation.initialPreviewSelection : [])
         AppTheme.configure()
     }
     private var visibleTargets: [VINITargetPresentation] {
@@ -117,11 +114,10 @@ struct VINIDashboardView: View {
         LazyVStack(spacing: 10) {
             ForEach(visibleTargets) { target in
                 VINITargetCard(target: target, isOn: Binding(
-                    get: { previewSelection.contains(target.targetID) },
-                    set: { selected in
-                        if selected { previewSelection.insert(target.targetID) }
-                        else { previewSelection.remove(target.targetID) }
-                    }))
+                    get: { target.patchState == .active },
+                    // No authoritative Worker assignment exists yet. A display
+                    // model or imported file cannot authorize a mutation.
+                    set: { _ in }))
             }
         }.padding(.horizontal, 20).padding(.vertical, 4)
          .animation(reduceMotion ? nil : .easeOut(duration: 0.18), value: category)
@@ -235,12 +231,14 @@ struct VINITargetCard: View {
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 4) {
                 Text(target.title).font(AppTheme.sans(14, relativeTo: .subheadline).weight(.semibold))
-                Text(language.text(target.descriptionKey)).font(AppTheme.sans(11, relativeTo: .caption))
+                Text(target.patchDescription?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
+                     ? target.patchDescription! : language.text("vini.no_patch"))
+                    .font(AppTheme.sans(11, relativeTo: .caption))
                     .foregroundStyle(.secondary)
             }.frame(maxWidth: .infinity, alignment: .leading).fixedSize(horizontal: false, vertical: true)
             Toggle(target.title, isOn: $isOn).labelsHidden().tint(AppTheme.accent)
                 .frame(width: 52).frame(minHeight: 44)
-                .disabled(target.availability == .unavailable)
+                .disabled(target.availability != .available)
                 .accessibilityIdentifier("vini-toggle-" + target.targetID)
                 .accessibilityLabel(target.title)
                 .accessibilityHint(language.text("vini.toggle_hint"))
@@ -255,6 +253,11 @@ struct VINITargetCard: View {
 
 struct VINISystemInfoCard: View {
     @Environment(\.appLanguage) private var language
+    private var compatibility: VINICompatibility {
+        let version = ProcessInfo.processInfo.operatingSystemVersion
+        return VINICompatibilityResolver.resolve(major: version.majorVersion,
+            minor: version.minorVersion, patch: version.patchVersion, build: AppInfo.osBuild)
+    }
     private var architecture: String {
 #if arch(arm64)
         return "arm64"
@@ -266,7 +269,7 @@ struct VINISystemInfoCard: View {
         VStack(spacing: 8) {
             row(language.text("vini.device"), AppInfo.displayMachineName)
             row("iOS", AppInfo.osVersion + " (" + AppInfo.osBuild + ")")
-            row(language.text("vini.status"), language.text("vini.preview_mode"), accent: true)
+            row(language.text("vini.status"), language.text(compatibility.documented ? "vini.compatible" : "vini.not_verified"), accent: true)
             row(language.text("vini.architecture"), architecture)
         }.font(AppTheme.mono(10)).padding(14)
          .background(AppTheme.card.opacity(0.9), in: RoundedRectangle(cornerRadius: 16))

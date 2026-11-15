@@ -27,6 +27,40 @@ struct PatchRestoreInspection: Equatable {
     let changedTargets: [PatchTargetChange]
 }
 
+
+// VINI_READONLY_TYPES_BEGIN
+struct PatchRecoverySnapshot {
+    let bundleID: String
+    let relativePath: String
+    let containerFingerprint: Data
+    let existed: Bool
+    let snapshotURL: URL?
+    let digest: Data?
+}
+struct PatchJournalFile: Codable, Equatable {
+    let ruleID: UUID
+    let bundleID: String
+    let relativePath: String
+    let containerFingerprint: Data
+    let originalExisted: Bool
+    let backupFilename: String?
+    let originalDigest: Data?
+    let replacementDigest: Data
+    let appliedFilename: String?
+}
+struct PatchJournalDirectory: Codable, Equatable {
+    let bundleID: String
+    let relativePath: String
+    let containerFingerprint: Data
+}
+struct PatchJournalSnapshot {
+    let receipt: PatchTransactionReceipt
+    let status: String
+    let files: [PatchJournalFile]
+    let directories: [PatchJournalDirectory]
+}
+// VINI_READONLY_TYPES_END
+
 enum PatchTransaction {
     private enum Status: String, Codable {
         case prepared
@@ -101,6 +135,8 @@ enum PatchTransaction {
         backupRoot: URL,
         containerResolver: (String) throws -> URL,
         beforeWrite: ((Int) throws -> Void)? = nil,
+        beforeMutation: ((PatchTransactionReceipt) throws -> Void)? = nil,
+        beforeRollback: ((PatchTransactionReceipt) throws -> Void)? = nil,
         fileManager: FileManager = .default
     ) throws -> PatchTransactionReceipt {
         guard !project.rules.isEmpty || !project.directories.isEmpty else {
@@ -277,6 +313,10 @@ enum PatchTransaction {
             throw PatchPackageError.applyFailed
         }
 
+        // VINI_APPLY_CHECKPOINT_BEGIN
+        try beforeMutation?(PatchTransactionReceipt(id: transactionID, projectID: project.id, journalURL: journalURL))
+        // VINI_APPLY_CHECKPOINT_END
+
         do {
             for resolved in resolvedDirectories where !fileManager.fileExists(atPath: resolved.target.path) {
                 try fileManager.createDirectory(
@@ -305,6 +345,9 @@ enum PatchTransaction {
             )
         } catch {
             do {
+                // VINI_ROLLBACK_CHECKPOINT_BEGIN
+                try beforeRollback?(PatchTransactionReceipt(id: transactionID, projectID: project.id, journalURL: journalURL))
+                // VINI_ROLLBACK_CHECKPOINT_END
                 try restoreRecords(
                     records,
                     transactionDirectory: transactionDirectory,
@@ -355,6 +398,7 @@ enum PatchTransaction {
         allowChangedTargets: Bool = false,
         containerResolver: (String) throws -> URL,
         beforeWrite: ((Int) throws -> Void)? = nil,
+        preserveCurrentState: (([PatchRecoverySnapshot]) throws -> Void)? = nil,
         fileManager: FileManager = .default
     ) throws {
         do {
@@ -386,7 +430,8 @@ enum PatchTransaction {
             try withCurrentStateRecovery(
                 resolved,
                 transactionDirectory: transactionDirectory,
-                fileManager: fileManager
+                fileManager: fileManager,
+                preserveCurrentState: preserveCurrentState
             ) {
                 for (index, item) in resolved.reversed().enumerated() {
                     try beforeWrite?(index)
@@ -563,6 +608,66 @@ enum PatchTransaction {
             }
     }
 
+    // VINI_READONLY_API_BEGIN
+    static func journalSnapshot(receipt: PatchTransactionReceipt) throws -> PatchJournalSnapshot {
+        let journal = try readJournal(receipt.journalURL)
+        guard (minimumSchemaVersion...schemaVersion).contains(journal.schemaVersion),
+              journal.transactionID == receipt.id, journal.projectID == receipt.projectID else {
+            throw PatchPackageError.restoreFailed
+        }
+        return PatchJournalSnapshot(receipt: receipt, status: journal.status.rawValue,
+            files: journal.records.map { PatchJournalFile(ruleID: $0.ruleID, bundleID: $0.bundleID,
+                relativePath: $0.relativePath, containerFingerprint: $0.containerFingerprint,
+                originalExisted: $0.originalExisted, backupFilename: $0.backupFilename,
+                originalDigest: $0.originalDigest, replacementDigest: $0.replacementDigest,
+                appliedFilename: $0.appliedFilename) },
+            directories: (journal.createdDirectories ?? []).map { PatchJournalDirectory(bundleID: $0.bundleID,
+                relativePath: $0.relativePath, containerFingerprint: $0.containerFingerprint) })
+    }
+
+    static func verifyState(receipt: PatchTransactionReceipt, original: Bool,
+                            containerResolver: (String) throws -> URL,
+                            fileManager: FileManager = .default) throws -> Bool {
+        let journal = try readJournal(receipt.journalURL)
+        guard (minimumSchemaVersion...schemaVersion).contains(journal.schemaVersion),
+              journal.transactionID == receipt.id, journal.projectID == receipt.projectID else {
+            throw PatchPackageError.restoreFailed
+        }
+        let roots = try resolvedRoots(journal: journal, containerResolver: containerResolver)
+        let resolved = try resolvedRecords(journal.records,
+            transactionDirectory: receipt.journalURL.deletingLastPathComponent(), roots: roots,
+            allowMissingParents: original, fileManager: fileManager)
+        for item in resolved {
+            let existed = fileManager.fileExists(atPath: item.target.path)
+            if original && !item.record.originalExisted {
+                if existed { return false }
+            } else {
+                guard existed, let expected = original ? item.record.originalDigest : item.record.replacementDigest,
+                      try digestFile(item.target) == expected else { return false }
+            }
+        }
+        if !original {
+            for directory in try resolvedCreatedDirectories(journal.createdDirectories ?? [], roots: roots, fileManager: fileManager) {
+                guard fileManager.fileExists(atPath: directory.path) else { return false }
+            }
+        }
+        return true
+    }
+    static func preserveCurrentState(receipt: PatchTransactionReceipt,
+                                     containerResolver: (String) throws -> URL,
+                                     preserve: ([PatchRecoverySnapshot]) throws -> Void,
+                                     fileManager: FileManager = .default) throws {
+        let journal = try activeJournal(for: receipt)
+        let roots = try resolvedRoots(journal: journal, containerResolver: containerResolver)
+        let resolved = try resolvedRecords(journal.records,
+            transactionDirectory: receipt.journalURL.deletingLastPathComponent(), roots: roots,
+            allowMissingParents: true, fileManager: fileManager)
+        try withCurrentStateRecovery(resolved, transactionDirectory: receipt.journalURL.deletingLastPathComponent(),
+            fileManager: fileManager, preserveCurrentState: preserve, operation: {})
+    }
+
+    // VINI_READONLY_API_END
+
     private static func activeJournal(for receipt: PatchTransactionReceipt) throws -> Journal {
         let journal = try readJournal(receipt.journalURL)
         guard (minimumSchemaVersion...schemaVersion).contains(journal.schemaVersion),
@@ -688,6 +793,7 @@ enum PatchTransaction {
         _ resolved: [ResolvedRecord],
         transactionDirectory: URL,
         fileManager: FileManager,
+        preserveCurrentState: (([PatchRecoverySnapshot]) throws -> Void)? = nil,
         operation: () throws -> Void
     ) throws {
         let recoveryDirectory = transactionDirectory.appendingPathComponent(
@@ -722,10 +828,31 @@ enum PatchTransaction {
             throw error
         }
 
+        // VINI_RESTORE_CHECKPOINT_BEGIN
+        // Keep the caller's durable recovery copy before any target is overwritten or removed.
+        // A checkpoint failure performs no target writes and leaves this recovery directory intact.
+        if let preserveCurrentState {
+            let copies = try zip(resolved, snapshots).map { item, snapshot in
+                PatchRecoverySnapshot(bundleID: item.record.bundleID, relativePath: item.record.relativePath,
+                    containerFingerprint: item.record.containerFingerprint, existed: snapshot.existed,
+                    snapshotURL: snapshot.snapshotURL,
+                    digest: try snapshot.snapshotURL.map { try digestFile($0) })
+            }
+            try preserveCurrentState(copies)
+        }
+        // VINI_RESTORE_CHECKPOINT_END
+
         do {
             try operation()
         } catch {
             do {
+                // VINI_RECOVERY_ROLLBACK_CHECKPOINT_BEGIN
+                // Preserve newly observed concurrent changes before rolling back a failed Restore.
+                if let preserveCurrentState {
+                    try withCurrentStateRecovery(resolved, transactionDirectory: transactionDirectory,
+                        fileManager: fileManager, preserveCurrentState: preserveCurrentState, operation: {})
+                }
+                // VINI_RECOVERY_ROLLBACK_CHECKPOINT_END
                 for snapshot in snapshots.reversed() {
                     if snapshot.existed, let snapshotURL = snapshot.snapshotURL {
                         try atomicCopy(snapshotURL, to: snapshot.target, fileManager: fileManager)
