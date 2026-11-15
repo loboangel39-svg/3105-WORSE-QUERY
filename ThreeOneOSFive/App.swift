@@ -13,13 +13,15 @@ struct ThreeOneOSFiveApp: App {
     @Environment(\.scenePhase) private var scenePhase
     init() {
         setupLogCapture()
-        WQIntegratedInitialize()
         log("app: 3105 launching — iOS \(AppInfo.osVersion) (\(AppInfo.osBuild)) \(AppInfo.machineName)")
     }
     private var language: AppLanguage { AppLanguage(rawValue: languageCode) ?? .spanish }
     var body: some Scene {
         WindowGroup {
-            VINIStagingDashboard()
+            VINIAuthenticationRoot(onAuthorized: {
+                if !initialized { WQIntegratedInitialize(); initialized = true }
+                appState.detectSupport()
+            }, onImport: { url in patchDraftCoordinator.presentImport(url) })
                 .environmentObject(appState)
                 .environmentObject(patchDraftCoordinator)
                 .environmentObject(fileOperationCoordinator)
@@ -27,16 +29,7 @@ struct ThreeOneOSFiveApp: App {
                 .environmentObject(repositoryStore)
                 .environment(\.appLanguage, language)
                 .environment(\.locale, language.locale)
-                .onAppear {
-                    guard !initialized else { return }
-                    initialized = true
-                    appState.detectSupport()
-                }
-                .onChange(of: scenePhase) { phase in
-                    guard phase == .active, initialized else { return }
-                    appState.detectSupport()
-                }
-                .onOpenURL { url in patchDraftCoordinator.presentImport(url) }
+
         }
     }
 }

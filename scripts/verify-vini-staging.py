@@ -21,8 +21,11 @@ client=text('ThreeOneOSFive/helpers/VINIStagingClient.swift')
 assert 'vini-v2-api.' not in client and 'vini-admin-plans-staging-2b.loboangel39.workers.dev' in client
 assert 'X-New-Token' not in client and 'UserDefaults' not in client and not re.search(r'\b(print|log)\(',client)
 assert 'completionHandler(nil)' in client and 'kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly' in client
-for word in ['DevicePatchService','PatchTransaction','WQIntegrated','Apply','Restore']:
- assert word not in text('ThreeOneOSFive/views/VINIStagingAccountView.swift').replace('// Keep previous rows visible on connection loss. They never authorize download/Apply.',''),word
+assert 'if store.phase == .authorized' in text('ThreeOneOSFive/views/VINIAuthenticationRoot.swift')
+assert text('ThreeOneOSFive/views/VINIAuthenticationRoot.swift').count('SecureField(')==1
+assert 'ACCESS PIN' not in text('ThreeOneOSFive/views/VINIAuthenticationRoot.swift')
+for p in ['ThreeOneOSFive/helpers/PatchTransaction.swift','ThreeOneOSFive/helpers/DevicePatchService.swift']:
+ assert text(p)==original(p),p+' engine changed'
 for path in (root/'.github/workflows').glob('*.yml'):
  for forbidden in ['simctl','iphonesimulator','coresimulator','runfirstlaunch']:assert forbidden not in path.read_text().lower(),str(path)
 print('PASS preserved dashboard graphics/categories, engines, identity, codec, compatibility and physical-only workflows; staging only and Keychain credentials')

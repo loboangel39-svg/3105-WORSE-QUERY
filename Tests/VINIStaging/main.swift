@@ -1,6 +1,9 @@
 import Foundation
 import CryptoKit
 
+// Host adapter for the existing platform logger, not the transaction engine.
+func log(_ message: String) { print(message) }
+
 final class MemoryVault: VINIStagingVault {
     var value: VINIStagingCredentials?
     var rejectSave = false
@@ -103,6 +106,42 @@ func expect(_ condition: Bool, _ name: String) throws { if !condition { throw VI
                 try expect(blockedResponse.statusCode == 403,"revoked patch direct R2 request denied")
                 let name = try await live.downloadTestPackage(id:VINIStagingEnvironment.fixtureID)
                 try expect(!name.isEmpty,"live R2 bytes match SHA256 and unchanged Swift codec decodes fixture")
+                let bytes = try await live.verifiedTestBytes(id:VINIStagingEnvironment.fixtureID)
+                try expect(licenses["targetID"] == VINIIsolatedFixture.targetID, "staging policy and pinned fixture target IDs agree")
+                let lab = URL(fileURLWithPath:FileManager.default.currentDirectoryPath).appendingPathComponent("build-staging/fixture-evidence",isDirectory:true)
+                let trial = VINIIsolatedFixture(directory:lab)
+                _ = try await trial.apply(bytes:bytes)
+                let backing = VINIDualBackupStore(root:lab.appendingPathComponent("DualBackups"),engineRoot:lab.appendingPathComponent("EngineBackups"))
+                let record = try backing.loadRecord(VINIIsolatedFixture.projectID)!
+                let a = try backing.verifiedManifest(record,role:"A",stage:"committed")
+                _ = try backing.verifiedManifest(record,role:"B",stage:"committed")
+                let filename = a.files[0].backupFilename!
+                let primary = try backing.receipt(record).journalURL.deletingLastPathComponent().appendingPathComponent(filename)
+                let secondary = try backing.transactionRoot(record).appendingPathComponent("B").appendingPathComponent(filename)
+                let inodeA = try FileManager.default.attributesOfItem(atPath:primary.path)[.systemFileNumber] as! NSNumber
+                let inodeB = try FileManager.default.attributesOfItem(atPath:secondary.path)[.systemFileNumber] as! NSNumber
+                try expect(inodeA != inodeB, "A and B original backups use independent inodes")
+                _ = try await trial.restore()
+                let destination = lab.appendingPathComponent("Container/Documents/acceptance.bin")
+                try expect(try Data(contentsOf:destination) == VINIIsolatedFixture.original, "full authorized download/import/Apply/Restore cycle restores original bytes")
+                _ = try await trial.apply(bytes:bytes)
+                let changed = Data("Owned post-Apply change to preserve\n".utf8)
+                try changed.write(to:destination,options:.atomic)
+                _ = try await trial.restore()
+                let recovered = try FileManager.default.enumerator(at:lab.appendingPathComponent("DualBackups"),includingPropertiesForKeys:nil)!.allObjects.compactMap { $0 as? URL }
+                try expect(recovered.contains { (try? Data(contentsOf:$0)) == changed }, "Restore preserves post-Apply changes in independent recovery generation")
+                _ = try await trial.apply(bytes:bytes)
+                let damagedRecord = try backing.loadRecord(VINIIsolatedFixture.projectID)!
+                let damaged = try backing.receipt(damagedRecord).journalURL.deletingLastPathComponent().appendingPathComponent(filename)
+                try Data("corrupt owned A backup".utf8).write(to:damaged,options:.atomic)
+                _ = try await trial.restore()
+                try expect(try Data(contentsOf:destination) == VINIIsolatedFixture.original, "Restore repairs corrupt A from independent B")
+                let rollback = VINIIsolatedFixture(directory:lab.appendingPathComponent("InjectedFailure"))
+                var failed = false
+                do { _ = try await rollback.apply(bytes:bytes,injectFailure:true) } catch { failed = true }
+                try expect(failed, "injected Apply failure is not reported as success")
+                try expect(try Data(contentsOf:lab.appendingPathComponent("InjectedFailure/Container/Documents/acceptance.bin")) == VINIIsolatedFixture.original, "existing transaction rollback preserves original bytes")
+
                 let restored = VINIStagingClient(vault:liveVault)
                 try expect(try await restored.profile().username == p.username,"session restored without new login")
                 let deviceID = liveVault.value!.hwid
@@ -122,7 +161,7 @@ func expect(_ condition: Bool, _ name: String) throws { if !condition { throw VI
         try expect(try await unassigned.catalog().isEmpty,"PRO has no automatic assignments")
         do { _ = try await unassigned.downloadTestPackage(id:VINIStagingEnvironment.fixtureID); throw VINIStagingError.invalidResponse }
         catch let e as VINIStagingError { try expect(e == .denied,"unassigned PRO download denied") }
-        for (name,expected) in [("paused",VINIStagingError.paused),("revoked",.denied)] {
+        for (name,expected) in [("paused",VINIStagingError.paused),("revoked",.denied),("expired",.expired),("blocked",.denied)] {
             guard let key = licenses[name] else { throw VINIStagingError.signedOut }
             do { _ = try await VINIStagingClient(vault:MemoryVault()).login(licenseKey:key); throw VINIStagingError.invalidResponse }
             catch let e as VINIStagingError { try expect(e == expected,"live staging rejects " + name + " license") }

@@ -23,4 +23,15 @@ if(!created.ok)throw Error('Synthetic patch creation failed');
 const patch=await created.json();await api('/api/access',{userId:proID,patchId:patch.id});
 const policy=await fetch(base+'/api/admin-v2/patch-policies',{method:'PUT',redirect:'error',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({patchId:patch.id,targetId:'synthetic.revoked',capabilityId:'patch.pro',enabled:true,revoked:true,compatible:true,compatibilityDescription:'Synthetic revoked fixture; no file'})});
 if(!policy.ok)throw Error('Synthetic revoked policy failed');licenses.revokedPatchID=patch.id;
+const targetID='package.E4F7CF4A-D0D9-4150-93DE-17AACCD5F037';
+const assignment={patchId:'c0df8b65-a64d-4dca-b262-f12b39831768',targetId:targetID,capabilityId:'patch.pro',enabled:true,revoked:false,compatible:true,compatibilityDescription:'2F isolated owned fixture only; package/project E4F7CF4A-D0D9-4150-93DE-17AACCD5F037'};
+const assigned=await fetch(base+'/api/admin-v2/patch-policies',{method:'PUT',redirect:'error',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify(assignment)});
+if(!assigned.ok)throw Error('Staging fixture assignment failed');
+const policies=await api('/api/admin-v2/patch-policies');
+if(!policies.policies.some(p=>p.patch_id===assignment.patchId&&p.target_id===targetID&&p.enabled===1&&p.revoked===0))throw Error('Assignment verification failed');
+licenses.targetID=targetID;
+for(const name of ['expired','blocked']){
+ const u=await api('/api/admin-v2/users',{username:'TEST2F-'+tag+'-'+name,plan:'basic',licenseExpiresAt:name==='expired'?'2020-01-01T00:00:00.000Z':null},201);licenses[name]=u.licenseKey;
+ if(name==='blocked')await api('/api/users/'+u.id+'/block',{});
+}
 process.stdout.write(JSON.stringify(licenses));

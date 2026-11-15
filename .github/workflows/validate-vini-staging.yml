@@ -1,7 +1,7 @@
 name: VINI staging native contracts and physical arm64
 on:
   push:
-    branches: [experiment/vini-ios-staging-integration]
+    branches: [experiment/vini-ios-staging-integration, experiment/vini-login-apply-restore]
   workflow_dispatch:
 permissions:
   contents: read
@@ -36,7 +36,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          swiftc -target "$(uname -m)-apple-macos13.0" -parse-as-library ThreeOneOSFive/helpers/PatchProjectModels.swift ThreeOneOSFive/helpers/PatchPackageCodec.swift ThreeOneOSFive/helpers/VINIStagingClient.swift Tests/VINIStaging/main.swift -o build-staging/native-tests
+          swiftc -target "$(uname -m)-apple-macos13.0" -parse-as-library ThreeOneOSFive/helpers/PatchProjectModels.swift ThreeOneOSFive/helpers/PatchPackageCodec.swift ThreeOneOSFive/helpers/VINIStagingClient.swift ThreeOneOSFive/helpers/PatchTransaction.swift ThreeOneOSFive/helpers/VINIDualBackupStore.swift ThreeOneOSFive/helpers/PatchProjectLibrary.swift ThreeOneOSFive/helpers/PatchWorkspaceService.swift ThreeOneOSFive/helpers/PatchKeyStore.swift ThreeOneOSFive/helpers/VINIIsolatedFixture.swift Tests/VINIStaging/main.swift -o build-staging/native-tests
           build-staging/native-tests | tee build-staging/native.log
       - name: Compile physical arm64 and package unsigned IPA
         shell: bash
@@ -58,4 +58,5 @@ jobs:
             build-staging/*.log
             build-staging/*.txt
             build-staging/*.ipa
+            build-staging/fixture-evidence/**
           retention-days: 30

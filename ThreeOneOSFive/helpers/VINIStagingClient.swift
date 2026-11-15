@@ -128,6 +128,14 @@ final class VINIStagingHTTP: VINIStagingTransport {
 }
 
 actor VINIStagingClient {
+    func authorizationLifetime(_ profile: VINIStagingProfile) throws -> TimeInterval {
+        guard profile.licenseStatus == "active", let credentials else { throw VINIStagingError.denied }
+        let server = try VINIStagingEnvironment.date(profile.serverTime)
+        var lifetime = try VINIStagingEnvironment.date(credentials.expiresAt).timeIntervalSince(server)
+        if let expiry = profile.licenseExpiresAt { lifetime = min(lifetime, try VINIStagingEnvironment.date(expiry).timeIntervalSince(server)) }
+        guard lifetime > 0, lifetime.isFinite else { throw VINIStagingError.expired }
+        return lifetime
+    }
     private let transport: VINIStagingTransport
     private let vault: VINIStagingVault
     private var credentials: VINIStagingCredentials?
@@ -229,13 +237,19 @@ actor VINIStagingClient {
         struct Catalog: Decodable { let patches: [VINIStagingPatch] }
         return try JSONDecoder().decode(Catalog.self, from: await authorized("api/app/patches")).patches
     }
-    func downloadTestPackage(id: String) async throws -> String {
+    func verifiedTestBytes(id: String) async throws -> Data {
         // The current API has no digest field. Only the independently pinned 2C fixture
         // can be marked verified; do not invent a checksum for arbitrary packages.
         guard id == VINIStagingEnvironment.fixtureID else { throw VINIStagingError.integrity }
         let bytes = try await authorized("api/app/patches/" + id + "/download")
         let digest = SHA256.hash(data: bytes).map { String(format: "%02x", $0) }.joined()
         guard bytes.count == VINIStagingEnvironment.fixtureSize, digest == VINIStagingEnvironment.fixtureSHA256 else { throw VINIStagingError.integrity }
+        let decoded = try PatchPackageCodec.decode(bytes, password: nil)
+        guard decoded.project.id.uuidString == "E4F7CF4A-D0D9-4150-93DE-17AACCD5F037" else { throw VINIStagingError.integrity }
+        return bytes
+    }
+    func downloadTestPackage(id: String) async throws -> String {
+        let bytes = try await verifiedTestBytes(id: id)
         let decoded = try PatchPackageCodec.decode(bytes, password: nil)
         let directory = try FileManager.default.url(for: .cachesDirectory, in: .userDomainMask, appropriateFor: nil, create: true).appendingPathComponent("VINIStagingVerified", isDirectory: true)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
