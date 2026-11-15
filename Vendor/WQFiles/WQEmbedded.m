@@ -2,13 +2,14 @@
 #include "main.m"
 #undef main
 #import "WQEmbedded.h"
+#include "WQScanPresentation.inc"
 
 void WQIntegratedInitialize(void) {
     static dispatch_once_t once;
     dispatch_once(&once, ^{
         wq_set_container_label_resolver(wq_bundle_id_for_container);
         wq_set_container_list_provider(wq_ls_container_paths);
-        wq_set_full_scan_ui(wq_confirm_full_scan, wq_full_scan_progress);
+        WQScanInitializePresentation();
         wq_media_sweep_stale();
         wq_share_sweep_stale_exports();
     });

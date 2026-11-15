@@ -6,6 +6,7 @@ struct AppDataBrowserView: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @State private var scanState: [String: Any] = [:]
     @State private var apps: [InstalledApp] = []
     @State private var isLoading = false
     @State private var isResolving = false
@@ -50,6 +51,13 @@ struct AppDataBrowserView: View {
     var body: some View {
         navigationContent(tabID: tabSession.selectedTabID)
             .id(tabSession.selectedTabID)
+            .onReceive(NotificationCenter.default.publisher(for: Notification.Name("WQScanPresentationChanged"))) { _ in
+                scanState = WQIntegratedScanState()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: Notification.Name("WQScanRetryRequested"))) { _ in
+                reload()
+            }
+            .onAppear { scanState = WQIntegratedScanState() }
     }
 
     private func navigationContent(tabID: UUID) -> some View {
@@ -126,6 +134,7 @@ struct AppDataBrowserView: View {
                 prompt: language.text("browser.search"),
                 clearLabel: language.text("common.clear")
             )
+            scanActivity
             Divider()
             appRows
         }
@@ -282,7 +291,52 @@ struct AppDataBrowserView: View {
         .padding()
     }
 
+    private func mergeVisible(_ incoming: [InstalledApp]) {
+        var byPath = Dictionary(apps.map { ($0.containerPath, $0) }, uniquingKeysWith: { first, _ in first })
+        for app in incoming { byPath[app.containerPath] = app }
+        apps = byPath.values.sorted { $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending }
+    }
+
+    private var scanActivity: some View {
+        let status = scanState["status"] as? String ?? ""
+        let spanish = language.locale.languageCode == "es"
+        let scope = scanState["scope"] as? String ?? ""
+        let total = (scanState["total"] as? NSNumber)?.doubleValue ?? 0
+        let done = (scanState["done"] as? NSNumber)?.doubleValue ?? 0
+        return VStack(alignment: .leading, spacing: 6) {
+            if status == "permission" {
+                Text(spanish ? "Autorizar escaneo: \(scope)" : "Allow scan: \(scope)").font(.subheadline.bold())
+                Text(spanish
+                    ? "Se comprobarán hasta \(Int64(total)) identificadores de archivos para localizar estos contenedores. Puede tardar varios minutos. No modifica archivos. La autorización dura 7 días para este ámbito; un aumento superior al 50 % requiere confirmación. Puedes seguir buscando y cancelar."
+                    : "Checks up to \(Int64(total)) file IDs to locate these containers. This can take several minutes and does not modify files. Permission lasts 7 days for this scope; growth above 50% requires confirmation. You can keep searching and cancel.")
+                    .font(.caption).foregroundStyle(.secondary)
+                HStack {
+                    Button(spanish ? "Autorizar" : "Allow") { WQIntegratedScanAuthorize() }
+                    Button(spanish ? "Ahora no" : "Not now") { WQIntegratedScanCancel() }
+                }
+            } else if status == "running" {
+                HStack {
+                    ProgressView(value: total > 0 ? min(1, done / total) : 0)
+                    Text("\(Int(total > 0 ? done / total * 100 : 0)) %").font(.caption.monospacedDigit())
+                    Button(spanish ? "Cancelar" : "Cancel") { WQIntegratedScanCancel() }
+                }
+                Text(scope).font(.caption).foregroundStyle(.secondary)
+            } else if status == "stopped" {
+                HStack {
+                    Text(spanish ? "Escaneo detenido. Se conservan los resultados." : "Scan stopped. Previous results are retained.").font(.caption)
+                    Button(spanish ? "Reintentar" : "Retry") { reload() }.disabled(isResolving)
+                }
+            } else if isResolving {
+                HStack { ProgressView(); Text(spanish ? "Actualizando…" : "Updating…").font(.caption) }
+            }
+        }
+        .padding(.horizontal)
+        .padding(.vertical, status.isEmpty && !isResolving ? 0 : 8)
+        .accessibilityElement(children: .contain)
+    }
+
     private func reload() {
+        guard !isResolving, WQIntegratedBeginRefresh() else { return }
         let requestToken = UUID()
         reloadToken = requestToken
         WQFilesIdentityResolver.logExperimentalAppGroupStatus()
@@ -292,6 +346,7 @@ struct AppDataBrowserView: View {
         errorMessage = nil
         let emptyMessage = language.text("browser.empty")
         DispatchQueue.global(qos: .userInitiated).async {
+            WQIntegratedPrepareRefresh()
             let bundleMetadata = ContainerStore.applicationBundleMetadataCatalog()
             let apiApps = ContainerStore.applyingBundleMetadata(
                 to: ContainerStore.installedAppsFromAPI(),
@@ -323,7 +378,7 @@ struct AppDataBrowserView: View {
                     log("wqfiles: async result discarded phase=preliminary token=\(requestToken.uuidString)")
                     return
                 }
-                apps = preliminary
+                mergeVisible(preliminary)
                 isLoading = false
             }
 
@@ -373,7 +428,7 @@ struct AppDataBrowserView: View {
                     log("wqfiles: async result discarded phase=provider token=\(requestToken.uuidString)")
                     return
                 }
-                apps = result.filter { ContainerPresentationPolicy.shouldShow(bundleID: $0.bundleID) }
+                mergeVisible(result.filter { ContainerPresentationPolicy.shouldShow(bundleID: $0.bundleID) })
                 isLoading = false
             }
 
@@ -411,7 +466,7 @@ struct AppDataBrowserView: View {
                     log("wqfiles: async result discarded phase=progressive token=\(requestToken.uuidString)")
                     return
                 }
-                apps = progressiveResult
+                mergeVisible(progressiveResult)
             }
             }
 
@@ -449,11 +504,17 @@ struct AppDataBrowserView: View {
                     log("wqfiles: async result discarded phase=final token=\(requestToken.uuidString)")
                     return
                 }
-                apps = result
+                if !result.isEmpty && !wq_full_scan_was_declined()
+                    && (WQIntegratedScanState()["status"] as? String) != "stopped" {
+                    apps = result
+                } else {
+                    mergeVisible(result)
+                }
                 isLoading = false
                 isResolving = false
+                WQIntegratedEndRefresh()
                 log("wqfiles: files displayed=\(result.count)")
-                if result.isEmpty {
+                if apps.isEmpty {
                     errorMessage = emptyMessage
                 }
             }

@@ -17,7 +17,7 @@
         NSMutableArray *checks = [NSMutableArray new];
         NSString *error = nil;
         NSString *dir = [NSTemporaryDirectory() stringByAppendingPathComponent:NSUUID.UUID.UUIDString];
-        BOOL ok = wq_create_dir(dir, &error);
+        __block BOOL ok = wq_create_dir(dir, &error);
         [checks addObject:@{ @"createDirectory": @(ok) }];
         NSString *file = [dir stringByAppendingPathComponent:@"sample.txt"];
         NSData *first = [@"original" dataUsingEncoding:NSUTF8StringEncoding];
@@ -40,6 +40,16 @@
         ok &= copied && [wq_read([copy stringByAppendingPathComponent:@"sample.txt"], 0, nil) isEqualToData:second];
         [checks addObject:@{ @"copyActualTree": @(copied) }];
         dispatch_async(dispatch_get_main_queue(), ^{
+            BOOL refreshOwned = WQIntegratedBeginRefresh();
+            BOOL duplicateRejected = !WQIntegratedBeginRefresh();
+            WQIntegratedScanCancel();
+            BOOL stopped = [WQIntegratedScanState()[@"status"] isEqual:@"stopped"];
+            WQIntegratedEndRefresh();
+            BOOL reusable = WQIntegratedBeginRefresh();
+            WQIntegratedEndRefresh();
+            BOOL lifecycle = refreshOwned && duplicateRejected && stopped && reusable;
+            [checks addObject:@{ @"scanRefreshOwnershipCancelAndReuse": @(lifecycle) }];
+            ok &= lifecycle;
             BOOL hosted = self.window.rootViewController.childViewControllers.count == 1;
             [checks addObject:@{ @"embeddedUIKitRoot": @(hosted) }];
             NSDictionary *report = @{ @"passed": @(ok && hosted), @"checks": checks,

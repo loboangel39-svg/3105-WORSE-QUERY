@@ -1,8 +1,8 @@
-name: Build complete WQFiles integration
+name: Build WQFiles scan UX
 
 on:
   push:
-    branches: [experiment/wqfiles-full-integration]
+    branches: [experiment/wqfiles-scan-ux]
   workflow_dispatch:
 
 permissions:
