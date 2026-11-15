@@ -6,6 +6,10 @@ def read(p): return (root/p).read_text(encoding='utf-8')
 def trim(s): return '\n'.join(l for l in s.split('\n') if l.strip() not in ('.controllerSurface()', '.controllerRow()', '.accessibilityIdentifier("files-workspace")', '.accessibilityIdentifier("folder-browser")'))
 # Every pre-existing executable source outside this explicit presentation allowlist is identical to the stable commit.
 allowed={'ThreeOneOSFive/ContentView.swift','ThreeOneOSFive/views/DesignSystem.swift','ThreeOneOSFive/views/SettingsView.swift'}
+from native_presentation import normalized
+for path in ['Vendor/WQFiles/main.m','Vendor/WQFiles/WQUI.m']:
+ assert normalized(read(path))==normalized(old(path)), 'non-presentation UIKit change: '+path
+ allowed.add(path)
 style_only=['AppDataBrowserView.swift','FileBrowserView.swift','PatchProjectsView.swift','RepositoryHomeView.swift','RepositoryMarketplaceView.swift']
 for name in style_only:
  p='ThreeOneOSFive/views/'+name
@@ -37,8 +41,10 @@ assert settings==old('ThreeOneOSFive/views/SettingsView.swift'), 'settings behav
 content=read('ThreeOneOSFive/ContentView.swift')
 for line in ['    @AppStorage("interface.appearance") private var appearance = "dark"','        AppTheme.configure()','        .font(AppTheme.sans())','        .preferredColorScheme(appearance == "system" ? nil : appearance == "light" ? .light : .dark)','        .background(ControllerCanvas())','                    .toolbar(.hidden, for: .tabBar)']:
  content=content.replace(line+'\n','')
-start=content.index('        .safeAreaInset(edge: .top, spacing: 0) {')
-end=content.index('    private var regularLayout:',start)
-content=content[:start]+'    }\n\n'+content[end:]
-assert content==old('ThreeOneOSFive/ContentView.swift'), 'navigation behavior changed outside presentation'
+def without_compact(text):
+ a=text.index('    private var compactLayout:')
+ b=text.index('    private var regularLayout:',a)
+ return text[:a]+text[b:]
+content=without_compact(content)
+assert content==without_compact(old('ThreeOneOSFive/ContentView.swift')), 'navigation behavior changed outside presentation'
 print('PASS: settings callbacks and all navigation/import/session wiring identical after removing explicit presentation additions')

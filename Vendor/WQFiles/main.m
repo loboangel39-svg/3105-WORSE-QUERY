@@ -3359,7 +3359,7 @@ static NSString *const kSystemGroupRoot = @"/private/var/containers/Shared/Syste
     self.navigationBar.standardAppearance = appearance;
     self.navigationBar.scrollEdgeAppearance = appearance;
     self.navigationBar.compactAppearance = appearance;
-    self.navigationBar.tintColor = [UIColor colorWithRed:0.37 green:0.50 blue:1.0 alpha:1.0];
+    self.navigationBar.tintColor = [UIColor colorWithRed:0.0 green:0.824 blue:1.0 alpha:1.0];
 }
 
 - (void)navigationController:(UINavigationController *)nav willShowViewController:(UIViewController *)vc animated:(BOOL)animated
@@ -3892,15 +3892,15 @@ static UIImage *wq_language_flag(NSString *code)
 
 static NSArray<UIColor *> *WQPrismTone(NSString *tone)
 {
-    if ([tone isEqualToString:@"violet"]) return @[[UIColor colorWithRed:0.71 green:0.61 blue:1.00 alpha:1], [UIColor colorWithRed:0.43 green:0.31 blue:0.91 alpha:1]];
+    if ([tone isEqualToString:@"violet"]) return @[[UIColor colorWithRed:0.0 green:0.824 blue:1.0 alpha:1.0], [UIColor colorWithRed:0.0 green:0.824 blue:1.0 alpha:1.0]];
     if ([tone isEqualToString:@"mint"])   return @[[UIColor colorWithRed:0.38 green:0.92 blue:0.80 alpha:1], [UIColor colorWithRed:0.04 green:0.67 blue:0.55 alpha:1]];
     if ([tone isEqualToString:@"amber"])  return @[[UIColor colorWithRed:1.00 green:0.84 blue:0.54 alpha:1], [UIColor colorWithRed:0.88 green:0.55 blue:0.09 alpha:1]];
     if ([tone isEqualToString:@"pink"])   return @[[UIColor colorWithRed:1.00 green:0.62 blue:0.80 alpha:1], [UIColor colorWithRed:0.87 green:0.23 blue:0.53 alpha:1]];
-    if ([tone isEqualToString:@"sky"])    return @[[UIColor colorWithRed:0.54 green:0.85 blue:1.00 alpha:1], [UIColor colorWithRed:0.17 green:0.58 blue:0.91 alpha:1]];
+    if ([tone isEqualToString:@"sky"])    return @[[UIColor colorWithRed:0.0 green:0.824 blue:1.0 alpha:1.0], [UIColor colorWithRed:0.0 green:0.824 blue:1.0 alpha:1.0]];
     if ([tone isEqualToString:@"orange"]) return @[[UIColor colorWithRed:1.00 green:0.73 blue:0.49 alpha:1], [UIColor colorWithRed:0.89 green:0.42 blue:0.12 alpha:1]];
-    if ([tone isEqualToString:@"indigo"]) return @[[UIColor colorWithRed:0.55 green:0.55 blue:1.00 alpha:1], [UIColor colorWithRed:0.26 green:0.25 blue:0.79 alpha:1]];
+    if ([tone isEqualToString:@"indigo"]) return @[[UIColor colorWithRed:0.0 green:0.824 blue:1.0 alpha:1.0], [UIColor colorWithRed:0.0 green:0.824 blue:1.0 alpha:1.0]];
     if ([tone isEqualToString:@"gray"])   return @[[UIColor colorWithRed:0.67 green:0.71 blue:0.80 alpha:1], [UIColor colorWithRed:0.35 green:0.40 blue:0.49 alpha:1]];
-    return @[[UIColor colorWithRed:0.50 green:0.65 blue:1.00 alpha:1], [UIColor colorWithRed:0.24 green:0.38 blue:0.90 alpha:1]];
+    return @[[UIColor colorWithRed:0.0 green:0.824 blue:1.0 alpha:1.0], [UIColor colorWithRed:0.0 green:0.824 blue:1.0 alpha:1.0]];
 }
 
 @interface WQPrismGlassView : UIView
@@ -3916,12 +3916,13 @@ static NSArray<UIColor *> *WQPrismTone(NSString *tone)
 {
     if ((self = [super initWithFrame:CGRectZero])) {
         self.translatesAutoresizingMaskIntoConstraints = NO;
-        self.layer.cornerRadius = radius;
+        self.layer.cornerRadius = MIN(radius, 16.0);
         self.layer.cornerCurve = kCACornerCurveContinuous;
         self.clipsToBounds = YES;
         self.backgroundColor = [UIColor colorWithWhite:0.42 alpha:0.055];
 
         _effect = [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemMaterial]];
+        _effect.alpha = 0.12;
         _effect.translatesAutoresizingMaskIntoConstraints = NO;
         _effect.userInteractionEnabled = NO;
         [self addSubview:_effect];
@@ -3952,6 +3953,7 @@ static NSArray<UIColor *> *WQPrismTone(NSString *tone)
 - (void)updateBorder
 {
     BOOL dark = self.traitCollection.userInterfaceStyle != UIUserInterfaceStyleLight;
+    self.backgroundColor = dark ? [UIColor colorWithRed:0.063 green:0.082 blue:0.133 alpha:0.95] : UIColor.whiteColor;
     CGFloat scale = self.traitCollection.displayScale;
     if (scale <= 0) scale = 3.0;
     self.layer.borderWidth = 1.0 / scale;
@@ -4389,7 +4391,7 @@ static void wq_apply_design(void);
     _quickButton = [UIButton buttonWithConfiguration:quickCfg primaryAction:[UIAction actionWithHandler:^(UIAction *__unused a) {
         [weakSelf runHealthCheck];
     }]];
-    _quickButton.tintColor = [UIColor colorWithRed:0.42 green:0.53 blue:1.0 alpha:1.0];
+    _quickButton.tintColor = [UIColor colorWithRed:0.0 green:0.824 blue:1.0 alpha:1.0];
 
     UIButtonConfiguration *logCfg = [UIButtonConfiguration plainButtonConfiguration];
     logCfg.attributedTitle = WQPrismButtonTitle(WQLocalizedNullable(@"Log"));
@@ -5315,7 +5317,7 @@ static NSString *const kWQTroubleshootingFooter =
 
     self.viewControllers = @[homeNav, appsNav, cleanNav, vaultNav];
     self.selectedIndex = 0;
-    self.tabBar.tintColor = [UIColor colorWithRed:0.37 green:0.50 blue:1.0 alpha:1.0];
+    self.tabBar.tintColor = [UIColor colorWithRed:0.0 green:0.824 blue:1.0 alpha:1.0];
 }
 
 - (void)viewDidAppear:(BOOL)animated

@@ -403,19 +403,19 @@ NSString *wq_size_text(unsigned long long size)
 {
     BOOL dark = self.traitCollection.userInterfaceStyle != UIUserInterfaceStyleLight;
     if (dark) {
-        _base.colors = @[(id)[UIColor colorWithRed:0.024 green:0.033 blue:0.062 alpha:1].CGColor,
-                         (id)[UIColor colorWithRed:0.043 green:0.063 blue:0.125 alpha:1].CGColor];
-        _glows[0].colors = @[(id)[UIColor colorWithRed:0.30 green:0.42 blue:0.95 alpha:0.62].CGColor, (id)[UIColor clearColor].CGColor];
-        _glows[1].colors = @[(id)[UIColor colorWithRed:0.55 green:0.36 blue:0.95 alpha:0.48].CGColor, (id)[UIColor clearColor].CGColor];
-        _glows[2].colors = @[(id)[UIColor colorWithRed:0.12 green:0.76 blue:0.66 alpha:0.32].CGColor, (id)[UIColor clearColor].CGColor];
-        _glows[3].colors = @[(id)[UIColor colorWithRed:0.95 green:0.34 blue:0.60 alpha:0.22].CGColor, (id)[UIColor clearColor].CGColor];
+        _base.colors = @[(id)[UIColor colorWithRed:0.031 green:0.043 blue:0.075 alpha:1].CGColor,
+                         (id)[UIColor colorWithRed:0.031 green:0.043 blue:0.075 alpha:1].CGColor];
+        _glows[0].colors = @[(id)[UIColor colorWithRed:0.0 green:0.824 blue:1.0 alpha:0.10].CGColor, (id)[UIColor clearColor].CGColor];
+        _glows[1].colors = @[(id)[UIColor colorWithRed:0.0 green:0.824 blue:1.0 alpha:0.10].CGColor, (id)[UIColor clearColor].CGColor];
+        _glows[2].colors = @[(id)[UIColor colorWithRed:0.0 green:0.824 blue:1.0 alpha:0.10].CGColor, (id)[UIColor clearColor].CGColor];
+        _glows[3].colors = @[(id)[UIColor colorWithRed:0.0 green:0.824 blue:1.0 alpha:0.10].CGColor, (id)[UIColor clearColor].CGColor];
     } else {
-        _base.colors = @[(id)[UIColor colorWithRed:0.92 green:0.95 blue:1.0 alpha:1].CGColor,
-                         (id)[UIColor colorWithRed:0.86 green:0.91 blue:1.0 alpha:1].CGColor];
-        _glows[0].colors = @[(id)[UIColor colorWithRed:0.56 green:0.69 blue:1.0 alpha:0.48].CGColor, (id)[UIColor clearColor].CGColor];
-        _glows[1].colors = @[(id)[UIColor colorWithRed:0.78 green:0.65 blue:1.0 alpha:0.38].CGColor, (id)[UIColor clearColor].CGColor];
-        _glows[2].colors = @[(id)[UIColor colorWithRed:0.52 green:0.92 blue:0.84 alpha:0.30].CGColor, (id)[UIColor clearColor].CGColor];
-        _glows[3].colors = @[(id)[UIColor colorWithRed:1.0 green:0.72 blue:0.84 alpha:0.24].CGColor, (id)[UIColor clearColor].CGColor];
+        _base.colors = @[(id)[UIColor colorWithRed:0.949 green:0.969 blue:0.984 alpha:1].CGColor,
+                         (id)[UIColor colorWithRed:0.949 green:0.969 blue:0.984 alpha:1].CGColor];
+        _glows[0].colors = @[(id)[UIColor colorWithRed:0.0 green:0.824 blue:1.0 alpha:0.04].CGColor, (id)[UIColor clearColor].CGColor];
+        _glows[1].colors = @[(id)[UIColor colorWithRed:0.0 green:0.824 blue:1.0 alpha:0.04].CGColor, (id)[UIColor clearColor].CGColor];
+        _glows[2].colors = @[(id)[UIColor colorWithRed:0.0 green:0.824 blue:1.0 alpha:0.04].CGColor, (id)[UIColor clearColor].CGColor];
+        _glows[3].colors = @[(id)[UIColor colorWithRed:0.0 green:0.824 blue:1.0 alpha:0.04].CGColor, (id)[UIColor clearColor].CGColor];
     }
 }
 

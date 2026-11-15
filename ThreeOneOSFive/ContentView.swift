@@ -75,24 +75,21 @@ struct ContentView: View {
     }
 
     private var compactLayout: some View {
-        TabView(selection: tabSelection) {
-            ForEach(featureVisibility.visibleSections) { section in
-                sectionContent(section)
-                    .toolbar(.hidden, for: .tabBar)
-                    .tabItem {
-                        CompactTabLabel(
-                            title: language.text(section.titleKey),
-                            systemImage: section.systemImage
-                        )
-                    }
-                    .tag(section.rawValue)
-            }
-        }
-        .safeAreaInset(edge: .top, spacing: 0) {
+        VStack(spacing: 0) {
             VStack(spacing: 0) {
                 ControllerHeader()
                 ControllerNavigation(sections: featureVisibility.visibleSections, language: language, selection: tabSelection)
             }.background(ControllerCanvas())
+            TabView(selection: tabSelection) {
+                ForEach(featureVisibility.visibleSections) { section in
+                    sectionContent(section)
+                        .toolbar(.hidden, for: .tabBar)
+                        .tabItem {
+                            CompactTabLabel(title: language.text(section.titleKey), systemImage: section.systemImage)
+                        }
+                        .tag(section.rawValue)
+                }
+            }
         }
     }
 

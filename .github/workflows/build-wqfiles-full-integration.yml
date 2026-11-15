@@ -171,7 +171,9 @@ jobs:
             -configuration Debug -sdk iphonesimulator -destination "platform=iOS Simulator,id=$DEVICE" \
             -derivedDataPath build-ui/DerivedData -resultBundlePath build-ui/UICleanup.xcresult \
             -parallel-testing-enabled NO CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO test | tee build-ui/xcodebuild.log
-          xcrun xcresulttool export attachments --path build-ui/UICleanup.xcresult --output-path build-ui/screenshots
+      - name: Export actual simulator screenshots
+        if: always()
+        run: xcrun xcresulttool export attachments --path build-ui/UICleanup.xcresult --output-path build-ui/screenshots
       - uses: actions/upload-artifact@v4
         if: always()
         with:
