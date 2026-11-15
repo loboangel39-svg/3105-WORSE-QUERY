@@ -7,3 +7,6 @@
 #import "helpers/AppIconHelper.h"
 #import "helpers/DisplayIdentity.h"
 #import "exploit/WQLaunchServicesPhase1.h"
+
+#import "../Vendor/WQFiles/WQEmbedded.h"
+#import "../Vendor/WQFiles/WQAccess.h"

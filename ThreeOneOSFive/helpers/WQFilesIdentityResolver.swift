@@ -88,6 +88,19 @@ enum WQFilesIdentityResolver {
             return [:]
         }
 
+        if #available(iOS 26.0, *) {
+            let identities = WQIntegratedIdentities(containerPaths)
+            var result: [String: WQFilesResolvedIdentity] = [:]
+            for (rawPath, fields) in identities {
+                guard let path = applicationContainerPath(rawPath),
+                      let bundleID = fields["bundleID"], isValidBundleID(bundleID) else { continue }
+                result[path] = WQFilesResolvedIdentity(containerPath: path, bundleID: bundleID,
+                    displayName: fields["displayName"] ?? bundleID,
+                    source: "WQAccess/LaunchServices", storeSignature: "WQFiles-runtime")
+            }
+            return result
+        }
+
         let requested = Set(containerPaths.compactMap(applicationContainerPath))
         guard !requested.isEmpty else {
             log("wqfiles: completion state=no_valid_requested_paths input=\(containerPaths.count) valid=0")

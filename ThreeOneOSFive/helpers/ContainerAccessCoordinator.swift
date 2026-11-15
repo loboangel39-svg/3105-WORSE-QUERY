@@ -21,8 +21,12 @@ final class ContainerAccessSession {
 enum ContainerAccessCoordinator {
     static func acquire(bundleID: String?, containerPath: String, operation: ContainerAccessOperation) -> Result<ContainerAccessSession, Error> {
         let expected = ContainerDiscoveryMerger.canonicalPath(containerPath)
-        guard !expected.isEmpty, FileManager.default.fileExists(atPath: expected) else {
+        guard expected.hasPrefix("/") else {
             return .failure(NSError(domain: "ContainerAccess", code: 1, userInfo: [NSLocalizedDescriptionKey: "container does not exist: \(containerPath)"]))
+        }
+        if #available(iOS 26.0, *), wq_grant(expected),
+           verifyEffectiveAccess(at: expected, operation: operation) {
+            return .success(ContainerAccessSession(path: expected, provider: "WQAccess", diagnostic: "effective access verified; grant held by WQAccess LRU", handle: -1))
         }
         if let bundleID, let resolved = resolveMHA(bundleID), ContainerDiscoveryMerger.canonicalPath(resolved) == expected {
             if verifyEffectiveAccess(at: expected, operation: operation) {
@@ -55,8 +59,7 @@ enum ContainerAccessCoordinator {
 
     static func withAccess<T>(bundleID: String?, containerPath: String, operation: ContainerAccessOperation, _ body: () throws -> T) throws -> T {
         let session = try acquire(bundleID: bundleID, containerPath: containerPath, operation: operation).get()
-        _ = session
-        return try body()
+        return try withExtendedLifetime(session) { try body() }
     }
 
     private static func resolveMHA(_ bundleID: String) -> String? {

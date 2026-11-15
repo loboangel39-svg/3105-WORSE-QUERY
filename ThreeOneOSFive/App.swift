@@ -17,6 +17,7 @@ struct ThreeOneOSFiveApp: App {
 
     init() {
         setupLogCapture()
+        WQIntegratedInitialize()
         log("app: 3105 launching — iOS \(AppInfo.osVersion) (\(AppInfo.osBuild)) \(AppInfo.machineName)")
     }
 

@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
@@ -68,6 +69,15 @@ struct SettingsView: View {
                         Text(language.text("tab.wallpapers"))
                     } footer: {
                         Text(language.text("wallpaper.reset_settings_footer"))
+                    }
+                }
+
+                if #available(iOS 26.0, *) {
+                    Section("WQFiles") {
+                        NavigationLink("WQFiles · Files, Apps, Cleaner & Backups") {
+                            WQFilesIntegratedView().ignoresSafeArea()
+                                .navigationBarTitleDisplayMode(.inline)
+                        }
                     }
                 }
 
@@ -203,4 +213,11 @@ struct SettingsView: View {
             .accessibilityLabel(language.text("accessibility.open_profile", name))
         }
     }
+}
+
+private struct WQFilesIntegratedView: UIViewControllerRepresentable {
+    func makeUIViewController(context: Context) -> UIViewController {
+        WQIntegratedMakeViewController()
+    }
+    func updateUIViewController(_ uiViewController: UIViewController, context: Context) {}
 }

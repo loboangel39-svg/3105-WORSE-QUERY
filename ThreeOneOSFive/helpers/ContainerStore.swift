@@ -442,12 +442,16 @@ enum ContainerStore {
 
     // MARK: Filesystem discovery
 
-    static func enumerateDirectories(path: String, maxInode: Int64 = 2_000_000) -> [String] {
+    static func enumerateDirectories(path: String, maxInode: Int64 = 0) -> [String] {
         let clean = path.hasSuffix("/") ? String(path.dropLast()) : path
         guard clean.hasPrefix("/") else { return [] }
 
         if let names = try? FileManager.default.contentsOfDirectory(atPath: clean), !names.isEmpty {
             return names.map { (clean as NSString).appendingPathComponent($0) }
+        }
+
+        if #available(iOS 26.0, *) {
+            return wq_enumerate(clean, maxInode, nil, nil) ?? []
         }
 
         var pathC = clean.utf8CString.map { Int8($0) }
@@ -490,7 +494,8 @@ enum ContainerStore {
         let metadataPath = metadataPath(for: containerPath)
 
         var data: Data?
-        if let fd = fopen(metadataPath, "r") {
+        if #available(iOS 26.0, *) { data = wq_read(metadataPath, 65536, nil) }
+        if data == nil, let fd = fopen(metadataPath, "r") {
             var buffer = [UInt8](repeating: 0, count: 65536)
             var bytes: [UInt8] = []
             while true {
@@ -525,6 +530,10 @@ enum ContainerStore {
     static func grantContainerAccess(_ containerPath: String) -> Int64 {
         guard shouldUseBadQuery else { return -1 }
         let clean = containerPath.hasSuffix("/") ? String(containerPath.dropLast()) : containerPath
+        if #available(iOS 26.0, *) {
+            return wq_enumerate(clean, maxInode, nil, nil) ?? []
+        }
+
         var pathC = clean.utf8CString.map { Int8($0) }
         return bad_query(&pathC, true, nil, false)
     }

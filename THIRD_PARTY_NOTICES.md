@@ -22,3 +22,13 @@ The 3105 license applies only to material for which the project owner has the ri
 GPL-3.0-or-later. The original copyright and license header is retained. This
 adaptation is limited to the LaunchServices/CSStore2 parser and uses Foundation
 file reads only; it does not include WQAccess, WQCache, or other WQFiles modules.
+
+## WQFiles complete integration
+
+All WQFiles modules and transitive source dependencies are included under
+`Vendor/WQFiles`, from kolbicz/WQFiles commit
+`bb81069401875a470a032830b8e6bc934fbd9146` (0.9.8).
+Copyright notices are retained in each file; GPL-3.0-or-later.
+The upstream license is included at `Vendor/WQFiles/LICENSE`.
+The worse_query technique is attributed upstream to Taj C (forcequit).
+`UPSTREAM.json` records original file hashes. Host adaptations are visible in git.
