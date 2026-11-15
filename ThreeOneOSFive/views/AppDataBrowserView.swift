@@ -285,6 +285,7 @@ struct AppDataBrowserView: View {
     private func reload() {
         let requestToken = UUID()
         reloadToken = requestToken
+        log("wqfiles: reload scheduled token=\(requestToken.uuidString) enabled=\(WQFilesIdentityResolver.isEnabled) os=\(AppInfo.osVersion) build=\(AppInfo.osBuild)")
         isLoading = true
         isResolving = true
         errorMessage = nil
@@ -317,14 +318,19 @@ struct AppDataBrowserView: View {
                 ContainerPresentationPolicy.shouldShow(bundleID: $0.bundleID)
             }
             DispatchQueue.main.async {
-                guard reloadToken == requestToken else { return }
+                guard reloadToken == requestToken else {
+                    log("wqfiles: async result discarded phase=preliminary token=\(requestToken.uuidString)")
+                    return
+                }
                 apps = preliminary
                 isLoading = false
             }
 
+            log("wqfiles: provider about_to_run token=\(requestToken.uuidString) filesystem=\(filesystemApps.count)")
             let identities = WQFilesIdentityResolver.resolve(
                 containerPaths: filesystemApps.map(\.containerPath)
             )
+            log("wqfiles: provider returned token=\(requestToken.uuidString) identities=\(identities.count)")
             let verifiedApps = WQFilesIdentityMerge.verifiedApps(
                 identities: identities,
                 originalApps: baseIdentifiedApps + filesystemApps
@@ -346,7 +352,10 @@ struct AppDataBrowserView: View {
                 $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending
             }
             DispatchQueue.main.async {
-                guard reloadToken == requestToken else { return }
+                guard reloadToken == requestToken else {
+                    log("wqfiles: async result discarded phase=provider token=\(requestToken.uuidString)")
+                    return
+                }
                 apps = result.filter { ContainerPresentationPolicy.shouldShow(bundleID: $0.bundleID) }
                 isLoading = false
             }
@@ -381,7 +390,10 @@ struct AppDataBrowserView: View {
                     $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending
                 }
             DispatchQueue.main.async {
-                guard reloadToken == requestToken else { return }
+                guard reloadToken == requestToken else {
+                    log("wqfiles: async result discarded phase=progressive token=\(requestToken.uuidString)")
+                    return
+                }
                 apps = progressiveResult
             }
             }
@@ -416,7 +428,10 @@ struct AppDataBrowserView: View {
             }
 
             DispatchQueue.main.async {
-                guard reloadToken == requestToken else { return }
+                guard reloadToken == requestToken else {
+                    log("wqfiles: async result discarded phase=final token=\(requestToken.uuidString)")
+                    return
+                }
                 apps = result
                 isLoading = false
                 isResolving = false

@@ -9,6 +9,7 @@ struct WQFilesResolvedIdentity: Equatable {
 }
 
 enum WQFilesIdentityResolver {
+    static let diagnosticBuildRevision = "8fdaac4"
     // This is a local diagnostic switch. It changes presentation only and never
     // changes grants, MHA-C2, signing, or write operations.
     static let enabledDefaultsKey = "wqfiles.identityResolver.enabled"
@@ -69,19 +70,25 @@ enum WQFilesIdentityResolver {
     }
 
     static func resolve(containerPaths: [String]) -> [String: WQFilesResolvedIdentity] {
+        log("wqfiles: invocation build=\(diagnosticBuildRevision) enabled=\(isEnabled) paths=\(containerPaths.count) os=\(AppInfo.osVersion) buildOS=\(AppInfo.osBuild)")
         guard isEnabled else {
             log("wqfiles: identity resolver disabled by local diagnostic setting")
             return [:]
         }
 
         let requested = Set(containerPaths.compactMap(applicationContainerPath))
-        guard !requested.isEmpty else { return [:] }
+        guard !requested.isEmpty else {
+            log("wqfiles: completion state=no_valid_requested_paths input=\(containerPaths.count) valid=0")
+            return [:]
+        }
         guard let current = loadSnapshot() else {
+            log("wqfiles: completion state=source_or_parse_failure valid=\(requested.count) matches=0")
             return [:]
         }
 
         let result = current.identities.filter { requested.contains($0.key) }
         log("wqfiles: CSStore2 verified \(result.count)/\(requested.count) application identities")
+        log("wqfiles: completion state=success valid=\(requested.count) matches=\(result.count)")
         return result
     }
 
