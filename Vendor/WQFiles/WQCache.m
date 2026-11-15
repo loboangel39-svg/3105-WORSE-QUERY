@@ -406,7 +406,7 @@ static BOOL WQCacheValidateItem(WQCacheItem *item, NSString **reason)
     self.navigationItem.searchController = search;
     self.navigationItem.hidesSearchBarWhenScrolling = NO;
     self.definesPresentationContext = YES;
-    self.refreshControl = WQSilentRefresh() ? nil : [UIRefreshControl new];
+    if (!WQSilentRefresh()) self.refreshControl = [UIRefreshControl new];
     [self.refreshControl addTarget:self action:@selector(userRefresh) forControlEvents:UIControlEventValueChanged];
     [self scan];
 }
@@ -565,6 +565,7 @@ static BOOL WQCacheValidateItem(WQCacheItem *item, NSString **reason)
         NSMutableArray<NSString *> *emptyRoots = [NSMutableArray new];
         BOOL scanLimited = NO;
         NSUInteger failedEnumerations = 0;
+        int refreshError = 0;
         NSUInteger limitedContainers = 0;
         NSUInteger limitedMeasurements = 0;
         NSUInteger missingIdentities = 0;
@@ -584,6 +585,7 @@ static BOOL WQCacheValidateItem(WQCacheItem *item, NSString **reason)
                 });
             });
             if (!containers) {
+                refreshError = wq_full_scan_was_declined() ? ECANCELED : errno;
                 if (cancellation.isCancelled) return;
                 scanLimited = YES;
                 failedEnumerations++;
@@ -748,6 +750,7 @@ static BOOL WQCacheValidateItem(WQCacheItem *item, NSString **reason)
                wq_size_text(foundBytes), crashLimited ? @", Crash Logs limited" : @"");
         dispatch_async(dispatch_get_main_queue(), ^{
             if (generation != self->_scanGeneration || cancellation.isCancelled) return;
+            WQRetryInternal(self, @selector(scan), refreshError);
             if (!WQSilentRefresh() || items.count || !scanLimited) self->_items = items;
             [self rebuildVisibleItems];
             self->_scanning = NO;

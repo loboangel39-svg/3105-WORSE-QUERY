@@ -1310,7 +1310,7 @@ static NSString *wq_info_date(struct timespec ts)
         wq_prism_install_background(self);
         self.tableView.backgroundColor = [UIColor clearColor];
     }
-    self.refreshControl = WQSilentRefresh() ? nil : [UIRefreshControl new];
+    if (!WQSilentRefresh()) self.refreshControl = [UIRefreshControl new];
     [self.refreshControl addTarget:self action:@selector(userRefresh) forControlEvents:UIControlEventValueChanged];
     __weak typeof(self) weakSelf = self;
     NSString *path = _path;
@@ -3230,7 +3230,7 @@ static NSString *const kSystemGroupRoot = @"/private/var/containers/Shared/Syste
 
 - (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section
 {
-    if (!_names) return WQLocalized(@"Loading…");
+    if (!_names) return WQSilentRefresh() ? nil : WQLocalized(@"Loading…");
     return _listed ? nil : WQLocalized(@"This folder cannot be listed on this iOS version. Known names that exist are shown; tap + to try another name.");
 }
 
@@ -3419,7 +3419,7 @@ static NSString *const kSystemGroupRoot = @"/private/var/containers/Shared/Syste
 {
     [super viewDidLoad];
     self.title = WQLocalizedNullable(@"Recently Deleted");
-    self.refreshControl = WQSilentRefresh() ? nil : [UIRefreshControl new];
+    if (!WQSilentRefresh()) self.refreshControl = [UIRefreshControl new];
     [self.refreshControl addTarget:self action:@selector(load) forControlEvents:UIControlEventValueChanged];
     [self load];
 }

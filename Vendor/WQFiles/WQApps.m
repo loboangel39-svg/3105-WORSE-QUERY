@@ -581,7 +581,7 @@ static BOOL wq_dir_size_cancellable(NSString *dir, WQScanCancellation *cancellat
     self.navigationItem.hidesSearchBarWhenScrolling = NO;
     self.definesPresentationContext = YES;
     self.tableView.tableHeaderView = wq_device_header(self.view.bounds.size.width);
-    self.refreshControl = WQSilentRefresh() ? nil : [UIRefreshControl new];
+    if (!WQSilentRefresh()) self.refreshControl = [UIRefreshControl new];
     [self.refreshControl addTarget:self action:@selector(userRefresh) forControlEvents:UIControlEventValueChanged];
     [self scan];
 }
@@ -702,6 +702,8 @@ static void WQAppScanWatch(WQScanCancellation *cancellation, NSUInteger lastSeri
                     [self.tableView reloadData];
                 });
             });
+        int refreshError = containers ? 0 : errno;
+        if (wq_full_scan_was_declined()) refreshError = ECANCELED;
         if (!cancellation.isCancelled && !wq_display_names_loaded()) {
             dispatch_async(dispatch_get_main_queue(), ^{
                 if (generation != self->_scanGeneration || cancellation.isCancelled) return;
@@ -808,7 +810,6 @@ static void WQAppScanWatch(WQScanCancellation *cancellation, NSUInteger lastSeri
         [apps sortUsingComparator:^NSComparisonResult(WQAppItem *a, WQAppItem *b) {
             return a.bytes > b.bytes ? NSOrderedAscending : (a.bytes < b.bytes ? NSOrderedDescending : NSOrderedSame);
         }];
-        int refreshError = containers ? 0 : errno;
         NSString *note = nil;
         if (!wq_app_group()) note = WQLocalized(@"WQ Files has no App Group, so it can't open other apps' folders. Re-sign it with a tool that keeps the App Group (see Signing in the README).");
         else if (!containers && wq_full_scan_was_declined()) note = WQLocalized(@"Apps aren't listed yet: this needs a scan of all files. Pull down to start it.");
