@@ -4,12 +4,13 @@
 #import "WQCore.h"
 #import "WQArchive.h"
 
-@interface WQSmokeDelegate : UIResponder <UIApplicationDelegate>
+@interface WQSmokeScene : UIResponder <UIWindowSceneDelegate>
 @property(nonatomic, strong) UIWindow *window;
 @end
-@implementation WQSmokeDelegate
-- (BOOL)application:(UIApplication *)app didFinishLaunchingWithOptions:(NSDictionary *)options {
-    self.window = [[UIWindow alloc] initWithFrame:UIScreen.mainScreen.bounds];
+@implementation WQSmokeScene
+- (void)scene:(UIScene *)scene willConnectToSession:(UISceneSession *)session options:(UISceneConnectionOptions *)options {
+    NSLog(@"WQ integration smoke scene connected");
+    self.window = [[UIWindow alloc] initWithWindowScene:(UIWindowScene *)scene];
     self.window.rootViewController = WQIntegratedMakeViewController();
     [self.window makeKeyAndVisible];
     dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
@@ -50,7 +51,15 @@
             exit(ok && hosted ? 0 : 1);
         });
     });
-    return YES;
+}
+@end
+@interface WQSmokeDelegate : UIResponder <UIApplicationDelegate>
+@end
+@implementation WQSmokeDelegate
+- (UISceneConfiguration *)application:(UIApplication *)app configurationForConnectingSceneSession:(UISceneSession *)session options:(UISceneConnectionOptions *)options {
+    UISceneConfiguration *config = [[UISceneConfiguration alloc] initWithName:@"Smoke" sessionRole:session.role];
+    config.delegateClass = WQSmokeScene.class;
+    return config;
 }
 @end
 int main(int argc, char **argv) {

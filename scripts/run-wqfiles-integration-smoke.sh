@@ -24,6 +24,7 @@ cat > "$APP/Info.plist" <<'PLIST'
 <key>CFBundleShortVersionString</key><string>1.0</string>
 <key>MinimumOSVersion</key><string>26.0</string>
 <key>UILaunchScreen</key><dict/>
+<key>UIApplicationSceneManifest</key><dict><key>UIApplicationSupportsMultipleScenes</key><false/></dict>
 </dict></plist>
 PLIST
 cp -R ThreeOneOSFive/WQFilesResources.bundle "$APP/"
@@ -42,8 +43,11 @@ DEVICE=$(python3 -c 'import json; d=json.load(open("build-smoke/devices.json"));
 xcrun simctl boot "$DEVICE" || true
 xcrun simctl bootstatus "$DEVICE" -b
 xcrun simctl install "$DEVICE" "$APP"
-xcrun simctl launch --console "$DEVICE" org.3105.WQIntegrationSmoke > "$OUT/simulator.log" 2>&1 &
-LAUNCH_PID=$!
+python3 - "$DEVICE" <<'PY'
+import subprocess,sys
+with open('build-smoke/simulator.log', 'w') as log:
+    subprocess.run(['xcrun','simctl','launch','--terminate-running-process',sys.argv[1],'org.3105.WQIntegrationSmoke'], stdout=log, stderr=subprocess.STDOUT, timeout=90, check=True)
+PY
 CONTAINER=$(xcrun simctl get_app_container "$DEVICE" org.3105.WQIntegrationSmoke data)
 for i in $(seq 1 90); do
   if [[ -f "$CONTAINER/Documents/integration-smoke.json" ]]; then break; fi
@@ -52,4 +56,4 @@ done
 test -f "$CONTAINER/Documents/integration-smoke.json"
 cp "$CONTAINER/Documents/integration-smoke.json" "$OUT/"
 python3 -c 'import json; d=json.load(open("build-smoke/integration-smoke.json")); print(json.dumps(d,indent=2)); assert d["passed"]'
-wait "$LAUNCH_PID" || true
+
