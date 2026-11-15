@@ -28,7 +28,17 @@ cat > "$APP/Info.plist" <<'PLIST'
 PLIST
 cp -R ThreeOneOSFive/WQFilesResources.bundle "$APP/"
 codesign --force --sign - "$APP"
-DEVICE=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin); print(next(x["udid"] for runtime,items in d["devices"].items() if "iOS-26" in runtime or "iOS-27" in runtime for x in items if "iPhone" in x["name"]))')
+echo 'Initializing CoreSimulator for the selected Xcode'
+sudo xcodebuild -runFirstLaunch
+# Runners may already have the service from their default Xcode running.
+# Restart it after selecting another Xcode, before requesting its inventory.
+killall -9 com.apple.CoreSimulator.CoreSimulatorService 2>/dev/null || true
+python3 - <<'PY'
+import subprocess
+result = subprocess.run(['xcrun', 'simctl', 'list', 'devices', 'available', '-j'], capture_output=True, text=True, timeout=180, check=True)
+open('build-smoke/devices.json', 'w').write(result.stdout)
+PY
+DEVICE=$(python3 -c 'import json; d=json.load(open("build-smoke/devices.json")); print(next(x["udid"] for runtime,items in d["devices"].items() if "iOS-26" in runtime or "iOS-27" in runtime for x in items if "iPhone" in x["name"]))')
 xcrun simctl boot "$DEVICE" || true
 xcrun simctl bootstatus "$DEVICE" -b
 xcrun simctl install "$DEVICE" "$APP"
