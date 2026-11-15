@@ -45,7 +45,8 @@ NSString *WQLocalized(NSString *key)
     NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
     NSString *code = [defaults stringForKey:@"WQLanguage"] ?: [defaults stringForKey:@"appLanguage"] ?: @"es";
     NSString *path = [bundle pathForResource:code ofType:@"lproj"];
-    if (!path) path = [bundle pathForResource:@"es" ofType:@"lproj"];
+    if (!path) path = [bundle pathForResource:[code componentsSeparatedByString:@"-"].firstObject ofType:@"lproj"];
+    if (!path) path = [bundle pathForResource:@"en" ofType:@"lproj"]; // preserve original fallback for unsupported explicit languages
     NSBundle *localized = path ? [NSBundle bundleWithPath:path] : bundle;
     return [localized localizedStringForKey:key value:key table:nil];
 }

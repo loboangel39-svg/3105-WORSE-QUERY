@@ -31,6 +31,7 @@ assert native.count('if (!WQSilentRefresh()) [self checkForUpdate];')==2
 assert len(re.findall(r'- \(void\)checkForUpdate\s*\{\s*if \(WQSilentRefresh\(\)\) return;',native))==2
 assert len(re.findall(r'- \(void\)showUpdateBanner[^\n]*\n\{\s*if \(WQSilentRefresh\(\)\) return;',native))==2
 assert 'creditsRow(' not in read(base+'views/SettingsView.swift')
+assert 'https://x.com/' not in read(base+'WQFilesResources.bundle/OPEN_SOURCE_LICENSES.txt')
 assert 'OPEN_SOURCE_LICENSES' in native and 'OPEN_SOURCE_LICENSES' in read(base+'views/SettingsView.swift')
 for path in [base+'Info.plist',base+'WQFilesResources.bundle/Info.plist']:
     assert plistlib.loads((root/path).read_bytes())['CFBundleDevelopmentRegion']=='es'
