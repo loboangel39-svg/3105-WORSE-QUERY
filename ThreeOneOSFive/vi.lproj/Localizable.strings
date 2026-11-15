@@ -675,3 +675,26 @@
 "appearance.dark" = "Tối";
 "appearance.light" = "Sáng";
 "appearance.system" = "Hệ thống";
+
+/* VINI Phase 1: explicitly identified preview presentation. */
+"vini.preview_mode" = "Xem trước cục bộ";
+"vini.demo_controls" = "BẢN DEMO";
+"vini.license_unverified" = "Chưa xác minh";
+"vini.license_time" = "Thời gian giấy phép còn lại";
+"vini.toggle_hint" = "Điều khiển minh họa; không áp dụng hoặc khôi phục bản vá.";
+"vini.preview_on" = "Bật, chỉ minh họa";
+"vini.preview_off" = "Tắt, chỉ minh họa";
+"vini.device" = "Thiết bị";
+"vini.status" = "Trạng thái";
+"vini.architecture" = "Kiến trúc";
+"vini.unavailable" = "Không có";
+"vini.target.aim_drag" = "Nội suy kéo minh họa";
+"vini.target.aim_head" = "Điều khiển ưu tiên đầu trực quan";
+"vini.target.aim_neck" = "Đường cong kéo minh họa";
+"vini.target.aim_chest" = "Điều khiển neo thân trực quan";
+"vini.target.direct_hit" = "Điều khiển tác động trực tiếp trực quan";
+"vini.target.wireframe" = "Xem trước đường viền";
+"vini.target.esp_box" = "Xem trước khung giới hạn";
+"vini.target.radar" = "Xem trước khoảng cách";
+"vini.target.integrity" = "Xem trước tính toàn vẹn";
+"vini.target.memory" = "Xem trước cấp phát bộ nhớ";

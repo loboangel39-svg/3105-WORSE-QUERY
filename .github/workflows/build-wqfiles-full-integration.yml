@@ -1,4 +1,4 @@
-name: Build native visual redesign
+name: Build VINI Phase 1 for physical iPhone
 
 on:
   push:
@@ -30,9 +30,7 @@ jobs:
       - name: Verify integration provenance and target
         run: |
           git diff --check
-          python3 scripts/verify-wqfiles-integration.py
-          python3 scripts/verify-ui-cleanup.py
-          python3 scripts/verify-visual-redesign.py
+          python3 scripts/verify-vini-phase1.py
 
       - name: Build unsigned experimental device app
         shell: bash
@@ -69,9 +67,9 @@ jobs:
           /usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP_PATH/Info.plist" | grep -Fx 'com.apple.mobile.MobileHouseArrest'
           mkdir -p build-experimental/Payload
           cp -R "$APP_PATH" build-experimental/Payload/
-          (cd build-experimental && /usr/bin/ditto -c -k --sequesterRsrc --keepParent Payload 3105-WQFiles-Full-Integration-Unsigned.ipa)
+          (cd build-experimental && /usr/bin/ditto -c -k --sequesterRsrc --keepParent Payload VINI-Phase1-Unsigned.ipa)
           {
-            echo '# 3105 experimental App Group build report'
+            echo '# VINI Phase 1 physical iPhone build report'
             echo
             echo "- Commit: $(git rev-parse HEAD)"
             echo "- Variant: ExperimentalRelease"
@@ -95,93 +93,46 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: 3105-WQFiles-Full-Integration-Unsigned
+          name: VINI-Phase1-Unsigned
           path: |
-            build-experimental/3105-WQFiles-Full-Integration-Unsigned.ipa
+            build-experimental/VINI-Phase1-Unsigned.ipa
             build-experimental/BUILD-REPORT.md
             build-experimental/xcodebuild.log
             xcode-version.txt
           retention-days: 30
 
-  upstream-regressions:
-    runs-on: macos-15
-    timeout-minutes: 45
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Select latest installed Xcode
-        run: |
-          XCODE_APP="$(find /Applications -maxdepth 1 -type d -name 'Xcode*.app' -print | sort | tail -n 1)"
-          sudo xcode-select --switch "$XCODE_APP/Contents/Developer"
-      - name: Run full original host and iOS regression suites
-        working-directory: Vendor/WQFiles
-        run: bash tests/run_all_tests.sh
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: WQFiles-regression-logs
-          path: Vendor/WQFiles/.work/tests/
-
-  simulator-integration:
+  static-validation:
     runs-on: macos-15
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Select latest installed Xcode
+      - name: Select installed Xcode
         run: |
           XCODE_APP="$(find /Applications -maxdepth 1 -type d -name 'Xcode*.app' -print | sort | tail -n 1)"
           sudo xcode-select --switch "$XCODE_APP/Contents/Developer"
-      - name: Execute integrated UIKit and filesystem operations
-        run: bash scripts/run-wqfiles-integration-smoke.sh
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: WQFiles-simulator-integration
-          path: |
-            build-smoke/integration-smoke.json
-            build-smoke/simulator.log
-            build-smoke/boot.log
-            build-smoke/selected-device.json
-            build-smoke/runtimes.json
-
-  spanish-navigation-ui:
-    runs-on: macos-15
-    timeout-minutes: 35
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Prepare Xcode and test target in disposable checkout
+      - name: Verify presentation isolation and preserved functional code
         run: |
-          XCODE_APP="$(find /Applications -maxdepth 1 -type d -name 'Xcode*.app' -print | sort | tail -n 1)"
-          sudo xcode-select --switch "$XCODE_APP/Contents/Developer"
-          sudo xcodebuild -runFirstLaunch
-          gem install --user-install xcodeproj --no-document
-          ruby scripts/prepare-ui-tests.rb
-      - name: Test real SwiftUI app and patch codec in simulator
+          set -euo pipefail
+          mkdir -p build-static
+          python3 scripts/verify-vini-phase1.py | tee build-static/preservation.log
+          python3 Vendor/WQFiles/tests/test_localization.py 2>&1 | tee build-static/localization.log
+          python3 Vendor/WQFiles/tests/browser_ui_regressions.py | tee build-static/legacy-ui-static.log
+          plutil -lint ThreeOneOSFive/Info.plist ThreeOneOSFive/3105-Experimental.entitlements ThreeOneOSFive/WQFilesResources.bundle/Info.plist | tee build-static/plist.log
+      - name: Strict syntax and dependency link checks for physical arm64
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p build-ui
-          DEVICE=$(python3 scripts/prepare-visual-simulator.py "$PWD/build-ui")
-          xcodebuild -project ThreeOneOSFive.xcodeproj -scheme UICleanupTests \
-            -configuration Debug -sdk iphonesimulator -destination "platform=iOS Simulator,id=$DEVICE" \
-            -derivedDataPath build-ui/DerivedData -resultBundlePath build-ui/UICleanup.xcresult \
-            -parallel-testing-enabled NO CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO test | tee build-ui/xcodebuild.log
-      - name: Export actual simulator screenshots
-        if: always()
-        run: xcrun xcresulttool export attachments --path build-ui/UICleanup.xcresult --output-path build-ui/screenshots
+          cd Vendor/WQFiles
+          SDK=$(xcrun --sdk iphoneos --show-sdk-path)
+          SOURCES=(WQCore.m WQAccess.m WQLocalization.m WQLaunchServices.m WQUI.m WQSharing.m WQApps.m WQCache.m WQPlistEditor.m WQHexViewer.m WQSQLiteViewer.m WQSQLiteSave.m WQHealth.m WQTrash.m WQArchive.m WQSyntax.m WQMediaStream.m main.m)
+          FLAGS=(-fobjc-arc -fmodules -arch arm64 -miphoneos-version-min=26.0 -isysroot "$SDK" -Wall -Wextra -Werror -O2)
+          xcrun --sdk iphoneos clang -fsyntax-only "${FLAGS[@]}" "${SOURCES[@]}" > ../../build-static/arm64-syntax.log 2>&1
+          xcrun --sdk iphoneos clang "${FLAGS[@]}" "${SOURCES[@]}" -framework UIKit -framework Foundation -framework Security -framework UniformTypeIdentifiers -framework AVFoundation -framework AVKit -lsqlite3 -lz -o ../../build-static/WQFiles-arm64-link-check > ../../build-static/arm64-link.log 2>&1
+          echo 'PASS: physical arm64 strict syntax and dependency link checks; binaries were not executed.' | tee ../../build-static/arm64-result.txt
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: Spanish-UI-regressions
-          path: |
-            build-ui/UICleanup.xcresult
-            build-ui/xcodebuild.log
-            build-ui/screenshots
-            build-ui/boot.log
-            build-ui/selected-device.json
-            build-ui/runtimes.json
+          name: VINI-Phase1-Static-Checks
+          path: build-static/

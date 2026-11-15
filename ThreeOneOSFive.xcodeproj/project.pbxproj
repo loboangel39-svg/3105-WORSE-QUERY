@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		AA3105010000000000000001 /* VINIDashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA3105010000000000000002; };
 		3105A200 /* App.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3105A020; };
 		3105A201 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3105A021; };
 		3105A203 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3105A023; };
@@ -104,6 +105,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		AA3105010000000000000002 /* VINIDashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VINIDashboardView.swift; sourceTree = "<group>"; };
 		3105A010 /* 3105.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "3105.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		3105A020 /* App.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App.swift; sourceTree = "<group>"; };
 		3105A021 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -318,6 +320,7 @@
 			isa = PBXGroup;
 			children = (
 				3105A098 /* DesignSystem.swift */,
+				AA3105010000000000000002 /* VINIDashboardView.swift */,
 				3105A023 /* SettingsView.swift */,
 				3105A024 /* LogView.swift */,
 				3105A105 /* AppDataBrowserView.swift */,
@@ -544,6 +547,7 @@
 				AB1050010000000000000027,
 				AB1050010000000000000029,
 				AB105001000000000000002B,
+				AA3105010000000000000001,
 				3105A200, 3105A201, 3105A203, 3105A204,
 				3105A205, 3105A206, 3105A207, 3105A209,
 				3105A212, 3105A213, 3105A244,

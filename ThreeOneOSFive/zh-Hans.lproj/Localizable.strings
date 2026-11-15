@@ -675,3 +675,26 @@
 "appearance.dark" = "深色";
 "appearance.light" = "浅色";
 "appearance.system" = "系统";
+
+/* VINI Phase 1: explicitly identified preview presentation. */
+"vini.preview_mode" = "本地预览";
+"vini.demo_controls" = "视觉演示";
+"vini.license_unverified" = "未验证";
+"vini.license_time" = "许可证剩余时间";
+"vini.toggle_hint" = "演示控件，不会应用或还原补丁。";
+"vini.preview_on" = "已开启，仅供演示";
+"vini.preview_off" = "已关闭，仅供演示";
+"vini.device" = "设备";
+"vini.status" = "状态";
+"vini.architecture" = "架构";
+"vini.unavailable" = "不可用";
+"vini.target.aim_drag" = "拖动插值演示";
+"vini.target.aim_head" = "头部优先级视觉控件";
+"vini.target.aim_neck" = "拖动曲线演示";
+"vini.target.aim_chest" = "躯干锚点视觉控件";
+"vini.target.direct_hit" = "直接命中视觉控件";
+"vini.target.wireframe" = "轮廓预览";
+"vini.target.esp_box" = "边界框预览";
+"vini.target.radar" = "距离预览";
+"vini.target.integrity" = "完整性预览";
+"vini.target.memory" = "内存分配预览";

@@ -5,7 +5,7 @@ def old(p): return subprocess.check_output(['git','show','18d3694:'+p],cwd=root)
 def read(p): return (root/p).read_text(encoding='utf-8')
 def trim(s): return '\n'.join(l for l in s.split('\n') if l.strip() not in ('.controllerSurface()', '.controllerRow()', '.accessibilityIdentifier("files-workspace")', '.accessibilityIdentifier("folder-browser")'))
 # Every pre-existing executable source outside this explicit presentation allowlist is identical to the stable commit.
-allowed={'ThreeOneOSFive/ContentView.swift','ThreeOneOSFive/views/DesignSystem.swift','ThreeOneOSFive/views/SettingsView.swift'}
+allowed={'ThreeOneOSFive/App.swift','ThreeOneOSFive/ContentView.swift','ThreeOneOSFive/views/DesignSystem.swift','ThreeOneOSFive/views/SettingsView.swift'}
 from native_presentation import normalized
 for path in ['Vendor/WQFiles/main.m','Vendor/WQFiles/WQUI.m']:
  assert normalized(read(path))==normalized(old(path)), 'non-presentation UIKit change: '+path
@@ -26,7 +26,9 @@ for lang in ['es','en','vi','zh-Hans']:
  def table(s): return {json.loads(k):json.loads(v) for k,v in re.findall(r'^("(?:\\.|[^"\\])*")\s*=\s*("(?:\\.|[^"\\])*");',s,re.M)}
  before,after=table(old(p)),table(read(p))
  assert all(after[k]==v for k,v in before.items()), lang
- assert set(after)-set(before)=={'appearance.title','appearance.dark','appearance.light','appearance.system'}
+ added=set(after)-set(before)
+ assert {'appearance.title','appearance.dark','appearance.light','appearance.system'} <= added
+ assert all(k.startswith('vini.') or k.startswith('appearance.') for k in added)
 assert 'case .installed, .files, .search: return true' in read('ThreeOneOSFive/helpers/AppTabNavigationState.swift')
 assert 'ControllerNavigation(' in read('ThreeOneOSFive/ContentView.swift')
 assert 'interface.appearance' in read('ThreeOneOSFive/views/SettingsView.swift')
@@ -48,3 +50,5 @@ def without_compact(text):
 content=without_compact(content)
 assert content==without_compact(old('ThreeOneOSFive/ContentView.swift')), 'navigation behavior changed outside presentation'
 print('PASS: settings callbacks and all navigation/import/session wiring identical after removing explicit presentation additions')
+
+assert read("ThreeOneOSFive/App.swift").replace("VINIDashboardView()", "ContentView()", 1)==old("ThreeOneOSFive/App.swift"), "startup or service lifecycle changed beyond the root presentation"

@@ -675,3 +675,26 @@
 "appearance.dark" = "Dark";
 "appearance.light" = "Light";
 "appearance.system" = "System";
+
+/* VINI Phase 1: explicitly identified preview presentation. */
+"vini.preview_mode" = "Local preview";
+"vini.demo_controls" = "VISUAL DEMO";
+"vini.license_unverified" = "Not verified";
+"vini.license_time" = "License time remaining";
+"vini.toggle_hint" = "Demonstration control; does not apply or restore patches.";
+"vini.preview_on" = "On, demonstration only";
+"vini.preview_off" = "Off, demonstration only";
+"vini.device" = "Device";
+"vini.status" = "Status";
+"vini.architecture" = "Architecture";
+"vini.unavailable" = "Unavailable";
+"vini.target.aim_drag" = "Demonstration drag interpolation";
+"vini.target.aim_head" = "Visual head priority control";
+"vini.target.aim_neck" = "Demonstration drag curve";
+"vini.target.aim_chest" = "Visual torso anchor control";
+"vini.target.direct_hit" = "Visual direct hit control";
+"vini.target.wireframe" = "Outline preview";
+"vini.target.esp_box" = "Bounding box preview";
+"vini.target.radar" = "Proximity preview";
+"vini.target.integrity" = "Integrity preview";
+"vini.target.memory" = "Memory allocation preview";
