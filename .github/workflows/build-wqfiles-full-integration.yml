@@ -108,3 +108,22 @@ jobs:
         with:
           name: WQFiles-regression-logs
           path: Vendor/WQFiles/.work/tests/
+
+  simulator-integration:
+    runs-on: macos-15
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select latest installed Xcode
+        run: |
+          XCODE_APP="$(find /Applications -maxdepth 1 -type d -name 'Xcode*.app' -print | sort | tail -n 1)"
+          sudo xcode-select --switch "$XCODE_APP/Contents/Developer"
+      - name: Execute integrated UIKit and filesystem operations
+        run: bash scripts/run-wqfiles-integration-smoke.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: WQFiles-simulator-integration
+          path: |
+            build-smoke/integration-smoke.json
+            build-smoke/simulator.log
