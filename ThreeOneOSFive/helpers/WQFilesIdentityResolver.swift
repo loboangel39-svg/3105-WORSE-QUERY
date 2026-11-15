@@ -9,7 +9,7 @@ struct WQFilesResolvedIdentity: Equatable {
 }
 
 enum WQFilesIdentityResolver {
-    static let diagnosticBuildRevision = "5898b86"
+    static let diagnosticBuildRevision = "5de673e"
     // This is a local diagnostic switch. It changes presentation only and never
     // changes grants, MHA-C2, signing, or write operations.
     static let enabledDefaultsKey = "wqfiles.identityResolver.enabled"
