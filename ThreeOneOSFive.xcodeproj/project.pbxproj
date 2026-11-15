@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		AA3105040000000000000004 /* VINIStagingAccountView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA3105040000000000000003; };
+		AA3105040000000000000002 /* VINIStagingClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA3105040000000000000001; };
 		AA3105030000000000000004 /* VINIDualBackupStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA3105020000000000000004; };
 		AA3105030000000000000003 /* VINIPackageCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA3105020000000000000003; };
 		AA3105030000000000000002 /* VINIRemoteContract.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA3105020000000000000002; };
@@ -109,6 +111,8 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		AA3105040000000000000003 /* VINIStagingAccountView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VINIStagingAccountView.swift; sourceTree = "<group>"; };
+		AA3105040000000000000001 /* VINIStagingClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VINIStagingClient.swift; sourceTree = "<group>"; };
 		AA3105020000000000000004 /* VINIDualBackupStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VINIDualBackupStore.swift; sourceTree = "<group>"; };
 		AA3105020000000000000003 /* VINIPackageCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VINIPackageCatalog.swift; sourceTree = "<group>"; };
 		AA3105020000000000000002 /* VINIRemoteContract.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VINIRemoteContract.swift; sourceTree = "<group>"; };
@@ -327,6 +331,7 @@
 		3105A404 /* views */ = {
 			isa = PBXGroup;
 			children = (
+				AA3105040000000000000003 /* VINIStagingAccountView.swift */,
 				3105A098 /* DesignSystem.swift */,
 				AA3105010000000000000002 /* VINIDashboardView.swift */,
 				3105A023 /* SettingsView.swift */,
@@ -351,6 +356,7 @@
 		3105A405 /* helpers */ = {
 			isa = PBXGroup;
 			children = (
+				AA3105040000000000000001 /* VINIStagingClient.swift */,
 				3105A099 /* Localization.swift */,
 				3105A104 /* ContainerStore.swift */,
 				3105A114 /* ContainerAccessCoordinator.swift */,
@@ -541,6 +547,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				AA3105040000000000000004 /* VINIStagingAccountView.swift in Sources */,
+				AA3105040000000000000002 /* VINIStagingClient.swift in Sources */,
 				AB1050010000000000000001,
 				AB1050010000000000000004,
 				AB1050010000000000000007,

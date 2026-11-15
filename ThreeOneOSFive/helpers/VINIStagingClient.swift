@@ -1,0 +1,236 @@
+import Foundation
+import CryptoKit
+import Security
+
+enum VINIStagingError: Error, Equatable {
+    case signedOut, paused, denied, expired, offline, rateLimited, invalidResponse, integrity, keychain, stale
+    var message: String {
+        switch self {
+        case .signedOut: return "Sin sesión"
+        case .paused: return "Licencia pausada"
+        case .denied: return "Licencia inactiva, revocada o dispositivo no autorizado"
+        case .expired: return "Licencia expirada"
+        case .offline: return "Sin conexión · estado sin verificar"
+        case .rateLimited: return "Espera antes de volver a intentarlo"
+        case .integrity: return "Paquete sin integridad verificada"
+        case .keychain: return "No se pudo acceder al llavero"
+        case .stale: return "Operación cancelada"
+        case .invalidResponse: return "Respuesta no válida de staging"
+        }
+    }
+}
+
+enum VINIStagingEnvironment {
+    static let base = URL(string: "https://vini-admin-plans-staging-2b.loboangel39.workers.dev")!
+    static let fixtureID = "c0df8b65-a64d-4dca-b262-f12b39831768"
+    static let fixtureSHA256 = "92e0aa294e16bfd9ca417f121d162cdeecf46cbae0ab3ca89a2e24a7cf6bb222"
+    static let fixtureSize = 2_098_157
+    static func date(_ string: String) throws -> Date {
+        let precise = ISO8601DateFormatter(); precise.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = precise.date(from: string) ?? ISO8601DateFormatter().date(from: string) { return date }
+        throw VINIStagingError.invalidResponse
+    }
+}
+
+struct VINIStagingProfile: Codable, Equatable {
+    let username: String
+    let plan: String
+    let licenseStatus: String
+    let licenseExpiresAt: String?
+    let serverTime: String
+    func validate() throws {
+        guard !username.isEmpty, ["basic", "pro"].contains(plan),
+              ["active", "paused", "expired", "revoked", "blocked", "inactive", "archived"].contains(licenseStatus)
+        else { throw VINIStagingError.invalidResponse }
+        _ = try VINIStagingEnvironment.date(serverTime)
+        if let expiry = licenseExpiresAt { _ = try VINIStagingEnvironment.date(expiry) }
+    }
+}
+struct VINIStagingPatch: Codable, Identifiable {
+    let id: String
+    let name: String
+    let description: String?
+    let version: String?
+}
+struct VINIStagingCredentials: Codable {
+    var licenseKey: String
+    var hwid: String
+    var token: String
+    var expiresAt: String
+}
+protocol VINIStagingVault {
+    func load() throws -> VINIStagingCredentials?
+    func save(_ credentials: VINIStagingCredentials) throws
+    func delete() throws
+}
+struct VINIStagingKeychain: VINIStagingVault {
+    let service: String
+    init(service: String = "com.apple.mobile.MobileHouseArrest.vini.staging.session.v1") { self.service = service }
+    private var query: [String: Any] { [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service, kSecAttrAccount as String: "staging-session"] }
+    func load() throws -> VINIStagingCredentials? {
+        var q = query; q[kSecReturnData as String] = true; q[kSecMatchLimit as String] = kSecMatchLimitOne
+        var result: CFTypeRef?; let status = SecItemCopyMatching(q as CFDictionary, &result)
+        if status == errSecItemNotFound { return nil }
+        guard status == errSecSuccess, let data = result as? Data,
+              let record = try? JSONDecoder().decode(VINIStagingCredentials.self, from: data)
+        else { throw VINIStagingError.keychain }
+        return record
+    }
+    func save(_ credentials: VINIStagingCredentials) throws {
+        let data = try JSONEncoder().encode(credentials)
+        let attributes: [String: Any] = [kSecValueData as String: data, kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly]
+        let status = SecItemUpdate(query as CFDictionary, attributes as CFDictionary)
+        if status == errSecSuccess { return }
+        guard status == errSecItemNotFound else { throw VINIStagingError.keychain }
+        var q = query; attributes.forEach { q[$0.key] = $0.value }
+        guard SecItemAdd(q as CFDictionary, nil) == errSecSuccess else { throw VINIStagingError.keychain }
+    }
+    func delete() throws {
+        let status = SecItemDelete(query as CFDictionary)
+        guard status == errSecSuccess || status == errSecItemNotFound else { throw VINIStagingError.keychain }
+    }
+}
+
+// No redirects, cookies, shared caches or production fallback. Never log bodies/headers.
+final class VINIStagingRedirectGuard: NSObject, URLSessionTaskDelegate {
+    func urlSession(_ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse,
+                    newRequest request: URLRequest, completionHandler: @escaping (URLRequest?) -> Void) { completionHandler(nil) }
+}
+protocol VINIStagingTransport {
+    func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse)
+}
+final class VINIStagingHTTP: VINIStagingTransport {
+    private let session: URLSession
+    init() {
+        let config = URLSessionConfiguration.ephemeral
+        config.httpShouldSetCookies = false; config.urlCache = nil
+        config.timeoutIntervalForRequest = 30; config.timeoutIntervalForResource = 60
+        session = URLSession(configuration: config, delegate: VINIStagingRedirectGuard(), delegateQueue: nil)
+    }
+    func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
+        guard request.url?.scheme == "https", request.url?.host == VINIStagingEnvironment.base.host else { throw VINIStagingError.invalidResponse }
+        do {
+            if request.url?.path.hasSuffix("/download") == true {
+                let (url, response) = try await session.download(for: request)
+                defer { try? FileManager.default.removeItem(at: url) }
+                guard let http = response as? HTTPURLResponse else { throw VINIStagingError.invalidResponse }
+                let handle = try FileHandle(forReadingFrom: url); defer { try? handle.close() }
+                let bytes = try handle.read(upToCount: VINIStagingEnvironment.fixtureSize + 1) ?? Data()
+                guard bytes.count <= VINIStagingEnvironment.fixtureSize else { throw VINIStagingError.integrity }
+                return (bytes, http)
+            }
+            let (data, response) = try await session.data(for: request)
+            guard let http = response as? HTTPURLResponse, data.count <= 2 * 1024 * 1024 else { throw VINIStagingError.invalidResponse }
+            return (data, http)
+        } catch let error as VINIStagingError { throw error }
+        catch { throw VINIStagingError.offline }
+    }
+}
+
+actor VINIStagingClient {
+    private let transport: VINIStagingTransport
+    private let vault: VINIStagingVault
+    private var credentials: VINIStagingCredentials?
+    private var loaded = false
+    private var generation = 0
+    private var refreshTask: Task<VINIStagingProfile, Error>?
+    private var lastLogin: TimeInterval = -.infinity
+    init(transport: VINIStagingTransport = VINIStagingHTTP(), vault: VINIStagingVault = VINIStagingKeychain()) { self.transport = transport; self.vault = vault }
+    private func load() throws { if !loaded { credentials = try vault.load(); loaded = true } }
+    private func request(_ path: String, token: String? = nil, body: [String: String]? = nil) async throws -> (Data, HTTPURLResponse) {
+        var r = URLRequest(url: VINIStagingEnvironment.base.appendingPathComponent(path))
+        r.cachePolicy = .reloadIgnoringLocalCacheData
+        if let token { r.setValue("Bearer " + token, forHTTPHeaderField: "Authorization") }
+        if let body { r.httpMethod = "POST"; r.setValue("application/json", forHTTPHeaderField: "Content-Type"); r.httpBody = try JSONEncoder().encode(body) }
+        return try await transport.send(r)
+    }
+    private func failure(_ data: Data, _ status: Int) -> VINIStagingError {
+        if status == 429 { return .rateLimited }
+        if status >= 500 { return .offline }
+        let text = ((try? JSONSerialization.jsonObject(with: data)) as? [String: Any])?["error"] as? String ?? ""
+        if text.lowercased().contains("paused") { return .paused }
+        if text.lowercased().contains("expired") { return .expired }
+        if status == 403 { return .denied }
+        return status == 401 ? .signedOut : .invalidResponse
+    }
+    func login(licenseKey: String) async throws -> VINIStagingProfile {
+        try load()
+        let key = licenseKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !key.isEmpty, key.utf8.count <= 200 else { throw VINIStagingError.signedOut }
+        generation += 1; refreshTask?.cancel(); refreshTask = nil
+        let hwid = credentials?.hwid ?? UUID().uuidString
+        credentials = VINIStagingCredentials(licenseKey: key, hwid: hwid, token: "", expiresAt: "")
+        return try await profile()
+    }
+    func logout() throws {
+        generation += 1; refreshTask?.cancel(); refreshTask = nil; credentials = nil; loaded = true
+        try vault.delete()
+    }
+    func profile() async throws -> VINIStagingProfile {
+        try load()
+        if let task = refreshTask { return try await task.value }
+        let epoch = generation
+        let task = Task { try await self.fetchProfile(epoch: epoch) }
+        refreshTask = task
+        defer { if generation == epoch { refreshTask = nil } }
+        return try await task.value
+    }
+    private func fetchProfile(epoch: Int) async throws -> VINIStagingProfile {
+        guard let saved = credentials else { throw VINIStagingError.signedOut }
+        if !saved.token.isEmpty {
+            let (bytes, response) = try await request("api/app/me", token: saved.token)
+            guard generation == epoch else { throw VINIStagingError.stale }
+            if response.statusCode == 200 {
+                let p = try JSONDecoder().decode(VINIStagingProfile.self, from: bytes); try p.validate(); return p
+            }
+            guard response.statusCode == 401 else { throw failure(bytes, response.statusCode) }
+            credentials?.token = ""; try vault.save(credentials!)
+        }
+        // Exactly one explicit revalidation, coalesced across callers, with bounded retries.
+        guard ProcessInfo.processInfo.systemUptime - lastLogin >= 30 else { throw VINIStagingError.rateLimited }
+        lastLogin = ProcessInfo.processInfo.systemUptime
+        let (bytes, response) = try await request("api/app/validate-license", body: ["licenseKey": saved.licenseKey, "hwid": saved.hwid])
+        guard generation == epoch else { throw VINIStagingError.stale }
+        guard response.statusCode == 200 else { throw failure(bytes, response.statusCode) }
+        struct Login: Decodable { let valid: Bool; let token: String; let expiresAt: String }
+        let result = try JSONDecoder().decode(Login.self, from: bytes)
+        let p = try JSONDecoder().decode(VINIStagingProfile.self, from: bytes); try p.validate()
+        guard result.valid, !result.token.isEmpty, p.licenseStatus == "active",
+              try VINIStagingEnvironment.date(result.expiresAt) > VINIStagingEnvironment.date(p.serverTime)
+        else { throw VINIStagingError.invalidResponse }
+        let current = VINIStagingCredentials(licenseKey: saved.licenseKey, hwid: saved.hwid, token: result.token, expiresAt: result.expiresAt)
+        try vault.save(current); credentials = current
+        return p
+    }
+    private func authorized(_ path: String) async throws -> Data {
+        try load(); let epoch = generation
+        guard let token = credentials?.token, !token.isEmpty else { throw VINIStagingError.signedOut }
+        var (bytes, response) = try await request(path, token: token)
+        guard generation == epoch else { throw VINIStagingError.stale }
+        if response.statusCode == 401 {
+            _ = try await profile()
+            guard generation == epoch, let newToken = credentials?.token else { throw VINIStagingError.stale }
+            (bytes, response) = try await request(path, token: newToken)
+        }
+        guard generation == epoch else { throw VINIStagingError.stale }
+        guard response.statusCode == 200 else { throw failure(bytes, response.statusCode) }
+        return bytes
+    }
+    func catalog() async throws -> [VINIStagingPatch] {
+        struct Catalog: Decodable { let patches: [VINIStagingPatch] }
+        return try JSONDecoder().decode(Catalog.self, from: await authorized("api/app/patches")).patches
+    }
+    func downloadTestPackage(id: String) async throws -> String {
+        // The current API has no digest field. Only the independently pinned 2C fixture
+        // can be marked verified; do not invent a checksum for arbitrary packages.
+        guard id == VINIStagingEnvironment.fixtureID else { throw VINIStagingError.integrity }
+        let bytes = try await authorized("api/app/patches/" + id + "/download")
+        let digest = SHA256.hash(data: bytes).map { String(format: "%02x", $0) }.joined()
+        guard bytes.count == VINIStagingEnvironment.fixtureSize, digest == VINIStagingEnvironment.fixtureSHA256 else { throw VINIStagingError.integrity }
+        let decoded = try PatchPackageCodec.decode(bytes, password: nil)
+        let directory = try FileManager.default.url(for: .cachesDirectory, in: .userDomainMask, appropriateFor: nil, create: true).appendingPathComponent("VINIStagingVerified", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        try bytes.write(to: directory.appendingPathComponent("TEST2C-transport.3105"), options: .atomic)
+        return decoded.project.name
+    }
+}

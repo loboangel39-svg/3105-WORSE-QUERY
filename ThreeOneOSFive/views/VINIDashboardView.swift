@@ -28,6 +28,7 @@ struct VINILicensePresentation {
     let isPreview: Bool
     let isVerified: Bool
     let verifiedRemainingSeconds: TimeInterval?
+    var status: String = "Sin sesión"
 }
 struct VINIDashboardPresentation {
     let isPreview: Bool
@@ -61,14 +62,16 @@ struct VINIDashboardPresentation {
 
 struct VINIDashboardView: View {
     let presentation: VINIDashboardPresentation
+    let openAccount: () -> Void
     @Environment(\.appLanguage) private var language
     @Environment(\.dynamicTypeSize) private var typeSize
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @AppStorage("interface.appearance") private var appearance = "dark"
     @State private var category: VINICategory = .combat
 
-    init(presentation: VINIDashboardPresentation = .preview) {
+    init(presentation: VINIDashboardPresentation = .preview, openAccount: @escaping () -> Void = {}) {
         self.presentation = presentation
+        self.openAccount = openAccount
         AppTheme.configure()
     }
     private var visibleTargets: [VINITargetPresentation] {
@@ -97,8 +100,10 @@ struct VINIDashboardView: View {
     }
     private var header: some View {
         VStack(spacing: 10) {
-            VINIHeaderView()
+            VINIHeaderView(isPreview: presentation.isPreview, status: presentation.license.status)
             VINILicenseCard(license: presentation.license)
+                .contentShape(Rectangle()).onTapGesture(perform: openAccount)
+                .accessibilityAction(named: "Abrir cuenta") { openAccount() }
             VINICategorySelector(selection: $category)
         }.padding(.horizontal, 20).padding(.top, 8).padding(.bottom, 12)
     }
@@ -106,7 +111,7 @@ struct VINIDashboardView: View {
         HStack {
             Text(category.title.uppercased()).foregroundStyle(AppTheme.accent)
             Spacer()
-            Text(language.text("vini.demo_controls")).foregroundStyle(.secondary)
+            Text(presentation.isPreview ? language.text("vini.demo_controls") : presentation.license.status).foregroundStyle(.secondary)
         }.font(AppTheme.mono(10).weight(.semibold)).tracking(0.7)
          .padding(.horizontal, 20).padding(.bottom, 6)
     }
@@ -128,6 +133,8 @@ struct VINIDashboardView: View {
 }
 
 struct VINIHeaderView: View {
+    var isPreview = true
+    var status = "Sin sesión"
     @Environment(\.appLanguage) private var language
     private var version: String {
         Bundle.main.object(forInfoDictionaryKey: "AppReleaseDisplayVersion") as? String
@@ -137,7 +144,7 @@ struct VINIHeaderView: View {
         VStack(alignment: .leading, spacing: 5) {
             HStack(spacing: 9) {
                 Text("VINI").font(AppTheme.sans(24, relativeTo: .title2).weight(.heavy)).tracking(1.4)
-                Text("PREVIEW · v" + version)
+                Text((isPreview ? "PREVIEW · v" : "STAGING · v") + version)
                     .font(AppTheme.mono(10).weight(.bold)).foregroundStyle(AppTheme.accent)
                     .padding(.horizontal, 7).padding(.vertical, 4)
                     .background(AppTheme.accent.opacity(0.12), in: RoundedRectangle(cornerRadius: 6))
@@ -146,7 +153,7 @@ struct VINIHeaderView: View {
             }
             HStack(spacing: 6) {
                 Circle().fill(AppTheme.accent).frame(width: 6, height: 6).accessibilityHidden(true)
-                Text(language.text("vini.preview_mode")).font(AppTheme.sans(11, relativeTo: .caption)).foregroundStyle(.secondary)
+                Text(isPreview ? language.text("vini.preview_mode") : status).font(AppTheme.sans(11, relativeTo: .caption)).foregroundStyle(.secondary)
             }
         }.frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -157,12 +164,13 @@ struct VINILicenseCard: View {
     @Environment(\.appLanguage) private var language
     @Environment(\.dynamicTypeSize) private var typeSize
     private var remainingText: String {
+        if license.isVerified && license.verifiedRemainingSeconds == nil { return license.status + " · Permanente" }
         guard license.isVerified, let seconds = license.verifiedRemainingSeconds, seconds.isFinite, seconds >= 0 else {
-            return language.text("vini.license_unverified")
+            return license.status
         }
         // Display a supplied verified duration; this view does not run a timer or obtain a license.
         let minutes = Int64(min(seconds / 60, Double(Int64.max / 2)))
-        return String(format: "%lldd %02lldh %02lldm", minutes / 1440, (minutes % 1440) / 60, minutes % 60)
+        return license.status + " · " + String(format: "%lldd %02lldh %02lldm", minutes / 1440, (minutes % 1440) / 60, minutes % 60)
     }
     private var identity: some View {
         HStack(spacing: 8) {

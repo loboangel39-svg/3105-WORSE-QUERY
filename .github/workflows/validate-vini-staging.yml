@@ -1,0 +1,61 @@
+name: VINI staging native contracts and physical arm64
+on:
+  push:
+    branches: [experiment/vini-ios-staging-integration]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  native-and-iphone-build:
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Select installed Xcode
+        shell: bash
+        run: |
+          set -euo pipefail
+          XCODE_APP="$(find /Applications -maxdepth 1 -type d -name 'Xcode*.app' -print | sort | tail -n 1)"
+          sudo xcode-select --switch "$XCODE_APP/Contents/Developer"
+          mkdir -p build-staging
+          xcodebuild -version | tee build-staging/xcode.txt
+      - name: Static and portable regressions
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --check
+          python3 scripts/verify-vini-staging.py | tee build-staging/static.log
+          swiftc ThreeOneOSFive/helpers/SupportPolicy.swift ThreeOneOSFive/helpers/VINICompatibility.swift ThreeOneOSFive/helpers/VINIRemoteContract.swift Tests/VINIContracts/main.swift -o build-staging/metadata-tests
+          build-staging/metadata-tests | tee build-staging/metadata.log
+          plutil -lint ThreeOneOSFive.xcodeproj/project.pbxproj ThreeOneOSFive/Info.plist ThreeOneOSFive/3105-Experimental.entitlements | tee build-staging/plist.log
+      - name: Native codec, Keychain, session and live staging contracts
+        env:
+          VINI_STAGING_TEST_LICENSES: ${{ secrets.VINI_STAGING_TEST_LICENSES }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          swiftc -target "$(uname -m)-apple-macos13.0" -parse-as-library ThreeOneOSFive/helpers/PatchProjectModels.swift ThreeOneOSFive/helpers/PatchPackageCodec.swift ThreeOneOSFive/helpers/VINIStagingClient.swift Tests/VINIStaging/main.swift -o build-staging/native-tests
+          build-staging/native-tests | tee build-staging/native.log
+      - name: Compile physical arm64 and package unsigned IPA
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcodebuild -project ThreeOneOSFive.xcodeproj -scheme 3105 -sdk iphoneos -configuration ExperimentalRelease -destination 'generic/platform=iOS' -derivedDataPath build-staging/DerivedData CONFIGURATION_BUILD_DIR="$PWD/build-staging/Products" ARCHS=arm64 ONLY_ACTIVE_ARCH=NO DEAD_CODE_STRIPPING=NO CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build > build-staging/build.log 2>&1
+          APP_PATH="$(find build-staging/Products -maxdepth 1 -type d -name '*.app' -print -quit)"
+          test -x "$APP_PATH/3105"
+          lipo -info "$APP_PATH/3105" | tee build-staging/architecture.txt
+          mkdir -p build-staging/Payload
+          cp -R "$APP_PATH" build-staging/Payload/
+          (cd build-staging && ditto -c -k --keepParent Payload VINI-Staging-Unsigned.ipa)
+          git rev-parse HEAD > build-staging/commit.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: VINI-Staging-Physical-arm64
+          path: |
+            build-staging/*.log
+            build-staging/*.txt
+            build-staging/*.ipa
+          retention-days: 30

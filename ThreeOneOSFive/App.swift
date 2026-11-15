@@ -19,7 +19,7 @@ struct ThreeOneOSFiveApp: App {
     private var language: AppLanguage { AppLanguage(rawValue: languageCode) ?? .spanish }
     var body: some Scene {
         WindowGroup {
-            VINIDashboardView()
+            VINIStagingDashboard()
                 .environmentObject(appState)
                 .environmentObject(patchDraftCoordinator)
                 .environmentObject(fileOperationCoordinator)
