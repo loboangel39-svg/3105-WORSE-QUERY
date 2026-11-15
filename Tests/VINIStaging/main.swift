@@ -149,6 +149,28 @@ func expect(_ condition: Bool, _ name: String) throws { if !condition { throw VI
                 var failed = false
                 do { _ = try await rollback.apply(bytes:bytes,injectFailure:true) } catch { failed = true }
                 try expect(failed, "injected Apply failure is not reported as success")
+                let partialRoot = lab.appendingPathComponent("PartialRollback",isDirectory:true)
+                try FileManager.default.createDirectory(at:partialRoot,withIntermediateDirectories:true)
+                let originals = [Data("owned original one".utf8),Data("owned original two".utf8)]
+                let rules = (0..<2).map { PatchRule(bundleID:VINIIsolatedFixture.bundleID,relativePath:"file-\($0).bin",replacementFilename:"replacement.bin",replacementData:Data("changed-\($0)".utf8)) }
+                for i in 0..<2 { try originals[i].write(to:partialRoot.appendingPathComponent(rules[i].relativePath)) }
+                let rp = PatchProject(name:"Owned rollback probe",bundleIdentifiers:[VINIIsolatedFixture.bundleID],rules:rules)
+                let rb = VINIDualBackupStore(root:partialRoot.appendingPathComponent("Dual"),engineRoot:partialRoot.appendingPathComponent("Journals"))
+                let encodedRollback = try PatchPackageCodec.encodeNew(project:rp,password:nil)
+                var rr = VINIOperationRecord(targetID:"package."+rp.id.uuidString,projectID:rp.id,operationID:UUID(),transactionID:nil,previousTransactionID:nil,phase:.preparing,lastVerifiedEnabled:false,desiredEnabled:true,packageDigest:Data(SHA256.hash(data:encodedRollback.data)),plannedRules:rules.map { VINIPlannedRule(id:$0.id,bundleID:$0.bundleID,path:$0.relativePath,digest:Data(SHA256.hash(data:$0.replacementData))) },plannedDirectories:[],roots:[VINIIsolatedFixture.bundleID:try VINIRootIdentity.read(partialRoot)],startedAt:Date())
+                var rollbackTriggered = false
+                do {
+                    _ = try PatchTransaction.apply(project:rp,backupRoot:rb.engineRoot,containerResolver:{ _ in partialRoot },beforeWrite:{ index in
+                        if index == 1 {
+                            try expect(try Data(contentsOf:partialRoot.appendingPathComponent(rules[0].relativePath)) == rules[0].replacementData,"first file really changed before injected failure")
+                            throw VINIPatchFailure.concurrentChange
+                        }
+                    },beforeMutation:{ receipt in rr.transactionID=receipt.id;rr.phase = .prepared;try rb.save(rr);try rb.preparePair(rr) })
+                } catch { rollbackTriggered = true }
+                let rollbackReceipt = try rb.receipt(rr)
+                try expect(rollbackTriggered && (try PatchTransaction.journalSnapshot(receipt:rollbackReceipt)).status == "rolledBack","existing engine rolls back a genuinely partially applied transaction")
+                for i in 0..<2 { try expect(try Data(contentsOf:partialRoot.appendingPathComponent(rules[i].relativePath)) == originals[i],"partial rollback original hash restored for file \(i)") }
+
                 try expect(try Data(contentsOf:lab.appendingPathComponent("InjectedFailure/Container/Documents/acceptance.bin")) == VINIIsolatedFixture.original, "existing transaction rollback preserves original bytes")
 
                 let restored = VINIStagingClient(vault:liveVault)

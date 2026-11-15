@@ -27,7 +27,7 @@ enum VINIAuthenticationPhase: Equatable { case checking, login, validating, auth
         busy = true; defer { busy = false }
         lastRefresh = ProcessInfo.processInfo.systemUptime
         phase = licenseKey == nil ? .checking : .validating
-        if licenseKey != nil { profile = nil; verified = false; packages = []; packageResult = nil }
+        if licenseKey != nil { preparedFixture = false; profile = nil; verified = false; packages = []; packageResult = nil }
         do {
             let p: VINIStagingProfile
             if let key = licenseKey { p = try await client.login(licenseKey: key) }
@@ -50,7 +50,7 @@ enum VINIAuthenticationPhase: Equatable { case checking, login, validating, auth
     }
     func logout() async {
         guard !busy else { return }
-        do { try await client.logout(); profile = nil; packages = []; verified = false; phase = .login; authorizationDeadline = 0; status = "Sin sesión"; packageResult = nil }
+        do { try await client.logout(); preparedFixture = false; profile = nil; packages = []; verified = false; phase = .login; authorizationDeadline = 0; status = "Sin sesión"; packageResult = nil }
         catch { verified = false; phase = .blocked; status = VINIStagingError.keychain.message }
     }
     func download(_ patch: VINIStagingPatch) async {

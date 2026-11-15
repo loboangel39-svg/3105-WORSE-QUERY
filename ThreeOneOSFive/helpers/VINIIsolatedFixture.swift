@@ -112,8 +112,9 @@ actor VINIIsolatedFixture {
                 let receipt = try store.receipt(record)
                 if (try? PatchTransaction.verifyState(receipt: receipt, original: true, containerResolver: resolver)) == true,
                    (try? PatchTransaction.journalSnapshot(receipt: receipt).status) == "rolledBack" {
-                    record.phase = .restored; record.lastVerifiedEnabled = false
+                    record.phase = .restored; record.lastVerifiedEnabled = false; record.desiredEnabled = false
                     try store.sealRestored(record)
+                    try saveEvidence(record, applied: false)
                     _ = id
                 } else { record.phase = .recoveryRequired }
             } else { record.phase = .recoveryRequired }

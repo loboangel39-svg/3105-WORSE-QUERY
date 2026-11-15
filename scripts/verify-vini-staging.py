@@ -29,3 +29,5 @@ for p in ['ThreeOneOSFive/helpers/PatchTransaction.swift','ThreeOneOSFive/helper
 for path in (root/'.github/workflows').glob('*.yml'):
  for forbidden in ['simctl','iphonesimulator','coresimulator','runfirstlaunch']:assert forbidden not in path.read_text().lower(),str(path)
 print('PASS preserved dashboard graphics/categories, engines, identity, codec, compatibility and physical-only workflows; staging only and Keychain credentials')
+
+assert text("ThreeOneOSFive/views/VINIDashboardView.swift")==subprocess.check_output(["git","show","7864fc3:ThreeOneOSFive/views/VINIDashboardView.swift"],cwd=root).decode().replace("\r\n","\n"), "approved dashboard changed"
