@@ -21,6 +21,7 @@ static BOOL HasRefreshChrome(UIView *view) {
     self.window = [[UIWindow alloc] initWithWindowScene:(UIWindowScene *)scene];
     self.window.rootViewController = WQIntegratedMakeViewController();
     [self.window makeKeyAndVisible];
+    void (^runTests)(void) = ^{
     dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
         NSMutableArray *checks = [NSMutableArray new];
         NSString *error = nil;
@@ -76,6 +77,15 @@ static BOOL HasRefreshChrome(UIView *view) {
             exit(ok && hosted ? 0 : 1);
         });
     });
+    };
+    if (UIApplication.sharedApplication.applicationState == UIApplicationStateActive) runTests();
+    else {
+        __block id token;
+        token = [NSNotificationCenter.defaultCenter addObserverForName:UIApplicationDidBecomeActiveNotification object:nil queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *note) {
+            [NSNotificationCenter.defaultCenter removeObserver:token]; token = nil;
+            runTests();
+        }];
+    }
 }
 @end
 @interface WQSmokeDelegate : UIResponder <UIApplicationDelegate>
