@@ -655,7 +655,7 @@ enum PatchTransaction {
     }
     static func preserveCurrentState(receipt: PatchTransactionReceipt,
                                      containerResolver: (String) throws -> URL,
-                                     preserve: ([PatchRecoverySnapshot]) throws -> Void,
+                                     preserve: @escaping ([PatchRecoverySnapshot]) throws -> Void,
                                      fileManager: FileManager = .default) throws {
         let journal = try activeJournal(for: receipt)
         let roots = try resolvedRoots(journal: journal, containerResolver: containerResolver)

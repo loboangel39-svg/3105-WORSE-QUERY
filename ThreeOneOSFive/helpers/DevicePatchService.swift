@@ -111,7 +111,7 @@ enum DevicePatchService {
         }
     }
     static func preserveCurrentState(receipt: PatchTransactionReceipt,
-                                     preserve: ([PatchRecoverySnapshot]) throws -> Void) throws {
+                                     preserve: @escaping ([PatchRecoverySnapshot]) throws -> Void) throws {
         let bundleIDs = try PatchTransaction.requiredBundleIdentifiers(for: receipt)
         try withResolvedContainers(bundleIDs: bundleIDs) { roots in
             try PatchTransaction.preserveCurrentState(receipt: receipt, containerResolver: { id in
