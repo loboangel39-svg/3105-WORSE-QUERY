@@ -179,6 +179,12 @@ static void TestContainerMapping(NSString *path)
 {
     WriteData(StoreWithContainers(), path);
     [NSUserDefaults.standardUserDefaults setObject:path forKey:@"WQLaunchServicesStore"];
+    NSDictionary *report = wq_phase1_identity_report();
+    WQCheck([report[@"sourceState"] isEqualToString:@"valid"]);
+    WQCheck([report[@"sourceReadable"] boolValue]);
+    WQCheck([report[@"bundleIDs"] unsignedIntegerValue] >= 1);
+    WQCheck([report[@"verifiedNames"] unsignedIntegerValue] >= 1);
+    WQCheck([report[@"matchedUUID"] unsignedIntegerValue] == 0); // association needs 3105's discovered set
     WQCheck([wq_phase1_bundle_id_for_container(kAppPath) isEqualToString:@"com.example.app"]);
     WQCheck([wq_phase1_bundle_id_for_container([kAppPath substringFromIndex:8]) isEqualToString:@"com.example.app"]);  // /var/...
     WQCheck([wq_phase1_bundle_id_for_container(kPluginPath) isEqualToString:@"com.example.app.widget"]);

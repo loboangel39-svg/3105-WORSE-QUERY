@@ -19,6 +19,7 @@
 		3105A213 /* worse_query_adapter.m in Sources */ = {isa = PBXBuildFile; fileRef = 3105A033; };
 		3105A244 /* WQLaunchServicesPhase1.m in Sources */ = {isa = PBXBuildFile; fileRef = 3105A117; };
 		3105A245 /* WQBundleIdentityCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3105A119; };
+		3105A246 /* WQIdentityHealth.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3105A123; };
 		3105A210 /* mcm_bridge.m in Sources */ = {isa = PBXBuildFile; fileRef = 3105A030; };
 		3105A242 /* ContainerAccessCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3105A114; };
 		3105A243 /* WQFilesIdentityResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3105A115; };
@@ -126,6 +127,7 @@
 		3105A117 /* WQLaunchServicesPhase1.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = WQLaunchServicesPhase1.m; sourceTree = "<group>"; };
 		3105A118 /* WQLaunchServicesPhase1.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = WQLaunchServicesPhase1.h; sourceTree = "<group>"; };
 		3105A119 /* WQBundleIdentityCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WQBundleIdentityCoordinator.swift; sourceTree = "<group>"; };
+		3105A123 /* WQIdentityHealth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WQIdentityHealth.swift; sourceTree = "<group>"; };
 		3105A105 /* AppDataBrowserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDataBrowserView.swift; sourceTree = "<group>"; };
 		3105A106 /* AppIconHelper.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AppIconHelper.m; sourceTree = "<group>"; };
 		3105A107 /* AppIconHelper.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AppIconHelper.h; sourceTree = "<group>"; };
@@ -277,6 +279,7 @@
 				3105A115 /* WQFilesIdentityResolver.swift */,
 				3105A116 /* 3105-Experimental.entitlements */,
 				3105A119 /* WQBundleIdentityCoordinator.swift */,
+				3105A123 /* WQIdentityHealth.swift */,
 				3105A108 /* ContainerIdentityResolver.swift */,
 				3105A109 /* ContainerBrowserLogic.swift */,
 				3105A110 /* FileReplacementService.swift */,
@@ -412,6 +415,7 @@
 				3105A205, 3105A206, 3105A207, 3105A209,
 				3105A212, 3105A213, 3105A244,
 				3105A245,
+				3105A246,
 				3105A210, 3105A220, 3105A221, 3105A222, 3105A223,
 				3105A224, 3105A225,
 				3105A226,

@@ -28,8 +28,24 @@ enum WQBundleIdentityCoordinator {
         let reportRecords = (report["records"] as? NSNumber)?.intValue ?? 0
         let reportBundleIDs = (report["bundleIDs"] as? NSNumber)?.intValue ?? 0
         let reportNames = (report["verifiedNames"] as? NSNumber)?.intValue ?? 0
+        let health = WQIdentityHealth.run(
+            containers: containerPaths,
+            sourceReport: report
+        )
+        log("wq.identity: effective_access sampled=\(health.sampledContainers) opened=\(health.containersOpened) providers=\(health.accessProviders)")
 
-        guard sourceState == "valid", let data = wq_phase1_read_available_store(),
+        let sourceData: Data?
+        if sourceState == "valid" {
+            sourceData = wq_phase1_read_available_store()
+                ?? (report["sourcePath"] as? String).flatMap {
+                    WQIdentityHealth.readAuthorizedSource(at: $0)
+                }
+        } else if let path = report["sourcePath"] as? String {
+            sourceData = WQIdentityHealth.readAuthorizedSource(at: path)
+        } else {
+            sourceData = nil
+        }
+        guard let data = sourceData,
               let parsed = wq_phase1_parse_store_data(data) as? [String: Any] else {
             return WQBundleIdentityComparison(
                 sourceState: sourceState,
@@ -67,7 +83,9 @@ enum WQBundleIdentityCoordinator {
             .filter { Self.isApplicationDataContainer($0) }
             .compactMap { path -> InstalledApp? in
                 guard let bundleID = wqMap[path] else { return nil }
-                let name = display[bundleID] ?? bundleNames[bundleID] ?? bundleID
+                guard let name = display[bundleID] ?? bundleNames[bundleID], !name.isEmpty else {
+                    return nil
+                }
                 return InstalledApp(
                     bundleID: bundleID,
                     name: name,
@@ -78,7 +96,7 @@ enum WQBundleIdentityCoordinator {
             }
 
         return WQBundleIdentityComparison(
-            sourceState: "valid",
+            sourceState: sourceState == "valid" ? "valid" : "valid_after_existing_provider",
             sourceFound: true,
             sourceReadable: true,
             storeBytes: data.count,
