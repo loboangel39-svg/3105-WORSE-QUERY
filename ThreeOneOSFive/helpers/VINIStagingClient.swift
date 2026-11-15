@@ -160,6 +160,9 @@ actor VINIStagingClient {
         generation += 1; refreshTask?.cancel(); refreshTask = nil
         let hwid = credentials?.hwid ?? UUID().uuidString
         credentials = VINIStagingCredentials(licenseKey: key, hwid: hwid, token: "", expiresAt: "")
+        // Switching accounts must not restore an older account on the next launch
+        // if the new login is rejected or loses connectivity.
+        try vault.save(credentials!)
         return try await profile()
     }
     func logout() throws {

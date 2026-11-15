@@ -16,6 +16,7 @@ import Foundation
         if licenseKey == nil && ProcessInfo.processInfo.systemUptime - lastRefresh < 15 { return }
         busy = true; defer { busy = false }
         lastRefresh = ProcessInfo.processInfo.systemUptime
+        if licenseKey != nil { profile = nil; verified = false; packages = []; packageResult = nil }
         do {
             let p: VINIStagingProfile
             if let key = licenseKey { p = try await client.login(licenseKey: key) }

@@ -58,6 +58,11 @@ func expect(_ condition: Bool, _ name: String) throws { if !condition { throw VI
         let failedVault = MemoryVault(); failedVault.rejectSave = true
         do { _ = try await VINIStagingClient(transport:TestTransport([(200,login)]),vault:failedVault).login(licenseKey:"SYNTHETIC"); throw VINIStagingError.invalidResponse }
         catch let e as VINIStagingError { try expect(e == .keychain, "Keychain failure does not establish verified session") }
+        let switchVault = MemoryVault(record())
+        let switched = VINIStagingClient(transport:TestTransport([(403,try json(["error":"Account paused"]))]),vault:switchVault)
+        do { _ = try await switched.login(licenseKey:"OTHER-SYNTHETIC"); throw VINIStagingError.invalidResponse }
+        catch let e as VINIStagingError { try expect(e == .paused,"rejected account switch reported") }
+        try expect(switchVault.value?.licenseKey == "OTHER-SYNTHETIC" && switchVault.value?.token == "", "rejected account switch cannot resurrect old session")
         let stale = VINIStagingClient(transport:TestTransport([(200,profile)]),vault:MemoryVault(record()))
         let pending = Task { try await stale.profile() }; try await Task.sleep(nanoseconds:5_000_000); try await stale.logout()
         var staleRejected = false
@@ -86,6 +91,12 @@ func expect(_ condition: Bool, _ name: String) throws { if !condition { throw VI
             let patches = try await live.catalog()
             if plan == "pro" {
                 try expect(patches.contains { $0.id == VINIStagingEnvironment.fixtureID },"assigned PRO fixture in live catalog")
+                guard let revokedID = licenses["revokedPatchID"] else { throw VINIStagingError.invalidResponse }
+                try expect(!patches.contains { $0.id == revokedID },"revoked assigned patch excluded from live catalog")
+                var blockedRequest = URLRequest(url:VINIStagingEnvironment.base.appendingPathComponent("api/app/patches/"+revokedID+"/download"))
+                blockedRequest.setValue("Bearer "+liveVault.value!.token,forHTTPHeaderField:"Authorization")
+                let (_, blockedResponse) = try await VINIStagingHTTP().send(blockedRequest)
+                try expect(blockedResponse.statusCode == 403,"revoked patch direct R2 request denied")
                 let name = try await live.downloadTestPackage(id:VINIStagingEnvironment.fixtureID)
                 try expect(!name.isEmpty,"live R2 bytes match SHA256 and unchanged Swift codec decodes fixture")
                 let restored = VINIStagingClient(vault:liveVault)
