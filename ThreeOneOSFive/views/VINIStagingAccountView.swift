@@ -138,7 +138,7 @@ enum VINIAuthenticationPhase: Equatable { case checking, login, validating, auth
         catch { await inspectFixture(); packageResult = "Restore no confirmado; recuperación conservada" }
     }
     func toggle(targetID: String, on: Bool) async {
-        guard !busy, verified, let descriptor = VINIProductionTargetModel.resolve(catalog: packages, prepared: preparedPackages, stateReader: transactionStateReader).first(where: { $0.targetID == targetID }), let userID = profile?.username else { return }
+        guard !busy, verified, let descriptor = VINIProductionTargetModel.resolve(catalog: packages, prepared: preparedPackages, stateReader: transactionStateReader).first(where: { $0.targetID == targetID }), let userID = profile?.stableUserID else { return }
         busy = true; defer { busy = false }
         do {
             guard let item = PatchProjectLibrary.load().first(where: { $0.id == descriptor.packageID }), let project = item.project else { throw VINIPatchFailure.invalidManifest }
