@@ -94,7 +94,7 @@ func run(_ package: Data, project: PatchProject, catalogData: Data, download: Da
 
         let auth = try data(["valid": true, "token": "new-token", "expiresAt": "2027-01-01T00:00:00Z", "username": "fixture", "userID": "fixture-user", "plan": "basic", "licenseStatus": "active", "serverTime": "2026-11-16T00:00:00Z"])
         let profile = try data(["username": "fixture", "userID": "fixture-user", "plan": "basic", "licenseStatus": "active", "serverTime": "2026-11-16T00:00:00Z"])
-        let transport = FixtureTransport([("api/app/me", 401, try data(["error": "unauthorized"])), ("api/app/validate-license", 200, auth), ("api/app/me", 200, profile), ("api/app/patches", 200, validCatalog), ("api/app/patches/fixture-remote-id/download", 200, encoded)])
+        let transport = FixtureTransport([("api/app/me", 401, try data(["error": "unauthorized"])), ("api/app/validate-license", 200, auth), ("api/app/patches", 200, validCatalog), ("api/app/patches/fixture-remote-id/download", 200, encoded)])
         var expiredCredentials = try fixtureCredentials(); expiredCredentials.token = "old-token"
         let client = VINIStagingClient(baseURL: VINIProductionEnvironment.base, transport: transport, vault: FixtureVault(value: expiredCredentials))
         _ = try await VINIRemotePackageCoordinator(client: client).prepareAuthorizedPackages()
