@@ -33,6 +33,9 @@ struct SettingsView: View {
                     LabeledContent("Usuario", value: authStore.profile?.username ?? "—")
                     LabeledContent("Plan", value: authStore.profile?.plan.uppercased() ?? "—")
                     LabeledContent("Expiración", value: formattedDate(authStore.profile?.licenseExpiresAt))
+                    TimelineView(.periodic(from: .now, by: 1)) { _ in
+                        LabeledContent("Tiempo restante", value: authStore.licenseCountdown)
+                    }
                     Button("Comprobar autorización") { Task { await authStore.refresh(force: true) } }
                     Button("Cerrar sesión", role: .destructive) { Task { await authStore.logout() } }
                 }

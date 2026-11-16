@@ -23,6 +23,9 @@ enum VINIAuthenticationPhase: Equatable { case checking, login, validating, auth
     @Published private(set) var busy = false
     @Published private(set) var packageResult: String?
     @Published private(set) var catalogDiagnostic = "Catálogo no consultado"
+    @Published private(set) var licenseExpiry: Date?
+    private var serverDateAtAuthorization: Date?
+    private var authorizationUptime: TimeInterval = 0
     private let client = VINIStagingClient()
     private let associationStore = VINITransactionAssociationStore()
     private var uptime: TimeInterval = 0
@@ -45,6 +48,9 @@ enum VINIAuthenticationPhase: Equatable { case checking, login, validating, auth
             let p = try await client.profile()
             let lifetime = try await client.authorizationLifetime(p)
             profile = p; uptime = ProcessInfo.processInfo.systemUptime
+            authorizationUptime = uptime
+            serverDateAtAuthorization = try? VINIStagingEnvironment.date(p.serverTime)
+            licenseExpiry = p.licenseExpiresAt.flatMap { try? VINIStagingEnvironment.date($0) }
             authorizationDeadline = uptime + lifetime
         } catch {
             verified = false; authorizationDeadline = 0
@@ -66,6 +72,9 @@ enum VINIAuthenticationPhase: Equatable { case checking, login, validating, auth
             else { p = try await client.profile() }
             let lifetime = try await client.authorizationLifetime(p)
             profile = p; uptime = ProcessInfo.processInfo.systemUptime
+            authorizationUptime = uptime
+            serverDateAtAuthorization = try? VINIStagingEnvironment.date(p.serverTime)
+            licenseExpiry = p.licenseExpiresAt.flatMap { try? VINIStagingEnvironment.date($0) }
             authorizationDeadline = uptime + lifetime
             phase = .authorized
             verified = p.licenseStatus == "active"; status = verified ? "Activa" : "Sin autorización vigente"
@@ -96,13 +105,14 @@ enum VINIAuthenticationPhase: Equatable { case checking, login, validating, auth
             verified = false
             phase = (error as? VINIStagingError) == .offline ? .blocked : .login
             authorizationDeadline = 0
+            licenseExpiry = nil
             status = (error as? VINIStagingError)?.message ?? VINIStagingError.invalidResponse.message
             // Keep previous rows visible on connection loss. They never authorize download/Apply.
         }
     }
     func logout() async {
         guard !busy else { return }
-        do { try await client.logout(); preparedFixture = false; preparedPackages = []; profile = nil; packages = []; verified = false; phase = .login; authorizationDeadline = 0; status = "Sin sesión"; packageResult = nil }
+        do { try await client.logout(); preparedFixture = false; preparedPackages = []; profile = nil; packages = []; verified = false; phase = .login; authorizationDeadline = 0; licenseExpiry = nil; status = "Sin sesión"; packageResult = nil }
         catch { verified = false; phase = .blocked; status = VINIStagingError.keychain.message }
     }
     func download(_ patch: VINIStagingPatch) async {
@@ -189,6 +199,23 @@ enum VINIAuthenticationPhase: Equatable { case checking, login, validating, auth
     private func isTemporarySessionError(_ error: Error) -> Bool {
         guard let error = error as? VINIStagingError else { return false }
         return [.offline, .rateLimited, .stale].contains(error)
+    }
+
+    var licenseRemaining: TimeInterval? {
+        guard let licenseExpiry, let serverDateAtAuthorization else { return nil }
+        let elapsed = max(0, ProcessInfo.processInfo.systemUptime - authorizationUptime)
+        return max(0, licenseExpiry.timeIntervalSince(serverDateAtAuthorization) - elapsed)
+    }
+
+    var licenseCountdown: String {
+        guard verified, let remaining = licenseRemaining else { return "—" }
+        if remaining <= 0 { return "Licencia expirada" }
+        let total = Int(remaining.rounded(.down))
+        let days = total / 86_400
+        let hours = (total % 86_400) / 3_600
+        let minutes = (total % 3_600) / 60
+        let seconds = total % 60
+        return String(format: "%02dd %02dh %02dm %02ds", days, hours, minutes, seconds)
     }
 }
 

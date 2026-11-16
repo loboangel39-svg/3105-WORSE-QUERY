@@ -49,6 +49,12 @@ final class PatchManager: ObservableObject {
             let localIds = storage.localPatchIds()
             for localId in localIds {
                 if !serverPatchIds.contains(localId) {
+                    if let data = storage.readPatchData(patchId: localId),
+                       let summary = try? PatchPackageCodec.inspect(data),
+                       DevicePatchService.latestReceipt(projectID: summary.packageID) != nil {
+                        // Keep an applied package and its key available for safe Restore.
+                        continue
+                    }
                     print("[PatchManager] Removing local patch no longer available: \(localId)")
                     storage.deletePatch(patchId: localId)
                 }

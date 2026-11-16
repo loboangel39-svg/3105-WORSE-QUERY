@@ -1,4 +1,4 @@
-﻿name: Build VINI 2.0 RC2 unsigned IPA
+﻿name: Build VINI 2.0 RC3 unsigned IPA
 
 on: [push, workflow_dispatch]
 
@@ -56,7 +56,7 @@ jobs:
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
             build | tee build/xcodebuild.log
 
-      - name: Package and verify RC2 IPA
+      - name: Package and verify RC3 IPA
         shell: bash
         run: |
           set -euo pipefail
@@ -67,29 +67,29 @@ jobs:
           test "$(find build/DerivedData -type f \( -name 'worse_query.o' -o -name 'worse_query_adapter.o' -o -name 'ContainerAccessCoordinator.o' \) | wc -l | tr -d ' ')" -ge 3
           mkdir -p build/Payload
           cp -R "$APP_PATH" build/Payload/
-          (cd build && ditto -c -k --sequesterRsrc --keepParent Payload VINI-2.0-RC2-Unsigned.ipa)
-          test -f build/VINI-2.0-RC2-Unsigned.ipa
-          shasum -a 256 build/VINI-2.0-RC2-Unsigned.ipa | tee build/VINI-2.0-RC2-Unsigned.ipa.sha256
+           (cd build && ditto -c -k --sequesterRsrc --keepParent Payload VINI-2.0-RC3-Unsigned.ipa)
+           test -f build/VINI-2.0-RC3-Unsigned.ipa
+           shasum -a 256 build/VINI-2.0-RC3-Unsigned.ipa | tee build/VINI-2.0-RC3-Unsigned.ipa.sha256
           {
-            echo '# VINI 2.0 RC2 build report'
+             echo '# VINI 2.0 RC3 build report'
             echo "- Commit: $GITHUB_SHA"
             echo '- Runner: macos-latest'
             echo '- SDK: iphoneos'
             echo '- Architecture: arm64'
             echo '- Signing: disabled'
             echo '- Bundle ID: com.apple.mobile.MobileHouseArrest'
-            echo '- IPA: VINI-2.0-RC2-Unsigned.ipa'
-            echo "- SHA-256: $(cut -d ' ' -f 1 build/VINI-2.0-RC2-Unsigned.ipa.sha256)"
+             echo '- IPA: VINI-2.0-RC3-Unsigned.ipa'
+             echo "- SHA-256: $(cut -d ' ' -f 1 build/VINI-2.0-RC3-Unsigned.ipa.sha256)"
             echo '- Physical-device tests: pending'
           } > build/BUILD-REPORT.md
 
-      - name: Upload RC2 artifact
+      - name: Upload RC3 artifact
         uses: actions/upload-artifact@v4
         with:
-          name: VINI-2.0-RC2-Unsigned
+          name: VINI-2.0-RC3-Unsigned
           path: |
-            build/VINI-2.0-RC2-Unsigned.ipa
-            build/VINI-2.0-RC2-Unsigned.ipa.sha256
+            build/VINI-2.0-RC3-Unsigned.ipa
+            build/VINI-2.0-RC3-Unsigned.ipa.sha256
             build/BUILD-REPORT.md
             build/xcodebuild.log
             xcode-version.txt

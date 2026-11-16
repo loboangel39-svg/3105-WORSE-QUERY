@@ -33,6 +33,7 @@ final class PatchSyncManager: ObservableObject {
         
         // Copiar patches de RemotePatches/ a PatchProjects/ para compatibilidad
         await copyPatchesToLegacyLocation()
+        await removeRevokedLegacyPackages(allowedIDs: Set(patchManager.availablePatches.map(\.id)))
         
         // Sincronizar estado local
         await MainActor.run {
@@ -63,6 +64,27 @@ final class PatchSyncManager: ObservableObject {
         
         // Notificar cambios
         notifyPatchesChanged()
+    }
+
+    private func removeRevokedLegacyPackages(allowedIDs: Set<String>) async {
+        guard let files = try? FileManager.default.contentsOfDirectory(
+            at: patchesDirectory,
+            includingPropertiesForKeys: nil
+        ) else { return }
+
+        for url in files where url.pathExtension == "3105" {
+            let name = url.deletingPathExtension().lastPathComponent
+            guard name.hasPrefix("patch-") else { continue }
+            let patchID = String(name.dropFirst("patch-".count))
+            guard !allowedIDs.contains(patchID),
+                  let data = try? Data(contentsOf: url),
+                  let summary = try? PatchPackageCodec.inspect(data) else { continue }
+
+            // An applied package remains until its original Restore confirms recovery.
+            if DevicePatchService.latestReceipt(projectID: summary.packageID) != nil { continue }
+            try? FileManager.default.removeItem(at: url)
+            try? PatchKeyStore.delete(for: summary)
+        }
     }
     
     // MARK: - Verificar si ya está descargado

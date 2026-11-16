@@ -17,7 +17,6 @@ struct PatchProjectsView: View {
     @Environment(\.appLanguage) private var language
     @EnvironmentObject private var draftCoordinator: PatchDraftCoordinator
     @EnvironmentObject private var store: PatchProjectStore
-    @StateObject private var remoteManager = PatchManager.shared
     @AppStorage(FeatureVisibility.cleanerStorageKey) private var cleanerEnabled = true
     @State private var showCreate = false
     @State private var showImporter = false
@@ -68,20 +67,11 @@ struct PatchProjectsView: View {
     }
 
     private var hasLocalContent: Bool {
-        !store.items.isEmpty || !remoteManager.availablePatches.isEmpty
+        !store.items.isEmpty
     }
 
     private var hasSearchResults: Bool {
-        !filteredItems.isEmpty || filteredRemotePatches.count > 0
-    }
-
-    private var filteredRemotePatches: [RemotePatchInfo] {
-        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !query.isEmpty else { return remoteManager.availablePatches }
-        return remoteManager.availablePatches.filter {
-            $0.name.localizedCaseInsensitiveContains(query)
-                || $0.description.localizedCaseInsensitiveContains(query)
-        }
+        !filteredItems.isEmpty
     }
 
     init(
@@ -101,19 +91,6 @@ struct PatchProjectsView: View {
         NavigationStack {
             VStack(spacing: 0) {
                 List {
-                    if !filteredRemotePatches.isEmpty {
-                        Section("Remote Patches") {
-                            ForEach(filteredRemotePatches) { patch in
-                                RemotePatchInstalledRow(patch: patch, manager: remoteManager) {
-                                    Task {
-                                        await remoteManager.forceRedownload(patch)
-                                        await PatchSyncManager.shared.syncPatches()
-                                        store.reload()
-                                    }
-                                }
-                            }
-                        }
-                    }
                     if !hasLocalContent && (store.isBusy || isImportingWallpapers) {
                         loadingState
                             .listRowSeparator(.hidden)
@@ -239,7 +216,7 @@ struct PatchProjectsView: View {
             }
             .onAppear {
                 Task {
-                    await remoteManager.syncPatches()
+                    await PatchManager.shared.syncPatches()
                     await PatchSyncManager.shared.syncPatches()
                     store.reload()
                 }
@@ -266,7 +243,6 @@ struct PatchProjectsView: View {
             .onChange(of: draftCoordinator.importRequest?.id) { _ in
                 consumeExternalImport()
             }
-            .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .automatic), prompt: language.text("installed.search"))
         }
     }
 
@@ -625,39 +601,12 @@ extension View {
     }
 }
 
-private struct RemotePatchInstalledRow: View {
-    let patch: RemotePatchInfo
-    @ObservedObject var manager: PatchManager
-    let action: () -> Void
-
-    var body: some View {
-        HStack(spacing: 10) {
-            Image(systemName: manager.isDownloaded(patch.id) ? "checkmark.circle.fill" : "arrow.down.circle")
-                .foregroundStyle(manager.isDownloaded(patch.id) ? .green : AppTheme.accent)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(patch.name).font(.subheadline.weight(.semibold))
-                Text(manager.downloadProgress[patch.id] ?? "v\(patch.version)")
-                    .font(.caption).foregroundStyle(.secondary)
-            }
-            Spacer(minLength: 8)
-            Button(action: action) {
-                Image(systemName: manager.downloadingPatchIds.contains(patch.id) ? "hourglass" : "arrow.down.circle.fill")
-            }
-            .buttonStyle(.borderless)
-            .disabled(manager.downloadingPatchIds.contains(patch.id))
-            .accessibilityLabel("Descargar \(patch.name)")
-        }
-        .padding(.vertical, 2)
-    }
-}
-
 private struct PatchProjectDetailView: View {
     @Environment(\.appLanguage) private var language
     @ObservedObject var store: PatchProjectStore
     let projectID: UUID
     @State private var showEditor = false
     @State private var editingRule: PatchRule?
-    @State private var showRestoreConfirmation = false
     @State private var showChangedRestoreConfirmation = false
     @State private var showResetConfirmation = false
     @State private var restoreChangedPaths: [String] = []
@@ -812,7 +761,7 @@ private struct PatchProjectDetailView: View {
                         .disabled(isWorking)
 
                         Button(role: .destructive) {
-                            showRestoreConfirmation = true
+                            prepareRestore()
                         } label: {
                             actionLabel("patch.restore", systemImage: "arrow.uturn.backward.circle")
                         }
@@ -856,16 +805,6 @@ private struct PatchProjectDetailView: View {
             PatchRuleEditorView(rule: rule) { updatedRule in
                 updateRule(updatedRule)
             }
-        }
-        .confirmationDialog(
-            language.text("patch.restore_confirm_title"),
-            isPresented: $showRestoreConfirmation,
-            titleVisibility: .visible
-        ) {
-            Button(language.text("patch.restore"), role: .destructive) { prepareRestore() }
-            Button(language.text("common.cancel"), role: .cancel) {}
-        } message: {
-            Text(language.text("patch.restore_confirm_message"))
         }
         .confirmationDialog(
             language.text("patch.restore_changed_title"),
