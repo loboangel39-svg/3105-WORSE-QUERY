@@ -2,7 +2,13 @@
 
 ## Resultado
 
-**BLOCKED — no se integró Apply/Restore y no se generó un IPA funcional.**
+La conexión mínima quedó implementada en el commit `ae24754`: registro externo
+en `VINITransactionAssociationStore.swift`, callback funcional en la
+presentación y uso de las APIs públicas de `DevicePatchService`. El setter
+mantiene el diseño de `VINITargetCard` intacto.
+
+La validación de operaciones reales sobre un fixture propio sigue pendiente;
+por tanto no se declara todavía Apply/Restore funcional en producción.
 
 ## APIs verificadas
 

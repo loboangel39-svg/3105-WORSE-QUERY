@@ -1,15 +1,17 @@
 # VINI 3L-D — Entrega IPA
 
-**No entregado.** El criterio solicitado exige superar primero las pruebas
-críticas de Apply/Restore. Como esas pruebas están bloqueadas por la ausencia
-de binding funcional y de asociación persistida exacta, no se publicó un
-artefacto `VINI-ApplyRestore-Unsigned` ni se presentó la compilación previa
-como funcional.
+Se generó el artefacto unsigned después de que compilara la conexión, pero no
+se presenta como funcionalmente verificado porque las operaciones dinámicas
+Apply/Restore siguen SKIPPED en el harness.
 
-Build de referencia únicamente: run `43813500959`, commit `017ea41`,
-https://github.com/loboangel39-svg/3105-WORSE-QUERY/actions/runs/43813500959.
+Run: `43815767539`, commit `9e9eed7`,
+https://github.com/loboangel39-svg/3105-WORSE-QUERY/actions/runs/43815767539.
 
-Para desbloquear la fase se necesita una API/adaptador autorizado que persista
-la relación exacta del target remoto y exponga operaciones coordinadas de
-Apply/Restore sin alterar los formatos protegidos. Después deberán ejecutarse
-las pruebas funcionales y recién entonces empaquetarse el IPA.
+Artefacto: `VINI-ApplyRestore-Unsigned`.
+Tamaño: `5,012,928` bytes.
+SHA-256: `bcc81baa1a46d5c21acb82dcef5aa54de903f07d571fbfc4d4d66df70bf9d8d4`.
+Arquitectura: `arm64`; bundle ID verificado por el workflow.
+
+Limitación: el IPA no debe instalarse como entrega Apply/Restore validada hasta
+ejecutar las pruebas dinámicas controladas y confirmar receipt, asociación,
+rollback y Restore.
