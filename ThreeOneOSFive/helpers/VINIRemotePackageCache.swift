@@ -43,7 +43,7 @@ struct VINIRemotePackageCache {
     func load(identity: VINIRemoteCacheIdentity) throws -> (Data, VINIRemoteCacheRecord)? {
         let key = try key(for: identity)
         let metaURL = root.appendingPathComponent(key).appendingPathExtension("json")
-        guard let record = try? JSONDecoder().decode(VNIRemoteCacheRecord.self, from: Data(contentsOf: metaURL)),
+        guard let record = try? JSONDecoder().decode(VINIRemoteCacheRecord.self, from: Data(contentsOf: metaURL)),
               record.schemaVersion == 1, record.identity == identity else { return nil }
         let packageURL = root.appendingPathComponent(record.packageFilename)
         guard let bytes = try? Data(contentsOf: packageURL), bytes.count == identity.fileSize,
