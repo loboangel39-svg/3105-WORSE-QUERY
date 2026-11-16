@@ -56,7 +56,7 @@ jobs:
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
             build | tee build/xcodebuild.log
 
-      - name: Package and verify RC1 IPA
+      - name: Package and verify RC2 IPA
         shell: bash
         run: |
           set -euo pipefail
@@ -83,7 +83,7 @@ jobs:
             echo '- Physical-device tests: pending'
           } > build/BUILD-REPORT.md
 
-      - name: Upload RC1 artifact
+      - name: Upload RC2 artifact
         uses: actions/upload-artifact@v4
         with:
           name: VINI-2.0-RC2-Unsigned

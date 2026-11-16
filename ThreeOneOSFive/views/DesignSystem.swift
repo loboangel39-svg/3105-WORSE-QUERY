@@ -238,7 +238,7 @@ struct ControllerNavigation: View {
                 Button {
                     withAnimation(reduceMotion ? nil : .easeOut(duration: 0.18)) { selection = section.rawValue }
                 } label: {
-                    Text(language.text(section == .installed ? "tab.installed" : section == .files ? "tab.files" : "tab.search"))
+                    Text(language.text(section == .installed ? "tab.installed" : "tab.information"))
                         .font(AppTheme.sans(12, relativeTo: .subheadline).weight(.semibold))
                         .frame(maxWidth: .infinity, minHeight: 44)
                         .foregroundStyle(selection == section.rawValue ? AppTheme.accent : Color.secondary)
