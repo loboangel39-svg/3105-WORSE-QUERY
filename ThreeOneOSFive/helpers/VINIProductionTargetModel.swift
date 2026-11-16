@@ -19,7 +19,7 @@ struct VINIProductionTargetDescriptor: Equatable {
 /// Pure data adapter: only a prepared coordinator result that still matches
 /// the current authorized catalog can reach the dashboard.
 enum VINIProductionTargetModel {
-    static func resolve(catalog: [VINIStagingPatch], prepared: [VINIRemotePreparedPackage]) -> [VINIProductionTargetDescriptor] {
+    static func resolve(catalog: [VINIStagingPatch], prepared: [VINIRemotePreparedPackage], stateReader: VINITransactionStateReader? = nil) -> [VINIProductionTargetDescriptor] {
         prepared.compactMap { item in
             guard let patch = catalog.first(where: { $0.id == item.remotePatchID }),
                   let target = patch.target,
@@ -31,10 +31,23 @@ enum VINIProductionTargetModel {
                   target.packageRevision == item.revision,
                   target.packageSHA256 == item.sha256,
                   target.fileSize == item.fileSize else { return nil }
+            let state = stateReader?.state(targetID: target.targetID, projectID: target.projectID,
+                packageDigest: Data(hex: target.packageSHA256)) ?? .prepared
             return VINIProductionTargetDescriptor(targetID: target.targetID, remotePatchID: patch.id,
                 packageID: target.packageID, projectID: target.projectID, revision: target.packageRevision,
                 sha256: target.packageSHA256, fileSize: target.fileSize, category: target.category,
-                name: patch.name, description: patch.description, status: .prepared)
+                name: patch.name, description: patch.description,
+                status: state == .applied ? .applied : state == .restorePending ? .restorePending : state == .restored ? .unavailable : .prepared)
         }
+    }
+}
+
+private extension Data {
+    init(hex: String) {
+        self.init((0..<stride(from: 0, to: hex.count, by: 2)).compactMap {
+            let start = hex.index(hex.startIndex, offsetBy: $0)
+            let end = hex.index(start, offsetBy: 2)
+            return UInt8(hex[start..<end], radix: 16)
+        })
     }
 }

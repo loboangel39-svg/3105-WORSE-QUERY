@@ -18,6 +18,7 @@ enum VINIAuthenticationPhase: Equatable { case checking, login, validating, auth
     @Published private(set) var verified = false
     @Published private(set) var packages: [VINIStagingPatch] = []
     @Published private(set) var preparedPackages: [VINIRemotePreparedPackage] = []
+    private let transactionStateReader: VINITransactionStateReader? = try? VINITransactionStateReader.live()
     @Published private(set) var busy = false
     @Published private(set) var packageResult: String?
     private let client = VINIStagingClient()
@@ -129,12 +130,12 @@ enum VINIAuthenticationPhase: Equatable { case checking, login, validating, auth
     }
     private var preparedPresentations: [VINITargetPresentation] {
         guard profile != nil else { return [] }
-        return VINIProductionTargetModel.resolve(catalog: packages, prepared: preparedPackages).map { target in
+        return VINIProductionTargetModel.resolve(catalog: packages, prepared: preparedPackages, stateReader: transactionStateReader).map { target in
             let category = target.category == "visuals" ? VINICategory.visuals : target.category == "offsets" ? VINICategory.offsets : VINICategory.combat
             let symbol = category == .visuals ? "eye" : category == .offsets ? "slider.horizontal.3" : "bolt"
             return VINITargetPresentation(targetID: target.targetID, packageID: target.packageID.uuidString,
                 categoryID: category.rawValue, title: target.name, patchDescription: target.description,
-                symbol: symbol, availability: .available, patchState: .unknown)
+                symbol: symbol, availability: .available, patchState: target.status == .applied ? .active : .unknown)
         }
     }
 }

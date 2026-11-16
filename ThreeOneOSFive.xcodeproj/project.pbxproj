@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		AA3105070000000000000002 /* VINITransactionStateReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA3105070000000000000001; };
 		AA3105060000000000000002 /* VNIRemotePackageCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA3105060000000000000001; };
 		AA3105060000000000000004 /* VINIRemotePackageCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA3105060000000000000003; };
 		AA3105060000000000000006 /* VINIProductionTargetModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA3105060000000000000005; };
@@ -116,6 +117,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		AA3105070000000000000001 /* VINITransactionStateReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VINITransactionStateReader.swift; sourceTree = "<group>"; };
 		AA3105060000000000000001 /* VNIRemotePackageCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VNIRemotePackageCoordinator.swift; sourceTree = "<group>"; };
 		AA3105060000000000000003 /* VINIRemotePackageCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VINIRemotePackageCache.swift; sourceTree = "<group>"; };
 		AA3105060000000000000005 /* VINIProductionTargetModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VINIProductionTargetModel.swift; sourceTree = "<group>"; };
@@ -367,6 +369,7 @@
 		3105A405 /* helpers */ = {
 			isa = PBXGroup;
 			children = (
+				AA3105070000000000000001 /* VINITransactionStateReader.swift */,
 				AA3105060000000000000001 /* VNIRemotePackageCoordinator.swift */,
 				AA3105060000000000000003 /* VINIRemotePackageCache.swift */,
 				AA3105060000000000000005 /* VINIProductionTargetModel.swift */,
@@ -569,6 +572,7 @@
 				AA3105060000000000000002 /* VNIRemotePackageCoordinator.swift in Sources */,
 				AA3105060000000000000004 /* VINIRemotePackageCache.swift in Sources */,
 				AA3105060000000000000006 /* VINIProductionTargetModel.swift in Sources */,
+				AA3105070000000000000002 /* VINITransactionStateReader.swift in Sources */,
 				AB1050010000000000000001,
 				AB1050010000000000000004,
 				AB1050010000000000000007,
