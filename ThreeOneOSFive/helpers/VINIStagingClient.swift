@@ -34,6 +34,12 @@ enum VINIStagingEnvironment {
     }
 }
 
+/// Definitive VINI Worker endpoint. Staging remains available only to explicit
+/// staging callers; production package coordination must pass this base URL.
+enum VINIProductionEnvironment {
+    static let base = URL(string: "https://vini-v2-api.loboangel39.workers.dev")!
+}
+
 struct VINIStagingProfile: Codable, Equatable {
     let username: String
     let plan: String
@@ -115,14 +121,16 @@ protocol VINIStagingTransport {
 }
 final class VINIStagingHTTP: VINIStagingTransport {
     private let session: URLSession
-    init() {
+    private let baseURL: URL
+    init(baseURL: URL = VINIStagingEnvironment.base) {
+        self.baseURL = baseURL
         let config = URLSessionConfiguration.ephemeral
         config.httpShouldSetCookies = false; config.urlCache = nil
         config.timeoutIntervalForRequest = 30; config.timeoutIntervalForResource = 60
         session = URLSession(configuration: config, delegate: VINIStagingRedirectGuard(), delegateQueue: nil)
     }
     func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
-        guard request.url?.scheme == "https", request.url?.host == VINIStagingEnvironment.base.host else { throw VINIStagingError.invalidResponse }
+        guard request.url?.scheme == "https", request.url?.host == baseURL.host else { throw VINIStagingError.invalidResponse }
         do {
             if request.url?.path.hasSuffix("/download") == true {
                 let (url, response) = try await session.download(for: request)
@@ -152,15 +160,20 @@ actor VINIStagingClient {
     }
     private let transport: VINIStagingTransport
     private let vault: VINIStagingVault
+    private let baseURL: URL
     private var credentials: VINIStagingCredentials?
     private var loaded = false
     private var generation = 0
     private var refreshTask: Task<VINIStagingProfile, Error>?
     private var lastLogin: TimeInterval = -.infinity
-    init(transport: VINIStagingTransport = VINIStagingHTTP(), vault: VINIStagingVault = VINIStagingKeychain()) { self.transport = transport; self.vault = vault }
+    init(baseURL: URL = VINIStagingEnvironment.base, transport: VINIStagingTransport? = nil, vault: VINIStagingVault = VINIStagingKeychain()) {
+        self.baseURL = baseURL
+        self.transport = transport ?? VINIStagingHTTP(baseURL: baseURL)
+        self.vault = vault
+    }
     private func load() throws { if !loaded { credentials = try vault.load(); loaded = true } }
     private func request(_ path: String, token: String? = nil, body: [String: String]? = nil) async throws -> (Data, HTTPURLResponse) {
-        var r = URLRequest(url: VINIStagingEnvironment.base.appendingPathComponent(path))
+        var r = URLRequest(url: baseURL.appendingPathComponent(path))
         r.cachePolicy = .reloadIgnoringLocalCacheData
         if let token { r.setValue("Bearer " + token, forHTTPHeaderField: "Authorization") }
         if let body { r.httpMethod = "POST"; r.setValue("application/json", forHTTPHeaderField: "Content-Type"); r.httpBody = try JSONEncoder().encode(body) }

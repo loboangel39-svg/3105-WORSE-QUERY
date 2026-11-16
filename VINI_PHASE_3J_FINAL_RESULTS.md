@@ -2,6 +2,8 @@
 
 Estado: **PENDING CI**.
 
+Backend definitivo: `vini-v2-api` en `https://vini-v2-api.loboangel39.workers.dev`. La URL `vini-admin-plans-staging-2b.loboangel39.workers.dev` no se utiliza por el coordinador ni por el arnés 3J-D; solo permanece como valor por defecto para consumidores explícitos de staging heredados.
+
 Este informe se actualizará únicamente con evidencia del run que compile y ejecute `Tests/VNIRemoteCoordinator/main.swift`. No se considerará suficiente `swiftc -parse`.
 
 Debe registrar:

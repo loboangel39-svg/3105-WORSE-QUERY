@@ -2,6 +2,12 @@
 
 Estado inicial: **PENDING CI**.
 
+## Backend y dependencia HTTP
+
+La revisión arquitectónica detectó que el coordinador recibía un `VINIStagingClient` configurado por defecto con el endpoint de staging. Se conservó ese cliente únicamente como implementación reutilizable de transporte, sesión, licencia/HWID y renovación 401, pero se añadió configuración explícita de `baseURL`.
+
+La instancia del coordinador de producción y el arnés 3J-D usan `VINIProductionEnvironment.base`: `https://vini-v2-api.loboangel39.workers.dev`. Staging solo queda disponible para llamadas de staging explícitas. No se conecta ningún test al Worker: el transporte sintético intercepta las solicitudes y reproduce el contrato real (`/api/app/patches` y `/api/app/patches/:id/download`).
+
 El nuevo arnés `Tests/VNIRemoteCoordinator/main.swift` construye un paquete con `PatchPackageCodec.encodeNew`, sirve respuestas HTTP sintéticas mediante `VINIStagingTransport`, crea un `VINIStagingClient` real e invoca directamente:
 
 ```swift

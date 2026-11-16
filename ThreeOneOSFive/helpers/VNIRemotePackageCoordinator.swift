@@ -21,6 +21,13 @@ actor VINIRemotePackageCoordinator {
         self.client = client; self.fileManager = fileManager
     }
 
+    /// Production wiring uses the single definitive Worker. Tests inject the
+    /// same client with a synthetic transport while retaining this base URL.
+    init(fileManager: FileManager = .default) {
+        self.client = VINIStagingClient(baseURL: VINIProductionEnvironment.base)
+        self.fileManager = fileManager
+    }
+
     func prepareAuthorizedPackages() async throws -> [VINIRemotePreparedPackage] {
         let entries = try await client.catalog()
         var prepared: [VINIRemotePreparedPackage] = []
