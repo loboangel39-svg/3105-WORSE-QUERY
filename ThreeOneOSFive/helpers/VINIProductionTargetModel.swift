@@ -1,0 +1,39 @@
+import Foundation
+
+enum VINIProductionTargetStatus: Equatable { case loading, prepared, unavailable, revoked, error, applied, restorePending }
+
+struct VINIProductionTargetDescriptor: Equatable {
+    let targetID: String
+    let remotePatchID: String
+    let packageID: UUID
+    let projectID: UUID
+    let revision: String
+    let sha256: String
+    let fileSize: Int
+    let category: String
+    let name: String
+    let description: String?
+    let status: VINIProductionTargetStatus
+}
+
+/// Pure data adapter: only a prepared coordinator result that still matches
+/// the current authorized catalog can reach the dashboard.
+enum VINIProductionTargetModel {
+    static func resolve(catalog: [VINIStagingPatch], prepared: [VINIRemotePreparedPackage]) -> [VINIProductionTargetDescriptor] {
+        prepared.compactMap { item in
+            guard let patch = catalog.first(where: { $0.id == item.remotePatchID }),
+                  let target = patch.target,
+                  target.availability == "available",
+                  target.targetID == item.targetID,
+                  target.packageID == item.packageID,
+                  target.projectID == item.projectID,
+                  target.packageRevision == item.revision,
+                  target.packageSHA256 == item.sha256,
+                  target.fileSize == item.fileSize else { return nil }
+            return VINIProductionTargetDescriptor(targetID: target.targetID, remotePatchID: patch.id,
+                packageID: target.packageID, projectID: target.projectID, revision: target.packageRevision,
+                sha256: target.packageSHA256, fileSize: target.fileSize, category: target.category,
+                name: patch.name, description: patch.description, status: .prepared)
+        }
+    }
+}

@@ -3,7 +3,7 @@ import Foundation
 
 enum VINIAuthenticationPhase: Equatable { case checking, login, validating, authorized, blocked }
 
-@MainActor final class VINIStagingStore: ObservableObject {
+@MainActor final class VINIProductionStore: ObservableObject {
     @Published private(set) var phase: VINIAuthenticationPhase = .checking
     @Published private(set) var hasStoredIdentity: Bool?
     @Published private(set) var authorizationDeadline: TimeInterval = 0
@@ -17,6 +17,7 @@ enum VINIAuthenticationPhase: Equatable { case checking, login, validating, auth
     @Published private(set) var status = "Sin sesión"
     @Published private(set) var verified = false
     @Published private(set) var packages: [VINIStagingPatch] = []
+    @Published private(set) var preparedPackages: [VINIRemotePreparedPackage] = []
     @Published private(set) var busy = false
     @Published private(set) var packageResult: String?
     private let client = VINIStagingClient()
@@ -65,7 +66,8 @@ enum VINIAuthenticationPhase: Equatable { case checking, login, validating, auth
             do {
                 packages = try await client.catalog()
                 let authorized = packages
-                Task { await self.prepareAuthorizedPackages(authorized) }
+                let prepared = try await VINIRemotePackageCoordinator(client: client).prepareAuthorizedPackages()
+                preparedPackages = prepared
             } catch { packageResult = "Catálogo temporalmente no disponible" }
             await inspectFixture()
         } catch {
@@ -76,18 +78,9 @@ enum VINIAuthenticationPhase: Equatable { case checking, login, validating, auth
             // Keep previous rows visible on connection loss. They never authorize download/Apply.
         }
     }
-    private func prepareAuthorizedPackages(_ patches: [VINIStagingPatch]) async {
-        guard patches.contains(where: { $0.id == VINIStagingEnvironment.fixtureID }), verified else { return }
-        do {
-            let p = try await client.profile(); _ = try await client.authorizationLifetime(p)
-            _ = try await client.downloadTestPackage(id: VINIStagingEnvironment.fixtureID)
-            preparedFixture = true
-            await inspectFixture()
-        } catch { packageResult = (error as? VINIStagingError)?.message ?? "Paquete no preparado" }
-    }
     func logout() async {
         guard !busy else { return }
-        do { try await client.logout(); preparedFixture = false; profile = nil; packages = []; verified = false; phase = .login; authorizationDeadline = 0; status = "Sin sesión"; packageResult = nil }
+        do { try await client.logout(); preparedFixture = false; preparedPackages = []; profile = nil; packages = []; verified = false; phase = .login; authorizationDeadline = 0; status = "Sin sesión"; packageResult = nil }
         catch { verified = false; phase = .blocked; status = VINIStagingError.keychain.message }
     }
     func download(_ patch: VINIStagingPatch) async {
@@ -133,12 +126,22 @@ enum VINIAuthenticationPhase: Equatable { case checking, login, validating, auth
             license: VINILicensePresentation(userName: profile?.username ?? "—", plan: profile?.plan.uppercased() ?? "—",
                 isPreview: profile == nil, isVerified: active, verifiedRemainingSeconds: remaining,
                 status: verified && !active ? "Licencia expirada" : status),
-            targets: VINIDashboardPresentation.preview.targets, initialPreviewSelection: [])
+            targets: preparedPresentations, initialPreviewSelection: [])
+    }
+    private var preparedPresentations: [VINITargetPresentation] {
+        guard profile != nil else { return VINIDashboardPresentation.preview.targets }
+        return VINIProductionTargetModel.resolve(catalog: packages, prepared: preparedPackages).map { target in
+            let category = target.category == "visuals" ? VINICategory.visuals : target.category == "offsets" ? VINICategory.offsets : VINICategory.combat
+            let symbol = category == .visuals ? "eye" : category == .offsets ? "slider.horizontal.3" : "bolt"
+            return VINITargetPresentation(targetID: target.targetID, packageID: target.packageID.uuidString,
+                categoryID: category.rawValue, title: target.name, patchDescription: target.description,
+                symbol: symbol, availability: .available, patchState: .unknown)
+        }
     }
 }
 
-struct VINIStagingDashboard: View {
-    @ObservedObject var store: VINIStagingStore
+struct VINIProductionDashboard: View {
+    @ObservedObject var store: VINIProductionStore
     @State private var account = false
     var body: some View {
         TimelineView(.periodic(from: .now, by: 60)) { _ in
@@ -151,7 +154,7 @@ struct VINIStagingDashboard: View {
 // Account/catalog presentation is reached through the existing license card;
 // no dashboard cards, categories, switches, fonts or spacing are replaced.
 struct VINIStagingAccountView: View {
-    @ObservedObject var store: VINIStagingStore
+    @ObservedObject var store: VINIProductionStore
     @Environment(\.dismiss) private var dismiss
     var body: some View {
         NavigationStack {

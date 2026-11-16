@@ -82,6 +82,17 @@ func run(_ package: Data, project: PatchProject, catalogData: Data, download: Da
         try expect(FileManager.default.fileExists(atPath: prepared[0].packageURL.path), "PatchProjectLibrary imported the package")
         let imported = try PatchPackageCodec.decode(Data(contentsOf: prepared[0].packageURL), password: nil)
         try expect(imported.project.id == project.id, "imported bytes decode with original codec")
+        let emptyDynamicTargets = VINIProductionTargetModel.resolve(catalog: [], prepared: [])
+        try expect(emptyDynamicTargets.isEmpty, "production target model keeps empty catalog free of fictitious targets")
+        let dynamicPatch = VINIStagingPatch(id: "dynamic", name: "Dynamic fixture", description: "verified", version: "r1",
+            target: VINIRemotePatchTarget(targetID: "fixture.target", category: "combat", packageID: project.id,
+                projectID: project.id, packageRevision: "fixture-r1", packageSHA256: digest(encoded),
+                fileSize: encoded.count, requiredPlan: "basic", availability: "available"))
+        let dynamic = VINIProductionTargetModel.resolve(catalog: [dynamicPatch], prepared: [VINIRemotePreparedPackage(
+            remotePatchID: "dynamic", targetID: "fixture.target", packageID: project.id, projectID: project.id,
+            revision: "fixture-r1", sha256: digest(encoded), fileSize: encoded.count, packageURL: prepared[0].packageURL)])
+        try expect(dynamic.count == 1 && dynamic[0].status == .prepared, "authorized imported target reaches production model")
+        try expect(VINIProductionTargetModel.resolve(catalog: [dynamicPatch], prepared: []).isEmpty, "unprepared target is not dashboard-ready")
 
         let cacheRoot = FileManager.default.temporaryDirectory.appendingPathComponent("vini-cache-\(UUID().uuidString)")
         let cache = try VINIRemotePackageCache(root: cacheRoot)

@@ -2,14 +2,14 @@ import SwiftUI
 import Foundation
 
 struct VINIAuthenticationRoot: View {
-    @StateObject private var store = VINIStagingStore()
+    @StateObject private var store = VINIProductionStore()
     @Environment(\.scenePhase) private var scenePhase
     var onAuthorized: () -> Void
     var onImport: (URL) -> Void
     var body: some View {
         TimelineView(.periodic(from: .now, by: 1)) { _ in
             if store.phase == .authorized && store.authorizationDeadline > ProcessInfo.processInfo.systemUptime {
-                VINIStagingDashboard(store: store)
+                VINIProductionDashboard(store: store)
             } else if store.phase == .checking && store.hasStoredIdentity == true {
                 VINIConnectingView()
             } else { VINILicenseLogin(store: store) }
@@ -46,7 +46,7 @@ struct VINIConnectingView: View {
 }
 
 struct VINILicenseLogin: View {
-    @ObservedObject var store: VINIStagingStore
+    @ObservedObject var store: VINIProductionStore
     @State private var license = ""
     private var busy: Bool { store.busy || store.phase == .checking || store.phase == .validating }
     private var version: String {

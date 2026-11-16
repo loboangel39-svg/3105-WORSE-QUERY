@@ -124,7 +124,7 @@ protocol VINIStagingTransport {
 final class VINIStagingHTTP: VINIStagingTransport {
     private let session: URLSession
     private let baseURL: URL
-    init(baseURL: URL = VINIStagingEnvironment.base) {
+    init(baseURL: URL = VINIProductionEnvironment.base) {
         self.baseURL = baseURL
         let config = URLSessionConfiguration.ephemeral
         config.httpShouldSetCookies = false; config.urlCache = nil
@@ -168,7 +168,7 @@ actor VINIStagingClient {
     private var generation = 0
     private var refreshTask: Task<VINIStagingProfile, Error>?
     private var lastLogin: TimeInterval = -.infinity
-    init(baseURL: URL = VINIStagingEnvironment.base, transport: VINIStagingTransport? = nil, vault: VINIStagingVault = VINIStagingKeychain()) {
+    init(baseURL: URL = VINIProductionEnvironment.base, transport: VINIStagingTransport? = nil, vault: VINIStagingVault = VINIStagingKeychain()) {
         self.baseURL = baseURL
         self.transport = transport ?? VINIStagingHTTP(baseURL: baseURL)
         self.vault = vault
