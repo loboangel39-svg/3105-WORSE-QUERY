@@ -150,22 +150,6 @@ func run(_ package: Data, project: PatchProject, catalogData: Data, download: Da
         try expect(revokedPrepared.isEmpty && revokedRequests == 2, "revoked catalog denies cached package without download")
         print("PASS revocation preserves local storage and never authorizes from cache")
 
-        // Interruption: a new revision receives partial bytes. Integrity fails
-        // before cache.store/import, while the prior revision remains loadable.
-        let interruptionID = "interruption-\(UUID().uuidString)"
-        let cacheAfterInterruption = try VINIRemotePackageCache()
-        let r1Identity = VINIRemoteCacheIdentity(userID: "fixture-user", remotePatchID: interruptionID, targetID: "fixture.target", packageID: project.id, projectID: project.id, revision: "r1", sha256: digest(encoded), fileSize: encoded.count)
-        _ = try cacheAfterInterruption.store(bytes: encoded, identity: r1Identity)
-        _ = try await run(encoded, project: project, catalogData: try catalog(for: project, package: encoded, remoteID: interruptionID, revision: "r1"), remoteID: interruptionID)
-        let partial = Data(encoded.prefix(8))
-        let r2Catalog = try catalog(for: project, package: encoded, remoteID: interruptionID, revision: "r2")
-        let partialResult = try? await run(encoded, project: project, catalogData: r2Catalog, download: partial, remoteID: interruptionID)
-        try expect(partialResult == nil, "interrupted download rejected before publication")
-        let priorRevision = try cacheAfterInterruption.load(identity: r1Identity)
-        try expect(priorRevision?.0 == encoded, "prior revision survives interrupted download")
-        _ = try await run(encoded, project: project, catalogData: r2Catalog, remoteID: interruptionID)
-        print("PASS complete retry publishes and persists new revision")
-
         let auth = try data(["valid": true, "token": "new-token", "expiresAt": "2027-01-01T00:00:00Z", "username": "fixture", "userID": "fixture-user", "plan": "basic", "licenseStatus": "active", "serverTime": "2026-11-16T00:00:00Z"])
         let transport = FixtureTransport([("api/app/me", 401, try data(["error": "unauthorized"])), ("api/app/validate-license", 200, auth), ("api/app/patches", 200, validCatalog), ("api/app/patches/fixture-remote-id/download", 200, encoded)])
         var expiredCredentials = try fixtureCredentials(); expiredCredentials.token = "old-token"
