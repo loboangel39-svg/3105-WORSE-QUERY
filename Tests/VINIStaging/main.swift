@@ -2,7 +2,7 @@ import Foundation
 import CryptoKit
 
 // Host adapter for the existing platform logger, not the transaction engine.
-func log(_ message: String) { print(message) }
+func log(_ message: String) { print(message); fflush(stdout) }
 // macOS binding of the existing read-only service method. Real journal/filesystem,
 // no container enumeration, no nil stub and no replacement transaction implementation.
 enum DevicePatchService {
@@ -39,7 +39,7 @@ func json(_ value: [String: Any]) throws -> Data { try JSONSerialization.data(wi
 func record() -> VINIStagingCredentials { VINIStagingCredentials(licenseKey: "SYNTHETIC", hwid: "synthetic", token: "old-token", expiresAt: "2000-01-01T00:00:00Z") }
 func response() -> [String: Any] { ["username":"Synthetic","plan":"basic","licenseStatus":"active","licenseExpiresAt":"2026-11-22T00:00:00Z","serverTime":"2026-11-15T00:00:00Z"] }
 func loginResponse() -> [String: Any] { response().merging(["valid":true,"token":"new-token","expiresAt":"2026-11-16T00:00:00Z"]) { _,new in new } }
-func expect(_ condition: Bool, _ name: String) throws { if !condition { throw VINIStagingError.invalidResponse }; print("PASS " + name) }
+func expect(_ condition: Bool, _ name: String) throws { if !condition { print("FAIL " + name); fflush(stdout); throw VINIStagingError.invalidResponse }; print("PASS " + name); fflush(stdout) }
 
 @main struct StagingTests {
     static func main() async throws {
