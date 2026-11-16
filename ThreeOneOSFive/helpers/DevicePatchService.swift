@@ -35,7 +35,11 @@ enum DevicePatchService {
             )
             operation.transactionID = receipt.id
             try store.sealApplied(operation)
-            guard try verifyState(receipt: receipt, original: false) else {
+            guard try PatchTransaction.verifyState(receipt: receipt, original: false,
+                                                   containerResolver: { id in
+                guard let root = roots[id] else { throw PatchPackageError.targetAppUnavailable(id) }
+                return root
+            }) else {
                 throw VINIPatchFailure.recoveryRequired
             }
             operation.phase = .applied
