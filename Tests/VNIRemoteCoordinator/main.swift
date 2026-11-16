@@ -53,13 +53,14 @@ func catalog(for project: PatchProject, package: Data, sha: String = "", targetP
 }
 
 func run(_ package: Data, project: PatchProject, catalogData: Data, download: Data? = nil,
-         prefix: [(String, Int, Data)] = []) async throws -> [VINIRemotePreparedPackage] {
+         prefix: [(String, Int, Data)] = [], remoteID: String = "fixture-remote-id") async throws -> [VINIRemotePreparedPackage] {
+    let profile: [String: Any] = ["username": "fixture", "userID": "fixture-user", "plan": "basic", "licenseStatus": "active", "licenseExpiresAt": "2027-01-01T00:00:00Z", "serverTime": "2026-11-16T00:00:00Z"]
     let login: [String: Any] = ["valid": true, "token": "fixture-token", "expiresAt": "2027-01-01T00:00:00Z",
         "username": "fixture", "plan": "basic", "licenseStatus": "active",
         "licenseExpiresAt": "2027-01-01T00:00:00Z", "serverTime": "2026-11-16T00:00:00Z"]
     var replies = prefix
-    replies += [("api/app/validate-license", 200, try data(login)), ("api/app/patches", 200, catalogData),
-                ("api/app/patches/fixture-remote-id/download", 200, download ?? package)]
+    replies += [("api/app/validate-license", 200, try data(login)), ("api/app/me", 200, try data(profile)), ("api/app/patches", 200, catalogData),
+                ("api/app/patches/\(remoteID)/download", 200, download ?? package)]
     let client = VINIStagingClient(baseURL: VINIProductionEnvironment.base, transport: FixtureTransport(replies), vault: FixtureVault(value: try fixtureCredentials()))
     log("LOGIN synthetic")
     _ = try await client.login(licenseKey: "fixture")
@@ -81,19 +82,20 @@ func run(_ package: Data, project: PatchProject, catalogData: Data, download: Da
         try expect(imported.project.id == project.id, "imported bytes decode with original codec")
 
         var corrupt = encoded; corrupt[corrupt.startIndex] ^= 0xff
-        do { _ = try await run(corrupt, project: project, catalogData: validCatalog); throw VINIStagingError.invalidResponse }
+        do { _ = try await run(corrupt, project: project, catalogData: try catalog(for: project, package: corrupt, remoteID: "corrupt"), remoteID: "corrupt"); throw VINIStagingError.invalidResponse }
         catch { print("PASS corrupt package rejected before import") }
         let wrongProject = UUID()
         let wrongIdentity = try catalog(for: project, package: encoded, targetProject: wrongProject)
-        do { _ = try await run(encoded, project: project, catalogData: wrongIdentity); throw VINIStagingError.invalidResponse }
+        do { _ = try await run(encoded, project: project, catalogData: wrongIdentity, remoteID: "identity"); throw VINIStagingError.invalidResponse }
         catch { print("PASS inconsistent project identity rejected") }
         let wrongHash = try catalog(for: project, package: encoded, sha: String(repeating: "0", count: 64))
-        do { _ = try await run(encoded, project: project, catalogData: wrongHash); throw VINIStagingError.invalidResponse }
+        do { _ = try await run(encoded, project: project, catalogData: wrongHash, remoteID: "hash"); throw VINIStagingError.invalidResponse }
         catch { print("PASS inconsistent SHA-256 rejected") }
 
         let profile: [String: Any] = ["username": "fixture", "plan": "basic", "licenseStatus": "active", "serverTime": "2026-11-16T00:00:00Z"]
-        let auth = try data(["valid": true, "token": "new-token", "expiresAt": "2027-01-01T00:00:00Z", "username": "fixture", "plan": "basic", "licenseStatus": "active", "serverTime": "2026-11-16T00:00:00Z"])
-        let transport = FixtureTransport([("api/app/validate-license", 200, auth), ("api/app/patches", 401, try data(["error": "unauthorized"])), ("api/app/validate-license", 200, auth), ("api/app/patches", 200, validCatalog), ("api/app/patches/fixture-remote-id/download", 200, encoded)])
+        let auth = try data(["valid": true, "token": "new-token", "expiresAt": "2027-01-01T00:00:00Z", "username": "fixture", "userID": "fixture-user", "plan": "basic", "licenseStatus": "active", "serverTime": "2026-11-16T00:00:00Z"])
+        let profile = try data(["username": "fixture", "userID": "fixture-user", "plan": "basic", "licenseStatus": "active", "serverTime": "2026-11-16T00:00:00Z"])
+        let transport = FixtureTransport([("api/app/validate-license", 200, auth), ("api/app/me", 401, try data(["error": "unauthorized"])), ("api/app/validate-license", 200, auth), ("api/app/me", 200, profile), ("api/app/patches", 200, validCatalog), ("api/app/patches/fixture-remote-id/download", 200, encoded)])
         let client = VINIStagingClient(baseURL: VINIProductionEnvironment.base, transport: transport, vault: FixtureVault(value: try fixtureCredentials()))
         _ = try await client.login(licenseKey: "fixture")
         _ = try await VINIRemotePackageCoordinator(client: client).prepareAuthorizedPackages()
