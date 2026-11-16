@@ -5,7 +5,7 @@
 - Requested architecture: `arm64`
 - CI run: **PENDING** — this Windows workspace cannot execute Xcode/macOS.
 - IPA SHA-256: **PENDING** until GitHub Actions succeeds.
-- Exact commit: **PENDING local integration commit**.
+- Exact commit: `daa6db20c344b346d2ef9e1644530073e82142df`.
 
 The macOS workflow builds `iphoneos`, forces `ARCHS=arm64`, disables signing, validates Bundle ID and native object presence, packages the exact build output, and uploads the required artifact name.
 
