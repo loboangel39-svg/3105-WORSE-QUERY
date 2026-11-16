@@ -549,9 +549,6 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				AA3105060000000000000002 /* VINIRemotePackageCoordinator.swift in Sources */,
-				AA3105060000000000000004 /* VINIRemotePackageCache.swift in Sources */,
-				AA3105060000000000000006 /* VINIProductionTargetModel.swift in Sources */,
                 AB1050020000000000000002,
 				3105A211,
 				3105A228,
@@ -569,6 +566,9 @@
 				AA3105050000000000000002 /* VINIAuthenticationRoot.swift in Sources */,
 				AA3105040000000000000004 /* VINIStagingAccountView.swift in Sources */,
 				AA3105040000000000000002 /* VINIStagingClient.swift in Sources */,
+				AA3105060000000000000002 /* VINIRemotePackageCoordinator.swift in Sources */,
+				AA3105060000000000000004 /* VINIRemotePackageCache.swift in Sources */,
+				AA3105060000000000000006 /* VINIProductionTargetModel.swift in Sources */,
 				AB1050010000000000000001,
 				AB1050010000000000000004,
 				AB1050010000000000000007,
