@@ -8,13 +8,20 @@ enum DevicePatchService {
         mutationLock.lock(); defer { mutationLock.unlock() }
         let bundleIDs = orderedBundleIdentifiers(in: project)
         return try withResolvedContainers(bundleIDs: bundleIDs) { roots in
+            // Preflight before writing the VINI index. A rejected Apply must
+            // not replace the record that still points at recovery evidence.
+            let backupRoot = try PatchProjectLibrary.backupRootURL()
+            guard PatchTransaction.latestReceipt(projectID: project.id,
+                                                 backupRoot: backupRoot) == nil else {
+                throw PatchPackageError.projectAlreadyApplied
+            }
             let store = try VINIDualBackupStore.live()
             var operation = try makeOperationRecord(project: project, roots: roots)
             try store.save(operation)
             do {
                 let receipt = try PatchTransaction.apply(
                     project: project,
-                    backupRoot: try PatchProjectLibrary.backupRootURL(),
+                     backupRoot: backupRoot,
                     containerResolver: { bundleID in
                         guard let root = roots[bundleID] else {
                             throw PatchPackageError.targetAppUnavailable(bundleID)

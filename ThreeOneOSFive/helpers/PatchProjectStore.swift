@@ -430,7 +430,7 @@ final class PatchProjectStore: ObservableObject {
             } catch let error as PatchPackageError {
                 await self?.failOperation(error)
             } catch {
-                await self?.failOperation(.invalidProject)
+                await self?.failOperation(.operationDiagnostic(String(describing: error)))
             }
         }
     }
@@ -459,7 +459,7 @@ final class PatchProjectStore: ObservableObject {
             } catch let error as PatchPackageError {
                 await self?.failOperation(error)
             } catch {
-                await self?.failOperation(.invalidProject)
+                await self?.failOperation(.operationDiagnostic(String(describing: error)))
             }
         }
     }

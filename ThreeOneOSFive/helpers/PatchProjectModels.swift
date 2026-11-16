@@ -191,6 +191,7 @@ enum PatchPackageError: Error, Equatable {
     case resetFailed
     case invalidImportLink
     case remoteImportFailed
+    case operationDiagnostic(String)
 }
 
 extension PatchPackageError: LocalizedError {
@@ -218,6 +219,7 @@ extension PatchPackageError: LocalizedError {
         case .resetFailed: return "patch.error.reset"
         case .invalidImportLink: return "patch.error.invalid_import_link"
         case .remoteImportFailed: return "patch.error.remote_import"
+        case .operationDiagnostic: return "patch.error.diagnostic"
         }
     }
 
@@ -235,6 +237,8 @@ extension PatchPackageError: LocalizedError {
             return bundleID
         case .restoreTargetsChanged(let paths):
             return paths.joined(separator: "\n")
+        case .operationDiagnostic(let detail):
+            return detail
         default:
             return nil
         }
