@@ -38,7 +38,7 @@ enum VINIProductionTargetModel {
             return VINIProductionTargetDescriptor(targetID: target.targetID, remotePatchID: patch.id,
                 packageID: target.packageID, projectID: target.projectID, revision: target.packageRevision,
                 sha256: target.packageSHA256, fileSize: target.fileSize, category: target.category,
-                name: patch.name, description: patch.description, categoryID: categoryID,
+                categoryID: categoryID, name: patch.name, description: patch.description,
                 status: state == .applied ? .applied : state == .restorePending ? .restorePending : state == .restored ? .unavailable : .prepared)
         }
     }
