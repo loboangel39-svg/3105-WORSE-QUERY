@@ -9,7 +9,7 @@ struct VINIAuthenticationRoot: View {
     var body: some View {
         TimelineView(.periodic(from: .now, by: 1)) { _ in
             if store.phase == .authorized && store.authorizationDeadline > ProcessInfo.processInfo.systemUptime {
-                VINIProductionDashboard(store: store)
+                ContentView()
             } else if store.phase == .checking && store.hasStoredIdentity == true {
                 VINIConnectingView()
             } else { VINILicenseLogin(store: store) }

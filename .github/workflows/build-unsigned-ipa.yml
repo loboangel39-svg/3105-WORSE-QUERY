@@ -112,10 +112,10 @@ jobs:
           grep -Eq 'worse_query\.m|worse_query_adapter\.m|ContainerAccessCoordinator\.swift' build/xcodebuild.log
           mkdir -p build/Payload
           cp -R "$APP_PATH" build/Payload/
-          (cd build && /usr/bin/ditto -c -k --sequesterRsrc --keepParent Payload 3105-WorseQuery-Unsigned.ipa)
-          test -f build/3105-WorseQuery-Unsigned.ipa
+           (cd build && /usr/bin/ditto -c -k --sequesterRsrc --keepParent Payload VINI-2.0-RC1-Unsigned.ipa)
+           test -f build/VINI-2.0-RC1-Unsigned.ipa
           {
-            echo '# 3105 worse_query build report'
+             echo '# VINI 2.0 RC1 build report'
             echo
             echo "- Xcode: $(xcodebuild -version | tr '\n' ' ')"
             echo "- Scheme: $SCHEME"
@@ -125,7 +125,7 @@ jobs:
             echo '- Signing: disabled for build; IPA is unsigned'
             echo '- Bundle ID: com.apple.mobile.MobileHouseArrest'
             echo '- Minimum OS: 16.0'
-            echo '- IPA: 3105-WorseQuery-Unsigned.ipa'
+             echo '- IPA: VINI-2.0-RC1-Unsigned.ipa'
             echo '- Runtime/device tests: not performed by this workflow'
           } > build/BUILD-REPORT.md
           cp docs/WORSE_QUERY_INTEGRATION.md build/WORSE_QUERY_INTEGRATION.md
@@ -134,9 +134,9 @@ jobs:
       - name: Upload unsigned IPA and reports
         uses: actions/upload-artifact@v4
         with:
-          name: 3105-WorseQuery-Unsigned
+           name: VINI-2.0-RC1-Unsigned
           path: |
-            build/3105-WorseQuery-Unsigned.ipa
+             build/VINI-2.0-RC1-Unsigned.ipa
             build/BUILD-REPORT.md
             build/WORSE_QUERY_INTEGRATION.md
             build/xcodebuild.log

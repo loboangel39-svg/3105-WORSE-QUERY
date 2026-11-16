@@ -7,6 +7,15 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		VNBD001 /* RemotePatchService.swift in Sources */ = {isa = PBXBuildFile; fileRef = VINID001; };
+		VNBD002 /* PatchDownloadService.swift in Sources */ = {isa = PBXBuildFile; fileRef = VINID002; };
+		VNBD003 /* PatchManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = VINID003; };
+		VNBD004 /* PatchStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = VINID004; };
+		VNBD005 /* PatchSyncManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = VINID005; };
+		VNBD006 /* TokenRefreshManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = VINID006; };
+		VNBD007 /* RemotePatchesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = VINID007; };
+		VNBD008 /* KeychainManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = VINID008; };
+
 		AA3105070000000000000002 /* VINITransactionStateReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA3105070000000000000001; };
 		AA3105080000000000000002 /* VINITransactionAssociationStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA3105080000000000000001; };
 		AA3105090000000000000002 /* VINIProductionCategoryRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA3105090000000000000001; };
@@ -121,6 +130,15 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		VINID001 /* RemotePatchService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Patches/RemotePatchService.swift"; sourceTree = "<group>"; };
+		VINID002 /* PatchDownloadService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Patches/PatchDownloadService.swift"; sourceTree = "<group>"; };
+		VINID003 /* PatchManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Patches/PatchManager.swift"; sourceTree = "<group>"; };
+		VINID004 /* PatchStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Patches/PatchStorage.swift"; sourceTree = "<group>"; };
+		VINID005 /* PatchSyncManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "helpers/PatchSyncManager.swift"; sourceTree = "<group>"; };
+		VINID006 /* TokenRefreshManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "helpers/TokenRefreshManager.swift"; sourceTree = "<group>"; };
+		VINID007 /* RemotePatchesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "views/RemotePatchesView.swift"; sourceTree = "<group>"; };
+		VINID008 /* KeychainManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Authentication/KeychainManager.swift"; sourceTree = "<group>"; };
+
 		AA3105070000000000000001 /* VINITransactionStateReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VINITransactionStateReader.swift; sourceTree = "<group>"; };
 		AA3105080000000000000001 /* VINITransactionAssociationStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VINITransactionAssociationStore.swift; sourceTree = "<group>"; };
 		AA3105090000000000000001 /* VINIProductionCategoryRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VINIProductionCategoryRegistry.swift; sourceTree = "<group>"; };
@@ -310,6 +328,15 @@
                 AB1050020000000000000001,
 				3105A060 /* Info.plist */,
 				3105A020 /* App.swift */,
+				VINID001 /* RemotePatchService.swift */,
+				VINID002 /* PatchDownloadService.swift */,
+				VINID003 /* PatchManager.swift */,
+				VINID004 /* PatchStorage.swift */,
+				VINID005 /* PatchSyncManager.swift */,
+				VINID006 /* TokenRefreshManager.swift */,
+				VINID007 /* RemotePatchesView.swift */,
+				VINID008 /* KeychainManager.swift */,
+
 				3105A021 /* ContentView.swift */,
 				3105A403 /* exploit */,
 				3105A404 /* views */,
@@ -577,7 +604,15 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				AA3105050000000000000004 /* VINIIsolatedFixture.swift in Sources */,
+								VNBD001 /* RemotePatchService.swift in Sources */,
+				VNBD002 /* PatchDownloadService.swift in Sources */,
+				VNBD003 /* PatchManager.swift in Sources */,
+				VNBD004 /* PatchStorage.swift in Sources */,
+				VNBD005 /* PatchSyncManager.swift in Sources */,
+				VNBD006 /* TokenRefreshManager.swift in Sources */,
+				VNBD007 /* RemotePatchesView.swift in Sources */,
+				VNBD008 /* KeychainManager.swift in Sources */,
+AA3105050000000000000004 /* VINIIsolatedFixture.swift in Sources */,
 				AA3105050000000000000002 /* VINIAuthenticationRoot.swift in Sources */,
 				AA3105040000000000000004 /* VINIStagingAccountView.swift in Sources */,
 				AA3105040000000000000002 /* VINIStagingClient.swift in Sources */,
