@@ -254,7 +254,6 @@ actor VINIStagingClient {
             return cached
         }
         let bytes = try await authorized("api/app/patches/" + id + "/download")
-        try storeFixture(bytes, id: id)
         return bytes
     }
     private func packageCacheURL(id: String) throws -> URL {
@@ -284,6 +283,7 @@ actor VINIStagingClient {
     func downloadTestPackage(id: String) async throws -> String {
         let bytes = try await verifiedTestBytes(id: id)
         let decoded = try PatchPackageCodec.decode(bytes, password: nil)
+        try storeFixture(bytes, id: id)
         let directory = try FileManager.default.url(for: .cachesDirectory, in: .userDomainMask, appropriateFor: nil, create: true).appendingPathComponent("VINIStagingVerified", isDirectory: true)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         try bytes.write(to: directory.appendingPathComponent("TEST2C-transport.3105"), options: .atomic)
