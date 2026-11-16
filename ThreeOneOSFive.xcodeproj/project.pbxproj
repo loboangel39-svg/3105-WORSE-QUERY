@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		AA3105060000000000000002 /* VINIRemotePackageCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA3105060000000000000001; };
+		AA3105060000000000000002 /* VNIRemotePackageCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA3105060000000000000001; };
 		AA3105060000000000000004 /* VINIRemotePackageCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA3105060000000000000003; };
 		AA3105060000000000000006 /* VINIProductionTargetModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA3105060000000000000005; };
 		AA3105050000000000000004 /* VINIIsolatedFixture.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA3105050000000000000003; };
@@ -116,7 +116,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		AA3105060000000000000001 /* VINIRemotePackageCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VINIRemotePackageCoordinator.swift; sourceTree = "<group>"; };
+		AA3105060000000000000001 /* VNIRemotePackageCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VNIRemotePackageCoordinator.swift; sourceTree = "<group>"; };
 		AA3105060000000000000003 /* VINIRemotePackageCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VINIRemotePackageCache.swift; sourceTree = "<group>"; };
 		AA3105060000000000000005 /* VINIProductionTargetModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VINIProductionTargetModel.swift; sourceTree = "<group>"; };
 		AA3105050000000000000003 /* VINIIsolatedFixture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VINIIsolatedFixture.swift; sourceTree = "<group>"; };
@@ -367,7 +367,7 @@
 		3105A405 /* helpers */ = {
 			isa = PBXGroup;
 			children = (
-				AA3105060000000000000001 /* VINIRemotePackageCoordinator.swift */,
+				AA3105060000000000000001 /* VNIRemotePackageCoordinator.swift */,
 				AA3105060000000000000003 /* VINIRemotePackageCache.swift */,
 				AA3105060000000000000005 /* VINIProductionTargetModel.swift */,
 				AA3105050000000000000003 /* VINIIsolatedFixture.swift */,
@@ -566,7 +566,7 @@
 				AA3105050000000000000002 /* VINIAuthenticationRoot.swift in Sources */,
 				AA3105040000000000000004 /* VINIStagingAccountView.swift in Sources */,
 				AA3105040000000000000002 /* VINIStagingClient.swift in Sources */,
-				AA3105060000000000000002 /* VINIRemotePackageCoordinator.swift in Sources */,
+				AA3105060000000000000002 /* VNIRemotePackageCoordinator.swift in Sources */,
 				AA3105060000000000000004 /* VINIRemotePackageCache.swift in Sources */,
 				AA3105060000000000000006 /* VINIProductionTargetModel.swift in Sources */,
 				AB1050010000000000000001,
