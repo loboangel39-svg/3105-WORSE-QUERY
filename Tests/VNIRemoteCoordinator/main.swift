@@ -141,16 +141,17 @@ func run(_ package: Data, project: PatchProject, catalogData: Data, download: Da
 
         // Interruption: a new revision receives partial bytes. Integrity fails
         // before cache.store/import, while the prior revision remains loadable.
-        _ = try await run(encoded, project: project, catalogData: try catalog(for: project, package: encoded, remoteID: "interruption", revision: "r1"), remoteID: "interruption")
+        let interruptionID = "interruption-\(UUID().uuidString)"
+        _ = try await run(encoded, project: project, catalogData: try catalog(for: project, package: encoded, remoteID: interruptionID, revision: "r1"), remoteID: interruptionID)
         let partial = Data(encoded.prefix(8))
-        let r2Catalog = try catalog(for: project, package: encoded, remoteID: "interruption", revision: "r2")
-        do { _ = try await run(encoded, project: project, catalogData: r2Catalog, download: partial, remoteID: "interruption"); throw VINIStagingError.invalidResponse }
+        let r2Catalog = try catalog(for: project, package: encoded, remoteID: interruptionID, revision: "r2")
+        do { _ = try await run(encoded, project: project, catalogData: r2Catalog, download: partial, remoteID: interruptionID); throw VINIStagingError.invalidResponse }
         catch { print("PASS interrupted download rejected before publication") }
         let cacheAfterInterruption = try VINIRemotePackageCache()
-        let r1Identity = VINIRemoteCacheIdentity(userID: "fixture-user", remotePatchID: "interruption", targetID: "fixture.target", packageID: project.id, projectID: project.id, revision: "r1", sha256: digest(encoded), fileSize: encoded.count)
+        let r1Identity = VINIRemoteCacheIdentity(userID: "fixture-user", remotePatchID: interruptionID, targetID: "fixture.target", packageID: project.id, projectID: project.id, revision: "r1", sha256: digest(encoded), fileSize: encoded.count)
         let priorRevision = try cacheAfterInterruption.load(identity: r1Identity)
         try expect(priorRevision?.0 == encoded, "prior revision survives interrupted download")
-        _ = try await run(encoded, project: project, catalogData: r2Catalog, remoteID: "interruption")
+        _ = try await run(encoded, project: project, catalogData: r2Catalog, remoteID: interruptionID)
         print("PASS complete retry publishes and persists new revision")
 
         let auth = try data(["valid": true, "token": "new-token", "expiresAt": "2027-01-01T00:00:00Z", "username": "fixture", "userID": "fixture-user", "plan": "basic", "licenseStatus": "active", "serverTime": "2026-11-16T00:00:00Z"])
