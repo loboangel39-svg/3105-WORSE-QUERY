@@ -177,7 +177,9 @@ enum VINIAuthenticationPhase: Equatable { case checking, login, validating, auth
     private var preparedPresentations: [VINITargetPresentation] {
         guard profile != nil else { return [] }
         return VINIProductionTargetModel.resolve(catalog: packages, prepared: preparedPackages, stateReader: transactionStateReader).compactMap { target in
-            guard let categoryID = target.categoryID, let category = VINIProductionCategoryRegistry.dashboardCategory(for: categoryID) else { return nil }
+            guard let categoryID = target.categoryID else { return nil }
+            let category: VINICategory
+            switch categoryID { case 1: category = .combat; case 2: category = .visuals; case 3: category = .offsets; default: return nil }
             let symbol = category == .visuals ? "eye" : category == .offsets ? "slider.horizontal.3" : "bolt"
             return VINITargetPresentation(targetID: target.targetID, packageID: target.packageID.uuidString,
                 categoryID: category.rawValue, title: target.name, patchDescription: target.description,
