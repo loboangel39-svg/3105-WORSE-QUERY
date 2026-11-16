@@ -1,0 +1,56 @@
+import CryptoKit
+import Foundation
+
+struct VINIRemotePreparedPackage: Codable, Equatable {
+    let remotePatchID: String
+    let targetID: String
+    let packageID: UUID
+    let projectID: UUID
+    let revision: String
+    let sha256: String
+    let fileSize: Int
+    let packageURL: URL
+}
+
+/// Coordinates remote catalog/import state without changing the codec or transaction engine.
+actor VINIRemotePackageCoordinator {
+    enum CoordinatorError: Error { case noTarget, invalidIdentity, integrity, locked, staleAuthorization }
+    private let client: VINIStagingClient
+    private let fileManager: FileManager
+    init(client: VINIStagingClient, fileManager: FileManager = .default) {
+        self.client = client; self.fileManager = fileManager
+    }
+
+    func prepareAuthorizedPackages() async throws -> [VINIRemotePreparedPackage] {
+        let entries = try await client.catalog()
+        var prepared: [VINIRemotePreparedPackage] = []
+        for entry in entries {
+            guard let target = entry.target, target.availability == "available" else { continue }
+            prepared.append(try await prepare(entry: entry, target: target))
+        }
+        return prepared
+    }
+
+    private func prepare(entry: VINIStagingPatch, target: VINIRemotePatchTarget) async throws -> VINIRemotePreparedPackage {
+        guard target.packageSHA256.range(of: "^[0-9a-f]{64}$", options: .regularExpression) != nil,
+              target.targetID.isEmpty == false else { throw CoordinatorError.invalidIdentity }
+        let bytes = try await client.downloadPackage(id: entry.id)
+        guard bytes.count > 0, bytes.count == target.fileSize else { throw CoordinatorError.integrity }
+        let digest = SHA256.hash(data: bytes).map { String(format: "%02x", $0) }.joined()
+        guard digest == target.packageSHA256 else { throw CoordinatorError.integrity }
+        let summary = try PatchPackageCodec.inspect(bytes)
+        guard summary.packageID == target.packageID else { throw CoordinatorError.invalidIdentity }
+        let decoded: DecodedPatchPackage
+        if let key = try PatchKeyStore.load(for: summary) {
+            decoded = try PatchPackageCodec.decode(bytes, contentKey: key)
+        } else {
+            guard !summary.isPasswordProtected else { throw CoordinatorError.locked }
+            decoded = try PatchPackageCodec.decode(bytes, password: nil)
+        }
+        guard decoded.project.id == target.projectID else { throw CoordinatorError.invalidIdentity }
+        let url = try PatchProjectLibrary.save(data: bytes, projectName: decoded.project.name, fileManager: fileManager)
+        return VINIRemotePreparedPackage(remotePatchID: entry.id, targetID: target.targetID, packageID: target.packageID,
+            projectID: target.projectID, revision: target.packageRevision, sha256: digest, fileSize: bytes.count, packageURL: url)
+    }
+
+}

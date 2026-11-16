@@ -1,0 +1,51 @@
+name: Validate VINI remote import native
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  remote-import:
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Select Xcode
+        shell: bash
+        run: |
+          set -euo pipefail
+          XCODE_APP="$(find /Applications -maxdepth 1 -type d -name 'Xcode*.app' -print | sort | tail -n 1)"
+          test -n "$XCODE_APP"
+          sudo xcode-select --switch "$XCODE_APP/Contents/Developer"
+          xcodebuild -version | tee build-3j-xcode.txt
+      - name: Verify exact checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          git rev-parse HEAD | tee build-3j-commit.txt
+          git diff --check
+      - name: Native coordinator syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          swiftc -parse ThreeOneOSFive/helpers/VNIRemotePackageCoordinator.swift
+          swiftc -parse ThreeOneOSFive/helpers/VINIStagingClient.swift
+      - name: Build physical iPhone arm64 unsigned
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcodebuild -project ThreeOneOSFive.xcodeproj -scheme 3105 -sdk iphoneos -configuration ExperimentalRelease -destination 'generic/platform=iOS' -derivedDataPath build-3j/DerivedData CONFIGURATION_BUILD_DIR="$PWD/build-3j/Products" ARCHS=arm64 ONLY_ACTIVE_ARCH=NO CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build | tee build-3j-build.log
+          APP_PATH="$(find build-3j/Products -maxdepth 1 -type d -name '*.app' -print -quit)"
+          test -x "$APP_PATH/3105"
+          lipo -info "$APP_PATH/3105" | tee build-3j-architecture.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: VINI-3J-native-evidence
+          path: |
+            build-3j-*.txt
+            build-3j-build.log

@@ -53,6 +53,18 @@ struct VINIStagingPatch: Codable, Identifiable {
     let name: String
     let description: String?
     let version: String?
+    let target: VINIRemotePatchTarget?
+}
+struct VINIRemotePatchTarget: Codable {
+    let targetID: String
+    let category: String
+    let packageID: UUID
+    let projectID: UUID
+    let packageRevision: String
+    let packageSHA256: String
+    let fileSize: Int
+    let requiredPlan: String?
+    let availability: String
 }
 struct VINIStagingCredentials: Codable {
     var licenseKey: String
@@ -244,6 +256,9 @@ actor VINIStagingClient {
     func catalog() async throws -> [VINIStagingPatch] {
         struct Catalog: Decodable { let patches: [VINIStagingPatch] }
         return try JSONDecoder().decode(Catalog.self, from: await authorized("api/app/patches")).patches
+    }
+    func downloadPackage(id: String) async throws -> Data {
+        try await authorized("api/app/patches/" + id + "/download")
     }
     func verifiedTestBytes(id: String) async throws -> Data {
         // The current API has no digest field. Only the independently pinned 2C fixture
