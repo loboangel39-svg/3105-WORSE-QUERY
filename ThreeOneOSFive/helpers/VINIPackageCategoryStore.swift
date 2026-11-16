@@ -7,7 +7,7 @@ struct VINIPackageCategoryAssociation: Codable, Equatable {
     let projectID: UUID
     let sha256: String
     let revision: String
-    let categoryID: Int
+    let categoryID: Int?
 }
 
 struct VINIPackageCategoryStore {
@@ -27,5 +27,16 @@ struct VINIPackageCategoryStore {
         let values = (try? JSONDecoder().decode([VINIPackageCategoryAssociation].self, from: Data(contentsOf: url()))) ?? []
         let filtered = values.filter { !($0.userID == value.userID && $0.packageID == value.packageID && $0.sha256 == value.sha256) }
         try JSONEncoder().encode(filtered + [value]).write(to: try url(), options: .atomic)
+    }
+
+    func assign(categoryID: Int, userID: String, packageID: UUID, sha256: String) throws {
+        guard VINIProductionCategoryRegistry.displayName(for: categoryID) != nil else { return }
+        guard let file = try? url(), let data = try? Data(contentsOf: file),
+              var values = try? JSONDecoder().decode([VINIPackageCategoryAssociation].self, from: data),
+              let index = values.firstIndex(where: { $0.userID == userID && $0.packageID == packageID && $0.sha256 == sha256 }) else { return }
+        let old = values[index]
+        values[index] = VINIPackageCategoryAssociation(userID: old.userID, remotePatchID: old.remotePatchID,
+            packageID: old.packageID, projectID: old.projectID, sha256: old.sha256, revision: old.revision, categoryID: categoryID)
+        try JSONEncoder().encode(values).write(to: file, options: .atomic)
     }
 }

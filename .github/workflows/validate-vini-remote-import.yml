@@ -99,9 +99,9 @@ jobs:
            test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP_PATH/Info.plist")" = "com.apple.mobile.MobileHouseArrest"
            mkdir -p build-3j/Payload
            cp -R "$APP_PATH" build-3j/Payload/3105.app
-           (cd build-3j && zip -qry VINI-SessionFix-Unsigned.ipa Payload)
-           shasum -a 256 build-3j/VINI-SessionFix-Unsigned.ipa | tee build-3j-ipa-sha256.txt
-           stat -f '%z' build-3j/VINI-SessionFix-Unsigned.ipa | tee build-3j-ipa-size.txt
+            (cd build-3j && zip -qry VINI-DynamicImport-Unsigned.ipa Payload)
+            shasum -a 256 build-3j/VINI-DynamicImport-Unsigned.ipa | tee build-3j-ipa-sha256.txt
+            stat -f '%z' build-3j/VINI-DynamicImport-Unsigned.ipa | tee build-3j-ipa-size.txt
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -111,9 +111,9 @@ jobs:
             build-3j-build.log
             build-3j-native-staging.log
             build-3j-remote-coordinator.log
-            build-3j/VINI-SessionFix-Unsigned.ipa
+            build-3j/VINI-DynamicImport-Unsigned.ipa
       - name: Upload unsigned IPA
         uses: actions/upload-artifact@v4
         with:
-          name: VINI-SessionFix-Unsigned
-          path: build-3j/VINI-SessionFix-Unsigned.ipa
+          name: VINI-DynamicImport-Unsigned
+          path: build-3j/VINI-DynamicImport-Unsigned.ipa

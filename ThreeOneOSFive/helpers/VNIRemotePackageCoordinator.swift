@@ -10,7 +10,7 @@ struct VINIRemotePreparedPackage: Codable, Equatable {
     let sha256: String
     let fileSize: Int
     let packageURL: URL
-    let categoryID: Int?
+    let categoryID: Int? = nil
 }
 
 /// Coordinates remote catalog/import state without changing the codec or transaction engine.
@@ -39,15 +39,54 @@ actor VINIRemotePackageCoordinator {
         let entries = try await client.catalog()
         var prepared: [VINIRemotePreparedPackage] = []
         for entry in entries {
-            guard let target = entry.target else { skippedNoTarget += 1; continue }
-            guard target.availability == "available" else { continue }
-            do { prepared.append(try await prepare(entry: entry, target: target, userID: profile.stableUserID)) }
+            do {
+                if let target = entry.target {
+                    guard target.availability == "available" else { continue }
+                    prepared.append(try await prepare(entry: entry, target: target, userID: profile.stableUserID))
+                } else {
+                    prepared.append(try await prepareLegacy(entry: entry, userID: profile.stableUserID))
+                }
+            }
             catch {
                 if case CoordinatorError.locked = error { skippedLocked += 1 }
                 else { skippedFailed += 1 }
             }
         }
         return prepared
+    }
+
+    /// Presentation-only assignment for a package that was already verified
+    /// and imported. It cannot authorize downloads or change transaction state.
+    func assignCategory(_ categoryID: Int, packageID: UUID, sha256: String, userID: String) throws {
+        try categoryStore.assign(categoryID: categoryID, userID: userID, packageID: packageID, sha256: sha256)
+    }
+
+    /// Legacy catalog entries are still authorized by their presence in the
+    /// current Worker response. Package/project identity comes only from the
+    /// verified codec payload; no server target ID is fabricated.
+    private func prepareLegacy(entry: VINIStagingPatch, userID: String) async throws -> VINIRemotePreparedPackage {
+        let download = try await client.downloadPackageWithMetadata(id: entry.id)
+        let bytes = download.data
+        guard !bytes.isEmpty else { throw CoordinatorError.integrity }
+        let digest = SHA256.hash(data: bytes).map { String(format: "%02x", $0) }.joined()
+        let summary = try PatchPackageCodec.inspect(bytes)
+        if let key = download.contentKey { try PatchKeyStore.store(key, for: summary) }
+        let decoded: DecodedPatchPackage
+        if let key = try PatchKeyStore.load(for: summary) {
+            decoded = try PatchPackageCodec.decode(bytes, contentKey: key)
+        } else {
+            guard !summary.isPasswordProtected else { throw CoordinatorError.locked }
+            decoded = try PatchPackageCodec.decode(bytes, password: nil)
+        }
+        let revision = entry.version?.isEmpty == false ? entry.version! : "legacy"
+        let identity = "legacy.\(entry.id).\(summary.packageID.uuidString).\(decoded.project.id.uuidString).\(digest).\(revision)"
+        let url = try PatchProjectLibrary.save(data: bytes, projectName: decoded.project.name, fileManager: fileManager)
+        let categoryID = categoryStore.association(userID: userID, packageID: summary.packageID, sha256: digest)?.categoryID
+        try categoryStore.record(VINIPackageCategoryAssociation(userID: userID, remotePatchID: entry.id,
+            packageID: summary.packageID, projectID: decoded.project.id, sha256: digest, revision: revision, categoryID: categoryID))
+        return VINIRemotePreparedPackage(remotePatchID: entry.id, targetID: identity, packageID: summary.packageID,
+            projectID: decoded.project.id, revision: revision, sha256: digest, fileSize: bytes.count,
+            packageURL: url, categoryID: categoryID)
     }
 
     private func prepare(entry: VINIStagingPatch, target: VINIRemotePatchTarget, userID: String) async throws -> VINIRemotePreparedPackage {

@@ -97,6 +97,16 @@ func run(_ package: Data, project: PatchProject, catalogData: Data, download: Da
         try expect(dynamic[0].categoryID == 1 && VINIProductionCategoryRegistry.categoryID(for: "visuals") == 2 && VINIProductionCategoryRegistry.categoryID(for: "offsets") == 3, "numeric category IDs remain stable")
         try expect(VINIProductionCategoryRegistry.displayName(for: 2) == "Visuals", "category display name is separate from numeric identity")
         try expect(VINIProductionTargetModel.resolve(catalog: [dynamicPatch], prepared: []).isEmpty, "unprepared target is not dashboard-ready")
+        let legacyPatch = VINIStagingPatch(id: "legacy", name: "Legacy fixture", description: nil, version: "legacy-r1", target: nil)
+        let legacyPrepared = VINIRemotePreparedPackage(remotePatchID: "legacy", targetID: "legacy.local.fixture", packageID: project.id,
+            projectID: project.id, revision: "legacy-r1", sha256: digest(encoded), fileSize: encoded.count, packageURL: prepared[0].packageURL,
+            categoryID: 2)
+        let legacyTarget = VINIProductionTargetModel.resolve(catalog: [legacyPatch], prepared: [legacyPrepared])
+        try expect(legacyTarget.count == 1 && legacyTarget[0].categoryID == 2 && legacyTarget[0].name == "Legacy fixture", "legacy catalog target resolves after explicit local classification")
+        let pendingTarget = VINIProductionTargetModel.resolve(catalog: [legacyPatch], prepared: [VINIRemotePreparedPackage(remotePatchID: "legacy",
+            targetID: legacyPrepared.targetID, packageID: legacyPrepared.packageID, projectID: legacyPrepared.projectID,
+            revision: legacyPrepared.revision, sha256: legacyPrepared.sha256, fileSize: legacyPrepared.fileSize, packageURL: legacyPrepared.packageURL)])
+        try expect(pendingTarget.isEmpty, "legacy package without category remains imported but unclassified")
 
         let cacheRoot = FileManager.default.temporaryDirectory.appendingPathComponent("vini-cache-\(UUID().uuidString)")
         let cache = try VINIRemotePackageCache(root: cacheRoot)
