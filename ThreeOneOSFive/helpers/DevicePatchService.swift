@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 
 enum DevicePatchService {
@@ -7,7 +8,10 @@ enum DevicePatchService {
         mutationLock.lock(); defer { mutationLock.unlock() }
         let bundleIDs = orderedBundleIdentifiers(in: project)
         return try withResolvedContainers(bundleIDs: bundleIDs) { roots in
-            try PatchTransaction.apply(
+            let store = try VINIDualBackupStore.live()
+            var operation = try makeOperationRecord(project: project, roots: roots)
+            try store.save(operation)
+            let receipt = try PatchTransaction.apply(
                 project: project,
                 backupRoot: try PatchProjectLibrary.backupRootURL(),
                 containerResolver: { bundleID in
@@ -16,9 +20,28 @@ enum DevicePatchService {
                     }
                     return root
                 },
-                beforeMutation: { receipt in try beforeMutation?(receipt, roots) },
-                beforeRollback: { receipt in try beforeRollback?(receipt, roots) }
+                beforeMutation: { receipt in
+                    operation.transactionID = receipt.id
+                    operation.phase = .prepared
+                    try store.save(operation)
+                    try store.validateRoots(operation, roots)
+                    try store.preparePair(operation)
+                    try beforeMutation?(receipt, roots)
+                },
+                beforeRollback: { receipt in
+                    try beforeRollback?(receipt, roots)
+                    try store.validateRoots(operation, roots)
+                }
             )
+            operation.transactionID = receipt.id
+            try store.sealApplied(operation)
+            guard try verifyState(receipt: receipt, original: false) else {
+                throw VINIPatchFailure.recoveryRequired
+            }
+            operation.phase = .applied
+            operation.lastVerifiedEnabled = true
+            try store.save(operation)
+            return receipt
         }
     }
 
@@ -49,9 +72,28 @@ enum DevicePatchService {
         let bundleIDs = try PatchTransaction.requiredBundleIdentifiers(for: receipt)
         try withResolvedContainers(bundleIDs: bundleIDs) { roots in
             try validateContainers?(roots)
+            let store = try VINIDualBackupStore.live()
+            guard var operation = try store.loadRecord(receipt.projectID),
+                  operation.transactionID == receipt.id else {
+                throw VINIPatchFailure.recoveryRequired
+            }
+            try store.validateRoots(operation, roots)
+            do {
+                _ = try store.verifiedManifest(operation, role: "A", stage: "committed")
+            } catch {
+                let backup = try store.bestB(operation)
+                try store.repairPrimary(operation, from: backup)
+            }
+            _ = try store.bestB(operation)
+            operation.phase = .restoring
+            operation.operationID = UUID()
+            operation.desiredEnabled = false
+            try store.save(operation)
             try PatchTransaction.restore(
                 receipt: receipt,
-                allowChangedTargets: allowChangedTargets,
+                // Destination drift is never an authorization for an unsafe overwrite.
+                // The parameter remains for source compatibility with the existing UI.
+                allowChangedTargets: false,
                 containerResolver: { bundleID in
                     guard let root = roots[bundleID] else {
                         throw PatchPackageError.targetAppUnavailable(bundleID)
@@ -61,6 +103,15 @@ enum DevicePatchService {
                 beforeWrite: beforeWrite,
                 preserveCurrentState: preserveCurrentState
             )
+            guard try PatchTransaction.verifyState(receipt: receipt, original: true,
+                                                   containerResolver: { id in
+                guard let root = roots[id] else { throw PatchPackageError.targetAppUnavailable(id) }
+                return root
+            }) else { throw VINIPatchFailure.recoveryRequired }
+            try store.sealRestored(operation)
+            operation.phase = .restored
+            operation.lastVerifiedEnabled = false
+            try store.save(operation)
         }
     }
 
@@ -124,6 +175,41 @@ enum DevicePatchService {
 
     private static func orderedBundleIdentifiers(in project: PatchProject) -> [String] {
         project.allBundleIdentifiers
+    }
+
+    private static func makeOperationRecord(project: PatchProject,
+                                             roots: [String: URL]) throws -> VINIOperationRecord {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys]
+        let packageDigest = Data(SHA256.hash(data: try encoder.encode(project)))
+        let plannedDirectories = Set(project.directories.map { $0.bundleID + "\0" + $0.relativePath })
+        var directories = plannedDirectories
+        for rule in project.rules {
+            let parts = try PatchPathValidator.canonicalRelativePath(rule.relativePath).split(separator: "/")
+            if parts.count > 1 {
+                for count in 1..<parts.count {
+                    directories.insert(rule.bundleID + "\0" + parts.prefix(count).joined(separator: "/"))
+                }
+            }
+        }
+        var identities: [String: VINIRootIdentity] = [:]
+        for (bundleID, root) in roots { identities[bundleID] = try VINIRootIdentity.read(root) }
+        return VINIOperationRecord(
+            targetID: "package." + project.id.uuidString,
+            projectID: project.id,
+            operationID: UUID(),
+            transactionID: nil,
+            previousTransactionID: nil,
+            phase: .preparing,
+            lastVerifiedEnabled: false,
+            desiredEnabled: true,
+            packageDigest: packageDigest,
+            plannedRules: project.rules.map { VINIPlannedRule(id: $0.id, bundleID: $0.bundleID,
+                path: $0.relativePath, digest: Data(SHA256.hash(data: $0.replacementData))) },
+            plannedDirectories: Array(directories).sorted(),
+            roots: identities,
+            startedAt: Date()
+        )
     }
 
     private static func withResolvedContainers<T>(
