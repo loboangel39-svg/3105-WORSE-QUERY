@@ -35,6 +35,7 @@ struct VINIDashboardPresentation {
     let license: VINILicensePresentation
     let targets: [VINITargetPresentation]
     let initialPreviewSelection: Set<String>
+    let onToggle: ((String, Bool) -> Void)?
 
     static let preview: VINIDashboardPresentation = {
         func target(_ id: String, _ category: VINICategory, _ title: String, _ symbol: String) -> VINITargetPresentation {
@@ -56,7 +57,7 @@ struct VINIDashboardPresentation {
                 target("radar", .visuals, "Distance Radar", "map"),
                 target("integrity", .offsets, "Bypass Integrity Check", "lock"),
                 target("memory", .offsets, "Memory Allocation Fix", "memorychip")
-            ], initialPreviewSelection: [])
+            ], initialPreviewSelection: [], onToggle: nil)
     }()
 }
 
@@ -130,7 +131,7 @@ struct VINIDashboardView: View {
                     get: { target.patchState == .active },
                     // No authoritative Worker assignment exists yet. A display
                     // model or imported file cannot authorize a mutation.
-                    set: { _ in }))
+                     set: { value in presentation.onToggle?(target.targetID, value) }))
             }
         }.padding(.horizontal, 20).padding(.vertical, 4)
          .animation(reduceMotion ? nil : .easeOut(duration: 0.18), value: category)

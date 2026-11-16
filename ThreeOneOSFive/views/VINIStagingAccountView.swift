@@ -1,5 +1,6 @@
 import SwiftUI
 import Foundation
+import CryptoKit
 
 enum VINIAuthenticationPhase: Equatable { case checking, login, validating, authorized, blocked }
 
@@ -22,6 +23,7 @@ enum VINIAuthenticationPhase: Equatable { case checking, login, validating, auth
     @Published private(set) var busy = false
     @Published private(set) var packageResult: String?
     private let client = VINIStagingClient()
+    private let associationStore = VINITransactionAssociationStore()
     private var uptime: TimeInterval = 0
     private var lastRefresh: TimeInterval = -.infinity
     func bootstrap() async {
@@ -115,6 +117,28 @@ enum VINIAuthenticationPhase: Equatable { case checking, login, validating, auth
         do { fixtureState = try await fixture.restore(); await inspectFixture() }
         catch { await inspectFixture(); packageResult = "Restore no confirmado; recuperación conservada" }
     }
+    func toggle(targetID: String, on: Bool) async {
+        guard !busy, verified, let descriptor = VINIProductionTargetModel.resolve(catalog: packages, prepared: preparedPackages, stateReader: transactionStateReader).first(where: { $0.targetID == targetID }), let userID = profile?.username else { return }
+        busy = true; defer { busy = false }
+        do {
+            guard let item = PatchProjectLibrary.load().first(where: { $0.id == descriptor.packageID }), let project = item.project else { throw VINIPatchFailure.invalidManifest }
+            let bytes = try PatchProjectLibrary.readPackage(at: item.packageURL)
+            let digest = SHA256.hash(data: bytes).map { String(format: "%02x", $0) }.joined()
+            guard digest == descriptor.sha256, project.id == descriptor.projectID else { throw VINIPatchFailure.invalidManifest }
+            if on {
+                try associationStore.recordIntent(targetID: descriptor.targetID, projectID: descriptor.projectID, packageDigest: digest, userID: userID)
+                let receipt = try DevicePatchService.apply(project: project)
+                guard try DevicePatchService.verifyState(receipt: receipt, original: false) else { throw VINIPatchFailure.invalidManifest }
+                try associationStore.recordApplied(targetID: descriptor.targetID, projectID: descriptor.projectID, packageDigest: digest, transactionID: receipt.id, userID: userID)
+            } else {
+                guard let association = associationStore.exact(targetID: descriptor.targetID, projectID: descriptor.projectID, packageDigest: digest, userID: userID), let receipt = DevicePatchService.latestReceipt(projectID: descriptor.projectID), receipt.id == association.transactionID else { throw VINIPatchFailure.recoveryRequired }
+                _ = try DevicePatchService.inspectRestore(receipt: receipt)
+                try DevicePatchService.restore(receipt: receipt)
+                guard try DevicePatchService.verifyState(receipt: receipt, original: true) else { throw VINIPatchFailure.invalidManifest }
+            }
+            await refresh(force: true)
+        } catch { packageResult = "Operación no confirmada; estado conservado" }
+    }
     var presentation: VINIDashboardPresentation {
         var remaining: TimeInterval?
         if verified, let p = profile, let expiry = p.licenseExpiresAt,
@@ -126,7 +150,9 @@ enum VINIAuthenticationPhase: Equatable { case checking, login, validating, auth
             license: VINILicensePresentation(userName: profile?.username ?? "—", plan: profile?.plan.uppercased() ?? "—",
                 isPreview: profile == nil, isVerified: active, verifiedRemainingSeconds: remaining,
                 status: verified && !active ? "Licencia expirada" : status),
-            targets: preparedPresentations, initialPreviewSelection: [])
+            targets: preparedPresentations, initialPreviewSelection: [], onToggle: { [weak self] targetID, on in
+                Task { await self?.toggle(targetID: targetID, on: on) }
+            })
     }
     private var preparedPresentations: [VINITargetPresentation] {
         guard profile != nil else { return [] }

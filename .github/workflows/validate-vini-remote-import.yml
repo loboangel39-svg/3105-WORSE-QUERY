@@ -79,6 +79,7 @@ jobs:
             ThreeOneOSFive/helpers/VINIRemotePackageCache.swift \
             ThreeOneOSFive/helpers/VINIProductionTargetModel.swift \
             ThreeOneOSFive/helpers/VINITransactionStateReader.swift \
+            ThreeOneOSFive/helpers/VINITransactionAssociationStore.swift \
             ThreeOneOSFive/helpers/VINIStagingClient.swift \
             ThreeOneOSFive/helpers/VINIRemoteContract.swift \
             ThreeOneOSFive/helpers/VNIRemotePackageCoordinator.swift \
