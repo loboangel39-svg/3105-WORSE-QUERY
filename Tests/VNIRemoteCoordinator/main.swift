@@ -13,9 +13,11 @@ final class FixtureVault: VINIStagingVault {
 actor FixtureTransport: VINIStagingTransport {
     let replies: [(String, Int, Data)]
     var index = 0
+    private(set) var requestCount = 0
     init(_ replies: [(String, Int, Data)]) { self.replies = replies }
     func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
         guard index < replies.count else { throw VINIStagingError.offline }
+        requestCount += 1
         let reply = replies[index]; index += 1
         log("REQUEST \(request.url?.path ?? "nil") expected /\(reply.0) status \(reply.1)")
         guard request.url?.path == "/" + reply.0 else { throw VINIStagingError.invalidResponse }
@@ -37,13 +39,13 @@ func expect(_ condition: @autoclosure () -> Bool, _ label: String) throws {
 }
 
 func catalog(for project: PatchProject, package: Data, sha: String = "", targetProject: UUID? = nil,
-             remoteID: String = "fixture-remote-id") throws -> Data {
+             remoteID: String = "fixture-remote-id", revision: String = "fixture-r1") throws -> Data {
     let target: [String: Any] = [
         "targetID": "fixture.target",
         "category": "combat",
         "packageID": project.id.uuidString,
         "projectID": (targetProject ?? project.id).uuidString,
-        "packageRevision": "fixture-r1",
+        "packageRevision": revision,
         "packageSHA256": sha.isEmpty ? digest(package) : sha,
         "fileSize": package.count,
         "requiredPlan": "basic",
@@ -121,13 +123,42 @@ func run(_ package: Data, project: PatchProject, catalogData: Data, download: Da
         do { _ = try await run(encoded, project: project, catalogData: wrongHash, remoteID: "hash"); throw VINIStagingError.invalidResponse }
         catch { print("PASS inconsistent SHA-256 rejected") }
 
+        // Revocation: the first authorized run populates the real coordinator cache;
+        // the next fresh catalog removes the package, so no cached bytes are used.
+        let revocationCatalog = try catalog(for: project, package: encoded, remoteID: "revocation")
+        _ = try await run(encoded, project: project, catalogData: revocationCatalog, remoteID: "revocation")
+        let revokedTransport = FixtureTransport([
+            ("api/app/validate-license", 200, try data(["valid": true, "token": "revoked-token", "expiresAt": "2027-01-01T00:00:00Z", "username": "fixture", "userID": "fixture-user", "plan": "basic", "licenseStatus": "active", "serverTime": "2026-11-16T00:00:00Z"])),
+            ("api/app/me", 200, try data(["username": "fixture", "userID": "fixture-user", "plan": "basic", "licenseStatus": "active", "licenseExpiresAt": "2027-01-01T00:00:00Z", "serverTime": "2026-11-16T00:00:00Z"])),
+            ("api/app/patches", 200, try data(["patches": []]))
+        ])
+        let revokedClient = VINIStagingClient(baseURL: VINIProductionEnvironment.base, transport: revokedTransport, vault: FixtureVault(value: try fixtureCredentials()))
+        let revokedPrepared = try await VINIRemotePackageCoordinator(client: revokedClient).prepareAuthorizedPackages()
+        let revokedRequests = await revokedTransport.requestCount
+        try expect(revokedPrepared.isEmpty && revokedRequests == 3, "revoked catalog denies cached package without download")
+        print("PASS revocation preserves local storage and never authorizes from cache")
+
+        // Interruption: a new revision receives partial bytes. Integrity fails
+        // before cache.store/import, while the prior revision remains loadable.
+        _ = try await run(encoded, project: project, catalogData: try catalog(for: project, package: encoded, remoteID: "interruption", revision: "r1"), remoteID: "interruption")
+        let partial = Data(encoded.prefix(8))
+        let r2Catalog = try catalog(for: project, package: encoded, remoteID: "interruption", revision: "r2")
+        do { _ = try await run(encoded, project: project, catalogData: r2Catalog, download: partial, remoteID: "interruption"); throw VINIStagingError.invalidResponse }
+        catch { print("PASS interrupted download rejected before publication") }
+        let cacheAfterInterruption = try VINIRemotePackageCache()
+        let r1Identity = VINIRemoteCacheIdentity(userID: "fixture-user", remotePatchID: "interruption", targetID: "fixture.target", packageID: project.id, projectID: project.id, revision: "r1", sha256: digest(encoded), fileSize: encoded.count)
+        let priorRevision = try cacheAfterInterruption.load(identity: r1Identity)
+        try expect(priorRevision?.0 == encoded, "prior revision survives interrupted download")
+        _ = try await run(encoded, project: project, catalogData: r2Catalog, remoteID: "interruption")
+        print("PASS complete retry publishes and persists new revision")
+
         let auth = try data(["valid": true, "token": "new-token", "expiresAt": "2027-01-01T00:00:00Z", "username": "fixture", "userID": "fixture-user", "plan": "basic", "licenseStatus": "active", "serverTime": "2026-11-16T00:00:00Z"])
         let transport = FixtureTransport([("api/app/me", 401, try data(["error": "unauthorized"])), ("api/app/validate-license", 200, auth), ("api/app/patches", 200, validCatalog), ("api/app/patches/fixture-remote-id/download", 200, encoded)])
         var expiredCredentials = try fixtureCredentials(); expiredCredentials.token = "old-token"
         let client = VINIStagingClient(baseURL: VINIProductionEnvironment.base, transport: transport, vault: FixtureVault(value: expiredCredentials))
         _ = try await VINIRemotePackageCoordinator(client: client).prepareAuthorizedPackages()
         print("PASS HTTP 401 revalidation preserved real coordinator flow")
-        print("SKIPPED: interrupted download, altered cache, account switch, post-catalog revocation, Apply/Restore and production authorization")
+        print("SKIPPED: account switch, backup/journal filesystem audit, Apply/Restore and production authorization")
         print("PASS coordinator runtime fixture validation")
     }
 }
