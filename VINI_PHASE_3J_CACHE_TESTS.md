@@ -1,6 +1,6 @@
 # VINI 3J-F — Matriz de pruebas
 
-Resultado CI de referencia: commit `bbdb5a8`, run `43806900148` — **PASS** (macOS-15, Swift nativo y build unsigned `iphoneos arm64`).
+Resultado CI de referencia: commit `1b88d73`, run `43807344571` — **PASS** (macOS-15, Swift nativo y build unsigned `iphoneos arm64`).
 
 La prueba nativa existente seguirá invocando literalmente `VINIRemotePackageCoordinator.prepareAuthorizedPackages()` con transporte aislado, paquete generado por `PatchPackageCodec` y usuario sintético. Se ampliará para comprobar reutilización íntegra, rechazo de bytes alterados, revisión anterior conservada, usuario diferente, reinicio mediante lectura de metadatos y revocación/ausencia del catálogo.
 
