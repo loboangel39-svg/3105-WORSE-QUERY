@@ -26,7 +26,6 @@ struct PatchProjectsView: View {
     @State private var wallpaperImportFeedback: WallpaperImportFeedback?
     @State private var wallpaperPendingDeletion: WallpaperStagedPackage?
     @State private var isImportingWallpapers = false
-    @State private var recoveryProjectID: UUID?
     @State private var showSimulatedWallpaperDetail = false
     @State private var simulatedWallpaperDetailGate = OneShotPresentationGate()
     let onOpenSettings: () -> Void
@@ -365,20 +364,7 @@ struct PatchProjectsView: View {
             HStack(spacing: 8) {
                 PatchProjectRow(item: item, language: language)
 
-                if store.recoveryRequiredIDs.contains(item.id) {
-                    Button {
-                        recoveryProjectID = item.id
-                    } label: {
-                        Text("REVISAR")
-                            .font(.caption.weight(.bold))
-                            .frame(minWidth: 74, minHeight: 36)
-                            .foregroundStyle(.primary)
-                            .background(Color.orange.opacity(0.18), in: RoundedRectangle(cornerRadius: 8))
-                            .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.orange.opacity(0.7), lineWidth: 1))
-                    }
-                    .buttonStyle(.borderless)
-                    .accessibilityLabel("Revisar recuperación")
-                } else if let receipt = DevicePatchService.latestReceipt(projectID: item.id) {
+                if let receipt = DevicePatchService.latestReceipt(projectID: item.id) {
                     Button {
                         store.directRestore(projectID: receipt.projectID)
                     } label: {
@@ -391,7 +377,7 @@ struct PatchProjectsView: View {
                             .overlay(RoundedRectangle(cornerRadius: 8).stroke(AppTheme.accent.opacity(0.65), lineWidth: 1))
                     }
                     .buttonStyle(.borderless)
-                    .disabled(store.isBusy)
+                    .disabled(store.isBusy || store.recoveryRequiredIDs.contains(item.id))
                     .accessibilityLabel(language.text("patch.restore"))
                 } else {
                     Button {
@@ -406,18 +392,8 @@ struct PatchProjectsView: View {
                             .overlay(RoundedRectangle(cornerRadius: 8).stroke(AppTheme.accent.opacity(0.65), lineWidth: 1))
                     }
                     .buttonStyle(.borderless)
-                    .disabled(store.isBusy)
+                    .disabled(store.isBusy || store.recoveryRequiredIDs.contains(item.id))
                     .accessibilityLabel(language.text("patch.apply"))
-                }
-            }
-            .sheet(
-                isPresented: Binding(
-                    get: { recoveryProjectID != nil },
-                    set: { if !$0 { recoveryProjectID = nil } }
-                )
-            ) {
-                if let projectID = recoveryProjectID {
-                    PatchProjectDetailView(store: store, projectID: projectID)
                 }
             }
         }

@@ -280,14 +280,6 @@ enum PatchProjectLibrary {
     }
 
     static func delete(_ item: PatchLibraryItem, fileManager: FileManager = .default) throws {
-        let backupRoot = try backupRootURL(fileManager: fileManager)
-        guard PatchTransaction.latestReceipt(
-            projectID: item.id,
-            backupRoot: backupRoot,
-            fileManager: fileManager
-        ) == nil else {
-            throw PatchPackageError.activePatchCannotBeDeleted
-        }
         if fileManager.fileExists(atPath: item.packageURL.path) {
             try fileManager.removeItem(at: item.packageURL)
         }

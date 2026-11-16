@@ -48,7 +48,7 @@ final class PatchProjectStore: ObservableObject {
     }
 
     func reload() {
-        items = PatchProjectLibrary.load()
+        reloadAsync()
     }
 
     func reloadAsync() {
@@ -125,7 +125,7 @@ final class PatchProjectStore: ObservableObject {
     }
 
     private func finishDirectOperation() {
-        reload()
+        reloadAsync()
         isBusy = false
     }
 
@@ -373,7 +373,7 @@ final class PatchProjectStore: ObservableObject {
                 let decoded = try PatchPackageCodec.decode(pending.data, password: password)
                 try PatchKeyStore.store(decoded.contentKey, for: pending.summary)
                 do {
-                    try PatchProjectLibrary.installImportedPackage(
+                    try Self.installImportedInstance(
                         data: pending.data,
                         decoded: decoded,
                         summary: pending.summary,
@@ -404,13 +404,17 @@ final class PatchProjectStore: ObservableObject {
     }
 
     func delete(_ item: PatchLibraryItem) {
-        do {
-            try PatchProjectLibrary.delete(item)
-            reload()
-        } catch let error as PatchPackageError {
-            present(error)
-        } catch {
-            present(.invalidProject)
+        guard !isBusy else { return }
+        isBusy = true
+        Task.detached(priority: .userInitiated) { [weak self] in
+            do {
+                try PatchProjectLibrary.delete(item)
+                await self?.finishDelete(projectID: item.id)
+            } catch let error as PatchPackageError {
+                await self?.failDelete(error)
+            } catch {
+                await self?.failDelete(.invalidProject)
+            }
         }
     }
 
@@ -432,7 +436,7 @@ final class PatchProjectStore: ObservableObject {
     }
 
     private func finishWorkspaceSynchronization(reportsSuccess: Bool) {
-        reload()
+        reloadAsync()
         isBusy = false
         if reportsSuccess {
             alert = PatchStoreAlert(
@@ -482,13 +486,7 @@ final class PatchProjectStore: ObservableObject {
     ) throws -> PendingUnlock? {
         if let key = try PatchKeyStore.load(for: summary) {
             let decoded = try PatchPackageCodec.decode(data, contentKey: key)
-            try PatchProjectLibrary.installImportedPackage(
-                data: data,
-                decoded: decoded,
-                summary: summary,
-                existingURL: existingURL,
-                origin: origin
-            )
+            try installImportedInstance(data: data, decoded: decoded, summary: summary, existingURL: existingURL, origin: origin)
             return nil
         }
         if summary.isPasswordProtected {
@@ -503,13 +501,7 @@ final class PatchProjectStore: ObservableObject {
             let decoded = try PatchPackageCodec.decode(data, password: password)
             try PatchKeyStore.store(decoded.contentKey, for: summary)
             do {
-                try PatchProjectLibrary.installImportedPackage(
-                    data: data,
-                    decoded: decoded,
-                    summary: summary,
-                    existingURL: existingURL,
-                    origin: origin
-                )
+            try installImportedInstance(data: data, decoded: decoded, summary: summary, existingURL: existingURL, origin: origin)
             } catch {
                 try? PatchKeyStore.delete(for: summary)
                 throw error
@@ -517,14 +509,36 @@ final class PatchProjectStore: ObservableObject {
             return nil
         }
         let decoded = try PatchPackageCodec.decode(data, password: nil)
-        try PatchProjectLibrary.installImportedPackage(
-            data: data,
-            decoded: decoded,
-            summary: summary,
-            existingURL: existingURL,
-            origin: origin
-        )
+        try installImportedInstance(data: data, decoded: decoded, summary: summary, existingURL: existingURL, origin: origin)
         return nil
+    }
+
+    private nonisolated static func installImportedInstance(
+        data: Data,
+        decoded: DecodedPatchPackage,
+        summary: PatchPackageSummary,
+        existingURL: URL?,
+        origin: PatchPackageOrigin?
+    ) throws {
+        guard existingURL == nil,
+              DevicePatchService.latestReceipt(projectID: decoded.project.id) != nil else {
+            try PatchProjectLibrary.installImportedPackage(data: data, decoded: decoded, summary: summary,
+                existingURL: existingURL, origin: origin)
+            return
+        }
+
+        // The package was explicitly removed while its old transaction evidence
+        // remains protected. Give the re-import a new management identity instead
+        // of inheriting the old receipt and blocking a fresh Apply.
+        var freshProject = decoded.project
+        freshProject.id = UUID()
+        let rebased = try PatchPackageCodec.update(data, project: freshProject,
+            contentKey: decoded.contentKey, schemaVersion: PatchPackageCodec.latestSchemaVersion)
+        let freshSummary = try PatchPackageCodec.inspect(rebased)
+        let freshDecoded = try PatchPackageCodec.decode(rebased, contentKey: decoded.contentKey)
+        try PatchKeyStore.store(freshDecoded.contentKey, for: freshSummary)
+        try PatchProjectLibrary.installImportedPackage(data: rebased, decoded: freshDecoded,
+            summary: freshSummary, existingURL: nil, origin: origin)
     }
 
     private func clearPendingUnlock() {
@@ -534,9 +548,20 @@ final class PatchProjectStore: ObservableObject {
     }
 
     private func finishOperation(successMessageKey: String) {
-        reload()
+        reloadAsync()
         isBusy = false
         alert = PatchStoreAlert(titleKey: "common.done", messageKey: successMessageKey)
+    }
+
+    private func finishDelete(projectID: UUID) {
+        recoveryRequiredIDs.remove(projectID)
+        reloadAsync()
+        isBusy = false
+    }
+
+    private func failDelete(_ error: PatchPackageError) {
+        isBusy = false
+        present(error)
     }
 
     private func failOperation(_ error: PatchPackageError) {
