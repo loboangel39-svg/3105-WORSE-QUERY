@@ -71,7 +71,7 @@ struct VINIStagingPatch: Codable, Identifiable {
         let values = try decoder.container(keyedBy: CodingKeys.self)
         id = try values.decode(String.self, forKey: .id); name = try values.decode(String.self, forKey: .name)
         description = try values.decodeIfPresent(String.self, forKey: .description); version = try values.decodeIfPresent(String.self, forKey: .version)
-        target = try values.decodeIfPresent(VNIRemotePatchTarget.self, forKey: .target); categoryID = try values.decodeIfPresent(Int.self, forKey: .categoryID)
+        target = try values.decodeIfPresent(VINIRemotePatchTarget.self, forKey: .target); categoryID = try values.decodeIfPresent(Int.self, forKey: .categoryID)
     }
 }
 struct VINIStagingCredentials: Codable {
