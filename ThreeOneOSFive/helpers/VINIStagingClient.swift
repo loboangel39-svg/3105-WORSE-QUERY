@@ -62,6 +62,17 @@ struct VINIStagingPatch: Codable, Identifiable {
     let description: String?
     let version: String?
     let target: VINIRemotePatchTarget?
+    let categoryID: Int?
+    init(id: String, name: String, description: String?, version: String?, target: VINIRemotePatchTarget?, categoryID: Int? = nil) {
+        self.id = id; self.name = name; self.description = description; self.version = version; self.target = target; self.categoryID = categoryID
+    }
+    private enum CodingKeys: String, CodingKey { case id, name, description, version, target, categoryID }
+    init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        id = try values.decode(String.self, forKey: .id); name = try values.decode(String.self, forKey: .name)
+        description = try values.decodeIfPresent(String.self, forKey: .description); version = try values.decodeIfPresent(String.self, forKey: .version)
+        target = try values.decodeIfPresent(VNIRemotePatchTarget.self, forKey: .target); categoryID = try values.decodeIfPresent(Int.self, forKey: .categoryID)
+    }
 }
 struct VINIRemotePatchTarget: Codable {
     let targetID: String
@@ -296,7 +307,7 @@ actor VINIStagingClient {
     }
     func catalog() async throws -> [VINIStagingPatch] {
         struct Catalog: Decodable { let patches: [VINIStagingPatch] }
-        return try JSONDecoder().decode(Catalog.self, from: await authorized("api/app/patches")).patches
+        return try JSONDecoder().decode(Catalog.self, from: await authorized("api/app/patches?includeCategory=1")).patches
     }
     func downloadPackage(id: String) async throws -> Data {
         try await downloadPackageWithMetadata(id: id).data

@@ -97,7 +97,7 @@ actor VINIRemotePackageCoordinator {
         let revision = entry.version?.isEmpty == false ? entry.version! : "legacy"
         let identity = "legacy.\(entry.id).\(summary.packageID.uuidString).\(decoded.project.id.uuidString).\(digest).\(revision)"
         let url = try PatchProjectLibrary.save(data: bytes, projectName: decoded.project.name, fileManager: fileManager)
-        let categoryID = categoryStore.association(userID: userID, packageID: summary.packageID, sha256: digest)?.categoryID
+        let categoryID = categoryStore.association(userID: userID, packageID: summary.packageID, sha256: digest)?.categoryID ?? entry.categoryID
         try? categoryStore.record(VINIPackageCategoryAssociation(userID: userID, remotePatchID: entry.id,
             packageID: summary.packageID, projectID: decoded.project.id, sha256: digest, revision: revision, categoryID: categoryID))
         return VINIRemotePreparedPackage(remotePatchID: entry.id, targetID: identity, packageID: summary.packageID,
@@ -137,7 +137,7 @@ actor VINIRemotePackageCoordinator {
         }
         guard decoded.project.id == target.projectID else { throw CoordinatorError.invalidIdentity }
         let url = try PatchProjectLibrary.save(data: bytes, projectName: decoded.project.name, fileManager: fileManager)
-        let categoryID = VINIProductionCategoryRegistry.categoryID(for: target.category)
+        let categoryID = entry.categoryID ?? VINIProductionCategoryRegistry.categoryID(for: target.category)
         if let categoryID { try? categoryStore.record(VINIPackageCategoryAssociation(userID: userID, remotePatchID: entry.id, packageID: target.packageID, projectID: target.projectID, sha256: digest, revision: target.packageRevision, categoryID: categoryID)) }
         return VINIRemotePreparedPackage(remotePatchID: entry.id, targetID: target.targetID, packageID: target.packageID,
             projectID: target.projectID, revision: target.packageRevision, sha256: digest, fileSize: bytes.count, packageURL: url, categoryID: categoryID)
