@@ -19,3 +19,5 @@ No se usan targets de `VINIDashboardPresentation.preview` cuando existe sesión 
 ## Limitaciones
 
 Las APIs públicas actuales no permiten reconstruir `restorePending` de forma segura. No se modificaron `PatchTransaction`, journals, recibos, backups ni Apply/Restore. La validación CI usa transporte sintético compatible con el contrato del Worker; no es despliegue ni validación productiva.
+
+CI: commit `500b016`, run `43810614609`. El nombre histórico `VINIStagingClient` permanece por compatibilidad de tipos, pero sus valores predeterminados y el coordinador de producción usan exclusivamente `VINIProductionEnvironment.base`; no se usan endpoints, identidades ni fixtures Staging en la fuente de targets del dashboard.
