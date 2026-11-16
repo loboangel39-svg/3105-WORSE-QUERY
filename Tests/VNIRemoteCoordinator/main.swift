@@ -17,6 +17,7 @@ actor FixtureTransport: VINIStagingTransport {
     func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
         guard index < replies.count else { throw VINIStagingError.offline }
         let reply = replies[index]; index += 1
+        print("REQUEST \(request.url?.path ?? "nil") expected /\(reply.0) status \(reply.1)")
         guard request.url?.path == "/" + reply.0 else { throw VINIStagingError.invalidResponse }
         return (reply.2, HTTPURLResponse(url: request.url!, statusCode: reply.1, httpVersion: nil, headerFields: nil)!)
     }
