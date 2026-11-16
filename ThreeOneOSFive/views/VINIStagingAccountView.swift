@@ -79,6 +79,7 @@ enum VINIAuthenticationPhase: Equatable { case checking, login, validating, auth
     private func prepareAuthorizedPackages(_ patches: [VINIStagingPatch]) async {
         guard patches.contains(where: { $0.id == VINIStagingEnvironment.fixtureID }), verified else { return }
         do {
+            let p = try await client.profile(); _ = try await client.authorizationLifetime(p)
             _ = try await client.downloadTestPackage(id: VINIStagingEnvironment.fixtureID)
             preparedFixture = true
             await inspectFixture()
@@ -92,7 +93,11 @@ enum VINIAuthenticationPhase: Equatable { case checking, login, validating, auth
     func download(_ patch: VINIStagingPatch) async {
         guard !busy, verified else { return }
         busy = true; defer { finishOperation() }
-        do { let name = try await client.downloadTestPackage(id: patch.id); packageResult = "Descargado y decodificado: " + name; preparedFixture = true; await inspectFixture() }
+        do {
+            let p = try await client.profile(); _ = try await client.authorizationLifetime(p)
+            let name = try await client.downloadTestPackage(id: patch.id)
+            packageResult = "Descargado y decodificado: " + name; preparedFixture = true; await inspectFixture()
+        }
         catch { preparedFixture = false; packageResult = (error as? VINIStagingError)?.message ?? "El codec rechazó el paquete"; await checkAuthorizationAfterFailure(error) }
     }
     private func inspectFixture() async {

@@ -251,7 +251,6 @@ actor VINIStagingClient {
         guard id == VINIStagingEnvironment.fixtureID else { throw VINIStagingError.integrity }
         let cache = try packageCacheURL(id: id)
         if let cached = try? Data(contentsOf: cache), try validateFixture(cached) {
-            _ = try await authorized("api/app/me")
             return cached
         }
         let bytes = try await authorized("api/app/patches/" + id + "/download")
