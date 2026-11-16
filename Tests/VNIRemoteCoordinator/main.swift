@@ -48,7 +48,7 @@ func catalog(for project: PatchProject, package: Data, sha: String = "", targetP
         "requiredPlan": "basic",
         "availability": "available"
     ]
-    return try data(["patches": [["id": remoteID, "name": "Owned fixture", "description": NSNull(), "version": "r1", "target": target]]])
+    return try data(["patches": [["id": remoteID, "name": "Owned fixture", "version": "r1", "target": target]]])
 }
 
 func run(_ package: Data, project: PatchProject, catalogData: Data, download: Data? = nil,
