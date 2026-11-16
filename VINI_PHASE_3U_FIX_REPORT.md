@@ -21,7 +21,7 @@ Bundle ID, App Group o entitlements.
 
 ## Validación
 
-Estas correcciones están en working tree después del HEAD auditado y requieren
-un nuevo CI. No se declara compilación local porque el host disponible es
-Windows sin `swiftc`/Xcode. El último CI conocido del HEAD anterior estaba
-`queued`, sin IPA.
+Las correcciones están publicadas en `563201ad72b38ea6462e1b62d3e28e65a49bdaac`
+y requieren el CI `43899153420`. No se declara compilación local porque el host
+disponible es Windows sin `swiftc`/Xcode. El IPA disponible es histórico y
+pertenece a `7f5b50c`, no a este commit.

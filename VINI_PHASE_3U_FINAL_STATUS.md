@@ -14,8 +14,19 @@
 
 ## Parcial o no validado
 
-- No existe IPA verificable para HEAD `f244692` ni para las correcciones 3U.
-- CI `43897324178` estaba `queued` al realizar la auditoría; no es PASS.
+- HEAD actual tras las correcciones 3U: `563201ad72b38ea6462e1b62d3e28e65a49bdaac`.
+- CI asociado: `43899153420`, `queued` al cierre de esta auditoría; no es PASS.
+- El último IPA existente es histórico: artifact `VINI-SessionFix-Unsigned`, run
+  `43884312448`, commit `7f5b50c`; no corresponde al HEAD actual.
+- IPA histórico: 5,025,339 bytes, SHA-256
+  `4649B834DD97193D11AF809EA920B40391524083442DCA0D216D7C566BF9D0D8`,
+  unsigned (`_CodeSignature` ausente), Bundle ID visible en plist:
+  `com.apple.mobile.MobileHouseArrest`; el plist declara `arm64` como capacidad
+  requerida, pero la arquitectura del binario no se confirmó con `lipo` en el
+  host Windows. No se usa para validar HEAD.
+- No existe IPA verificable para `563201a`.
+- El build arm64 actual, arquitectura, estructura ZIP, firma y entitlements del
+  HEAD quedan `SKIPPED`.
 - El build arm64, arquitectura, estructura ZIP, firma y entitlements del IPA
   quedan `SKIPPED`.
 - No se probó iPhone físico, background real, Files real ni Apply/Restore real.
