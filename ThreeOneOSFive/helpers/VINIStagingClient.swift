@@ -256,9 +256,9 @@ actor VINIStagingClient {
              let serverTime: String?
          }
          let result = try JSONDecoder().decode(Login.self, from: bytes)
-         guard result.valid, !result.token.isEmpty, let username = result.username, !username.isEmpty,
-               try VINIStagingEnvironment.date(result.expiresAt) > Date() else { throw VINIStagingError.invalidLicense }
          let serverTime = result.serverTime ?? ISO8601DateFormatter().string(from: Date())
+         guard result.valid, !result.token.isEmpty, let username = result.username, !username.isEmpty,
+               try VINIStagingEnvironment.date(result.expiresAt) > VINIStagingEnvironment.date(serverTime) else { throw VINIStagingError.invalidLicense }
          let plan = result.plan ?? (result.isPremium == true ? "pro" : "basic")
          let p = VINIStagingProfile(userID: result.userID, username: username, plan: plan,
              licenseStatus: "active", licenseExpiresAt: result.licenseExpiresAt ?? result.expiresAt,
