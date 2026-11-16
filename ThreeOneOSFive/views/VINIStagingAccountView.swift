@@ -23,7 +23,7 @@ enum VINIAuthenticationPhase: Equatable { case checking, login, validating, auth
     private var uptime: TimeInterval = 0
     private var lastRefresh: TimeInterval = -.infinity
     func bootstrap() async {
-        hasStoredIdentity = (try? client.hasStoredIdentity()) ?? false
+        hasStoredIdentity = (try? await client.hasStoredIdentity()) ?? false
         await refresh(force: true)
     }
     private func finishOperation() {
