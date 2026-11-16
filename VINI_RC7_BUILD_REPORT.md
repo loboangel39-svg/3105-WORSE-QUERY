@@ -1,9 +1,9 @@
 # VINI 2.0 RC7 — Build report
 
-- Commit: `97830af8ecb3ec9f61b01425ef5350da03a2d92a`
-- CI: [run 43968686438](https://github.com/loboangel39-svg/3105-WORSE-QUERY/actions/runs/43968686438) — SUCCESS
+- Commit: `267594ce5002750fc7371fe6087500c63e0a6d28`
+- CI: [run 43969275957](https://github.com/loboangel39-svg/3105-WORSE-QUERY/actions/runs/43969275957) — SUCCESS
 - IPA: `VINI-2.0-RC7-Unsigned.ipa`
-- SHA-256: `8fc3e31e7f4116a1dc16fc3b2e48c8eb503681eb4c513b6d9bddd20e6499405d`
+- SHA-256: `f2b6eea32fd30564aea3a9b33b891eebdb6cbbac86e5c540b22584fabc494550`
 - SDK: `iphoneos`
 - Architecture: `arm64`
 - Bundle ID: `com.apple.mobile.MobileHouseArrest`
