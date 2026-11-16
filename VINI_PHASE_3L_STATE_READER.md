@@ -8,6 +8,8 @@
 
 ## Bloqueo verificable
 
+El lector y su integración compilan en CI: commit `017ea41`, run `43813500959` (**PASS**), incluyendo fixtures nativos y build unsigned `iphoneos arm64`.
+
 `VINIOperationRecord` valida `targetID == "package." + projectID.uuidString`, mientras el catálogo remoto usa otro `targetID`. Como `PatchTransactionReceipt` tampoco contiene `targetID`, el lector rechaza la atribución si no hay coincidencia exacta. Esto evita encender un target por un receipt de otro target.
 
 Por la misma razón, `restorePending` no puede conservarse asociado a un target remoto cuando el catálogo desaparece sin una tabla local autorizada `targetID → projectID → digest`. El lector devuelve `unknown`; no inventa visibilidad ni estado.
