@@ -48,8 +48,8 @@ jobs:
           swiftc -target "$(uname -m)-apple-macos13.0" -parse-as-library \
             ThreeOneOSFive/helpers/PatchProjectModels.swift \
             ThreeOneOSFive/helpers/PatchPackageCodec.swift \
-             ThreeOneOSFive/helpers/VINIStagingClient.swift \
              ThreeOneOSFive/helpers/VINIRemotePatchTarget.swift \
+             ThreeOneOSFive/helpers/VINIStagingClient.swift \
             ThreeOneOSFive/helpers/PatchTransaction.swift \
             ThreeOneOSFive/helpers/VINIDualBackupStore.swift \
             ThreeOneOSFive/helpers/PatchProjectLibrary.swift \
@@ -83,8 +83,8 @@ jobs:
             ThreeOneOSFive/helpers/VINITransactionAssociationStore.swift \
             ThreeOneOSFive/helpers/VINIProductionCategoryRegistry.swift \
             ThreeOneOSFive/helpers/VINIPackageCategoryStore.swift \
-             ThreeOneOSFive/helpers/VINIStagingClient.swift \
-             ThreeOneOSFive/helpers/VINIRemotePatchTarget.swift \
+              ThreeOneOSFive/helpers/VINIRemotePatchTarget.swift \
+              ThreeOneOSFive/helpers/VINIStagingClient.swift \
             ThreeOneOSFive/helpers/VINIRemoteContract.swift \
             ThreeOneOSFive/helpers/VNIRemotePackageCoordinator.swift \
             Tests/VNIRemoteCoordinator/main.swift -o build-3j/remote-coordinator-tests
