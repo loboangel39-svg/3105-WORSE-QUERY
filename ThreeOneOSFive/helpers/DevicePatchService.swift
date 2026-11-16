@@ -11,41 +11,48 @@ enum DevicePatchService {
             let store = try VINIDualBackupStore.live()
             var operation = try makeOperationRecord(project: project, roots: roots)
             try store.save(operation)
-            let receipt = try PatchTransaction.apply(
-                project: project,
-                backupRoot: try PatchProjectLibrary.backupRootURL(),
-                containerResolver: { bundleID in
-                    guard let root = roots[bundleID] else {
-                        throw PatchPackageError.targetAppUnavailable(bundleID)
+            do {
+                let receipt = try PatchTransaction.apply(
+                    project: project,
+                    backupRoot: try PatchProjectLibrary.backupRootURL(),
+                    containerResolver: { bundleID in
+                        guard let root = roots[bundleID] else {
+                            throw PatchPackageError.targetAppUnavailable(bundleID)
+                        }
+                        return root
+                    },
+                    beforeMutation: { receipt in
+                        operation.transactionID = receipt.id
+                        operation.phase = .prepared
+                        try store.save(operation)
+                        try store.validateRoots(operation, roots)
+                        try store.preparePair(operation)
+                        try beforeMutation?(receipt, roots)
+                    },
+                    beforeRollback: { receipt in
+                        try beforeRollback?(receipt, roots)
+                        try store.validateRoots(operation, roots)
                     }
+                )
+                operation.transactionID = receipt.id
+                try store.sealApplied(operation)
+                guard try PatchTransaction.verifyState(receipt: receipt, original: false,
+                                                       containerResolver: { id in
+                    guard let root = roots[id] else { throw PatchPackageError.targetAppUnavailable(id) }
                     return root
-                },
-                beforeMutation: { receipt in
-                    operation.transactionID = receipt.id
-                    operation.phase = .prepared
-                    try store.save(operation)
-                    try store.validateRoots(operation, roots)
-                    try store.preparePair(operation)
-                    try beforeMutation?(receipt, roots)
-                },
-                beforeRollback: { receipt in
-                    try beforeRollback?(receipt, roots)
-                    try store.validateRoots(operation, roots)
+                }) else {
+                    throw VINIPatchFailure.recoveryRequired
                 }
-            )
-            operation.transactionID = receipt.id
-            try store.sealApplied(operation)
-            guard try PatchTransaction.verifyState(receipt: receipt, original: false,
-                                                   containerResolver: { id in
-                guard let root = roots[id] else { throw PatchPackageError.targetAppUnavailable(id) }
-                return root
-            }) else {
-                throw VINIPatchFailure.recoveryRequired
+                operation.phase = .applied
+                operation.lastVerifiedEnabled = true
+                try store.save(operation)
+                return receipt
+            } catch {
+                operation.phase = .recoveryRequired
+                operation.lastVerifiedEnabled = false
+                try? store.save(operation)
+                throw error
             }
-            operation.phase = .applied
-            operation.lastVerifiedEnabled = true
-            try store.save(operation)
-            return receipt
         }
     }
 
