@@ -39,3 +39,16 @@ No se declarará PASS global mientras queden pendientes los escenarios que no pu
 - Artefacto: `VINI-3J-native-evidence`
 
 **SKIPPED/PENDIENTE:** descarga interrumpida, caché alterada, cambio de usuario, revocación posterior al catálogo, respaldos/recibos y Apply/Restore. No se usaron licencias reales ni se conectó producción.
+
+## Cierre 3J-G — pruebas críticas
+
+- Commit probado: `12ff554`
+- Run CI: `43808493475`
+- URL: https://github.com/loboangel39-svg/3105-WORSE-QUERY/actions/runs/43808493475
+- Runner: `macos-15`; Swift nativo; compilación unsigned `iphoneos arm64`: **PASS**.
+- Revocación posterior al catálogo: **PASS**. El segundo catálogo fue vacío; el coordinador real no descargó ni importó y la caché no autorizó el paquete.
+- Interrupción de transporte: **PASS**. Bytes parciales fueron rechazados antes de `store`/importación; la revisión anterior permaneció íntegra y el reintento completo persistió la nueva revisión.
+- Hashes protegidos y componentes fuera de alcance: **PASS sin cambios**, según las verificaciones del workflow.
+- `870a80f`: contiene exclusivamente cambios documentales en `VINI_PHASE_3J_CACHE_TESTS.md` y `VINI_PHASE_3J_CACHE_INTEGRITY.md`; no contiene cambios funcionales.
+
+**3J: PASS RUNTIME AISLADO.** Esto no constituye validación productiva, autorización contra Worker real ni prueba de Apply/Restore. 3K permanece bloqueada.
