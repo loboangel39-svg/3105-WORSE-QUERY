@@ -209,12 +209,14 @@ struct ControllerButtonStyle: ButtonStyle {
     }
 }
 struct ControllerHeader: View {
+    @EnvironmentObject private var authStore: VINIProductionStore
+
     var body: some View {
         HStack(alignment: .center, spacing: 12) {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 9) {
                     Text("VINI 2.0").font(AppTheme.sans(24, relativeTo: .title2).weight(.heavy)).tracking(1.2)
-                    Text("v" + (Bundle.main.object(forInfoDictionaryKey: "AppReleaseDisplayVersion") as? String ?? Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""))
+                    Text(planBadge)
                         .font(AppTheme.mono(10).weight(.bold)).foregroundStyle(AppTheme.accent)
                         .padding(.horizontal, 7).padding(.vertical, 4)
                         .background(AppTheme.accent.opacity(0.12), in: RoundedRectangle(cornerRadius: 6))
@@ -225,6 +227,13 @@ struct ControllerHeader: View {
             }
             Spacer(minLength: 0)
         }.padding(.horizontal, 20).padding(.top, 8).padding(.bottom, 10)
+    }
+
+    private var planBadge: String {
+        guard let plan = authStore.profile?.plan.uppercased(), plan == "PRO" || plan == "BASIC" else {
+            return "—"
+        }
+        return plan
     }
 }
 struct ControllerNavigation: View {
