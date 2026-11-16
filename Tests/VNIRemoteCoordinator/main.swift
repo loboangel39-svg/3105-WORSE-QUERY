@@ -98,8 +98,10 @@ func run(_ package: Data, project: PatchProject, catalogData: Data, download: Da
             try expect(alteredCache == nil, "altered cache rejected by digest")
             _ = try cache.store(bytes: encoded, identity: cacheIdentity)
             var failedBytes = encoded; failedBytes.append(0)
-            do { _ = try cache.store(bytes: failedBytes, identity: cacheIdentity); throw VINIStagingError.invalidResponse }
-            catch { }
+            var rejectedReplacement = false
+            do { _ = try cache.store(bytes: failedBytes, identity: cacheIdentity) }
+            catch { rejectedReplacement = true }
+            try expect(rejectedReplacement, "incomplete replacement rejected")
             let preservedCache = try cache.load(identity: cacheIdentity)
             try expect(preservedCache?.0 == encoded, "failed replacement preserves prior revision")
             let otherUser = VINIRemoteCacheIdentity(userID: "other-user", remotePatchID: "cache-r1",
@@ -129,13 +131,12 @@ func run(_ package: Data, project: PatchProject, catalogData: Data, download: Da
         _ = try await run(encoded, project: project, catalogData: revocationCatalog, remoteID: "revocation")
         let revokedTransport = FixtureTransport([
             ("api/app/validate-license", 200, try data(["valid": true, "token": "revoked-token", "expiresAt": "2027-01-01T00:00:00Z", "username": "fixture", "userID": "fixture-user", "plan": "basic", "licenseStatus": "active", "serverTime": "2026-11-16T00:00:00Z"])),
-            ("api/app/me", 200, try data(["username": "fixture", "userID": "fixture-user", "plan": "basic", "licenseStatus": "active", "licenseExpiresAt": "2027-01-01T00:00:00Z", "serverTime": "2026-11-16T00:00:00Z"])),
             ("api/app/patches", 200, try data(["patches": []]))
         ])
         let revokedClient = VINIStagingClient(baseURL: VINIProductionEnvironment.base, transport: revokedTransport, vault: FixtureVault(value: try fixtureCredentials()))
         let revokedPrepared = try await VINIRemotePackageCoordinator(client: revokedClient).prepareAuthorizedPackages()
         let revokedRequests = await revokedTransport.requestCount
-        try expect(revokedPrepared.isEmpty && revokedRequests == 3, "revoked catalog denies cached package without download")
+        try expect(revokedPrepared.isEmpty && revokedRequests == 2, "revoked catalog denies cached package without download")
         print("PASS revocation preserves local storage and never authorizes from cache")
 
         // Interruption: a new revision receives partial bytes. Integrity fails
