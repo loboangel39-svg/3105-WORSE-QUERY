@@ -107,9 +107,11 @@ struct VINIDashboardView: View {
                 VINIHeaderView(isPreview: presentation.isPreview, status: presentation.license.status)
                 Button(action: onExit) {
                     Image(systemName: "rectangle.portrait.and.arrow.right")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(Color.secondary)
-                        .frame(width: 30, height: 30)
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(AppTheme.accent)
+                        .frame(width: 36, height: 36)
+                        .background(AppTheme.accent.opacity(0.10), in: RoundedRectangle(cornerRadius: 9))
+                        .overlay(RoundedRectangle(cornerRadius: 9).stroke(AppTheme.accent.opacity(0.30), lineWidth: 0.75))
                 }.buttonStyle(.plain).accessibilityLabel("Salir")
             }
             VINILicenseCard(license: presentation.license)
@@ -155,7 +157,7 @@ struct VINIHeaderView: View {
         VStack(alignment: .leading, spacing: 5) {
             HStack(spacing: 9) {
                 Text("VINI").font(AppTheme.sans(24, relativeTo: .title2).weight(.heavy)).tracking(1.4)
-                Text((isPreview ? "PREVIEW · v" : "STAGING · v") + version)
+                Text(isPreview ? "PREVIEW" + (version.isEmpty ? "" : " · v" + version) : "VINI" + (version.isEmpty ? "" : " · v" + version))
                     .font(AppTheme.mono(10).weight(.bold)).foregroundStyle(AppTheme.accent)
                     .padding(.horizontal, 7).padding(.vertical, 4)
                     .background(AppTheme.accent.opacity(0.12), in: RoundedRectangle(cornerRadius: 6))

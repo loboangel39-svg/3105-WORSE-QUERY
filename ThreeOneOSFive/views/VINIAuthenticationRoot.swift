@@ -65,7 +65,7 @@ struct VINILicenseLogin: View {
                         .shadow(color: AppTheme.accent.opacity(0.16), radius: 16)
                     HStack(spacing: 9) {
                         Text("VINI").font(AppTheme.sans(28).weight(.heavy)).foregroundStyle(.white)
-                        Text("STAGING v" + version).font(AppTheme.mono(9).weight(.bold)).foregroundStyle(AppTheme.accent)
+                        Text("VINI" + (version.isEmpty ? "" : " · v" + version)).font(AppTheme.mono(9).weight(.bold)).foregroundStyle(AppTheme.accent)
                             .padding(6).background(AppTheme.accent.opacity(0.13), in: RoundedRectangle(cornerRadius: 6))
                     }.padding(.top, 20)
                     Text("ENVIRONMENT AUTHENTICATION").font(AppTheme.mono(9).weight(.semibold))
@@ -101,7 +101,7 @@ struct VINILicenseLogin: View {
                         Text(store.phase == .blocked ? "Sin conexión verificada" : busy ? "Comprobando servidor" : "Sesión no autorizada")
                             .font(AppTheme.sans(9)).foregroundStyle(.secondary)
                         Spacer()
-                        Text("CLOUDFLARE · STAGING").font(AppTheme.mono(8).weight(.bold)).foregroundStyle(AppTheme.accent)
+                        Text("CLOUDFLARE · VINI").font(AppTheme.mono(8).weight(.bold)).foregroundStyle(AppTheme.accent)
                             .padding(6).background(Color.white.opacity(0.04), in: RoundedRectangle(cornerRadius: 6))
                     }.padding(.bottom, 22)
                 }.padding(.horizontal, 24).frame(maxWidth: 430).frame(minHeight: max(560, geometry.size.height))

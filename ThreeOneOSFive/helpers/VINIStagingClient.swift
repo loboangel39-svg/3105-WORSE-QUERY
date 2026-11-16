@@ -87,29 +87,35 @@ protocol VINIStagingVault {
 }
 struct VINIStagingKeychain: VINIStagingVault {
     let service: String
-    init(service: String = "com.apple.mobile.MobileHouseArrest.vini.staging.session.v1") { self.service = service }
-    private var query: [String: Any] { [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service, kSecAttrAccount as String: "staging-session"] }
+    private let legacyService = "com.apple.mobile.MobileHouseArrest.vini.staging.session.v1"
+    init(service: String = "com.apple.mobile.MobileHouseArrest.vini.session.v1") { self.service = service }
+    private func query(for service: String, account: String) -> [String: Any] { [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service, kSecAttrAccount as String: account] }
     func load() throws -> VINIStagingCredentials? {
-        var q = query; q[kSecReturnData as String] = true; q[kSecMatchLimit as String] = kSecMatchLimitOne
-        var result: CFTypeRef?; let status = SecItemCopyMatching(q as CFDictionary, &result)
-        if status == errSecItemNotFound { return nil }
-        guard status == errSecSuccess, let data = result as? Data,
-              let record = try? JSONDecoder().decode(VINIStagingCredentials.self, from: data)
-        else { throw VINIStagingError.keychain }
-        return record
+        for (candidate, account) in [(service, "vini-session"), (legacyService, "staging-session")] {
+            var q = query(for: candidate, account: account); q[kSecReturnData as String] = true; q[kSecMatchLimit as String] = kSecMatchLimitOne
+            var result: CFTypeRef?; let status = SecItemCopyMatching(q as CFDictionary, &result)
+            if status == errSecItemNotFound { continue }
+            guard status == errSecSuccess, let data = result as? Data,
+                  let record = try? JSONDecoder().decode(VINIStagingCredentials.self, from: data) else { throw VINIStagingError.keychain }
+            return record
+        }
+        return nil
     }
     func save(_ credentials: VINIStagingCredentials) throws {
         let data = try JSONEncoder().encode(credentials)
         let attributes: [String: Any] = [kSecValueData as String: data, kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly]
-        let status = SecItemUpdate(query as CFDictionary, attributes as CFDictionary)
+        let current = query(for: service, account: "vini-session")
+        let status = SecItemUpdate(current as CFDictionary, attributes as CFDictionary)
         if status == errSecSuccess { return }
         guard status == errSecItemNotFound else { throw VINIStagingError.keychain }
-        var q = query; attributes.forEach { q[$0.key] = $0.value }
+        var q = current; attributes.forEach { q[$0.key] = $0.value }
         guard SecItemAdd(q as CFDictionary, nil) == errSecSuccess else { throw VINIStagingError.keychain }
     }
     func delete() throws {
-        let status = SecItemDelete(query as CFDictionary)
-        guard status == errSecSuccess || status == errSecItemNotFound else { throw VINIStagingError.keychain }
+        for (candidate, account) in [(service, "vini-session"), (legacyService, "staging-session")] {
+            let status = SecItemDelete(query(for: candidate, account: account) as CFDictionary)
+            guard status == errSecSuccess || status == errSecItemNotFound else { throw VINIStagingError.keychain }
+        }
     }
 }
 

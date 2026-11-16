@@ -22,6 +22,7 @@ enum VINIAuthenticationPhase: Equatable { case checking, login, validating, auth
     private let transactionStateReader: VINITransactionStateReader? = try? VINITransactionStateReader.live()
     @Published private(set) var busy = false
     @Published private(set) var packageResult: String?
+    @Published private(set) var catalogDiagnostic = "Catálogo no consultado"
     private let client = VINIStagingClient()
     private let associationStore = VINITransactionAssociationStore()
     private var uptime: TimeInterval = 0
@@ -37,6 +38,7 @@ enum VINIAuthenticationPhase: Equatable { case checking, login, validating, auth
         }
     }
     private func checkAuthorizationAfterFailure(_ error: Error) async {
+        if isTemporarySessionError(error), phase == .authorized { return }
         guard let cause = error as? VINIStagingError else { return }
         guard [.signedOut, .invalidLicense, .blockedLicense, .paused, .denied, .expired, .offline, .keychain].contains(cause) else { return }
         do {
@@ -55,6 +57,7 @@ enum VINIAuthenticationPhase: Equatable { case checking, login, validating, auth
         if !force && licenseKey == nil && ProcessInfo.processInfo.systemUptime - lastRefresh < 15 { return }
         busy = true; defer { finishOperation() }
         lastRefresh = ProcessInfo.processInfo.systemUptime
+        let wasAuthorized = phase == .authorized && verified && profile != nil
         phase = licenseKey == nil ? .checking : .validating
         if licenseKey != nil { preparedFixture = false; profile = nil; verified = false; packages = []; packageResult = nil }
         do {
@@ -68,11 +71,21 @@ enum VINIAuthenticationPhase: Equatable { case checking, login, validating, auth
             verified = p.licenseStatus == "active"; status = verified ? "Activa" : "Sin autorización vigente"
             do {
                 packages = try await client.catalog()
+                catalogDiagnostic = "Catálogo: \(packages.count) patches autorizados"
                 let prepared = try await VINIRemotePackageCoordinator(client: client).prepareAuthorizedPackages()
                 preparedPackages = prepared
-            } catch { packageResult = "Catálogo temporalmente no disponible" }
+                catalogDiagnostic += " · \(prepared.count) importados y verificados"
+            } catch {
+                catalogDiagnostic = "Catálogo no disponible: \(String(describing: error))"
+                packageResult = "Catálogo no disponible; sesión conservada"
+            }
             await inspectFixture()
         } catch {
+            if licenseKey == nil, wasAuthorized, isTemporarySessionError(error) {
+                phase = .authorized
+                status = "Sesión conservada · conexión pendiente"
+                return
+            }
             verified = false
             phase = (error as? VINIStagingError) == .offline ? .blocked : .login
             authorizationDeadline = 0
@@ -164,6 +177,10 @@ enum VINIAuthenticationPhase: Equatable { case checking, login, validating, auth
                 symbol: symbol, availability: .available, patchState: target.status == .applied ? .active : .unknown)
         }
     }
+    private func isTemporarySessionError(_ error: Error) -> Bool {
+        guard let error = error as? VINIStagingError else { return false }
+        return [.offline, .rateLimited, .stale].contains(error)
+    }
 }
 
 struct VINIProductionDashboard: View {
@@ -185,7 +202,7 @@ struct VINIStagingAccountView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Cuenta · staging") {
+                Section("Cuenta · VINI") {
                     Text(store.status)
                     Button("Comprobar sesión") { Task { await store.refresh() } }.disabled(store.busy)
                     Button("Cerrar sesión") { Task { await store.logout() } }.disabled(store.busy)
