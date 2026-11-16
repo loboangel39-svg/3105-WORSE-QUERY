@@ -10,7 +10,23 @@ struct VINIRemotePreparedPackage: Codable, Equatable {
     let sha256: String
     let fileSize: Int
     let packageURL: URL
-    let categoryID: Int? = nil
+    let categoryID: Int?
+
+    init(remotePatchID: String, targetID: String, packageID: UUID, projectID: UUID, revision: String,
+         sha256: String, fileSize: Int, packageURL: URL, categoryID: Int? = nil) {
+        self.remotePatchID = remotePatchID; self.targetID = targetID; self.packageID = packageID; self.projectID = projectID
+        self.revision = revision; self.sha256 = sha256; self.fileSize = fileSize; self.packageURL = packageURL; self.categoryID = categoryID
+    }
+
+    private enum CodingKeys: String, CodingKey { case remotePatchID, targetID, packageID, projectID, revision, sha256, fileSize, packageURL, categoryID }
+    init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        remotePatchID = try values.decode(String.self, forKey: .remotePatchID); targetID = try values.decode(String.self, forKey: .targetID)
+        packageID = try values.decode(UUID.self, forKey: .packageID); projectID = try values.decode(UUID.self, forKey: .projectID)
+        revision = try values.decode(String.self, forKey: .revision); sha256 = try values.decode(String.self, forKey: .sha256)
+        fileSize = try values.decode(Int.self, forKey: .fileSize); packageURL = try values.decode(URL.self, forKey: .packageURL)
+        categoryID = try values.decodeIfPresent(Int.self, forKey: .categoryID)
+    }
 }
 
 /// Coordinates remote catalog/import state without changing the codec or transaction engine.
