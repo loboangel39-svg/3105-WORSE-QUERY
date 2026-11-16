@@ -1,6 +1,9 @@
 name: Validate VINI remote import native
 
 on:
+  push:
+    branches:
+      - experiment/vini-remote-import-ci
   workflow_dispatch:
 
 permissions:
@@ -34,6 +37,24 @@ jobs:
           set -euo pipefail
           swiftc -parse ThreeOneOSFive/helpers/VNIRemotePackageCoordinator.swift
           swiftc -parse ThreeOneOSFive/helpers/VINIStagingClient.swift
+          swiftc -parse ThreeOneOSFive/helpers/VINIRemoteContract.swift
+      - name: Native staging runtime fixtures
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build-3j
+          swiftc -target "$(uname -m)-apple-macos13.0" -parse-as-library \
+            ThreeOneOSFive/helpers/PatchProjectModels.swift \
+            ThreeOneOSFive/helpers/PatchPackageCodec.swift \
+            ThreeOneOSFive/helpers/VINIStagingClient.swift \
+            ThreeOneOSFive/helpers/PatchTransaction.swift \
+            ThreeOneOSFive/helpers/VINIDualBackupStore.swift \
+            ThreeOneOSFive/helpers/PatchProjectLibrary.swift \
+            ThreeOneOSFive/helpers/PatchWorkspaceService.swift \
+            ThreeOneOSFive/helpers/PatchKeyStore.swift \
+            ThreeOneOSFive/helpers/VINIIsolatedFixture.swift \
+            Tests/VINIStaging/main.swift -o build-3j/native-staging-tests
+          build-3j/native-staging-tests | tee build-3j-native-staging.log
       - name: Build physical iPhone arm64 unsigned
         shell: bash
         run: |
@@ -49,3 +70,4 @@ jobs:
           path: |
             build-3j-*.txt
             build-3j-build.log
+            build-3j-native-staging.log
