@@ -9,6 +9,10 @@ La integración definitiva usa únicamente `VINIProductionEnvironment.base`:
 
 No se usan targets de `VINIDashboardPresentation.preview` cuando existe sesión de producción. Un catálogo vacío produce cero tarjetas, conservando pestañas y estructura. `prepared` no activa el interruptor: `patchState` permanece `unknown` porque no existe una transacción `applied` confirmada.
 
+La conexión efectiva está en `VINIStagingAccountView.swift:66-70` (`VINIProductionStore.refresh`), donde el catálogo autorizado se entrega al `VINIRemotePackageCoordinator`, y en `:131-139`, donde `VINIProductionTargetModel.resolve` convierte únicamente resultados preparados coincidentes en `VINITargetPresentation`. El binding original permanece en `VINIDashboardView.swift:129-133` y conserva OFF (`patchState == .unknown`).
+
+Corrección final: `preparedPresentations` devuelve `[]` sin sesión en vez de `VINIDashboardPresentation.preview.targets`; así el preview histórico no puede alimentar producción.
+
 ## Cambios
 
 - `VINIStagingClient.swift`: los valores predeterminados de transporte apuntan al Worker principal; no se cambió el contrato HTTP ni la renovación 401.

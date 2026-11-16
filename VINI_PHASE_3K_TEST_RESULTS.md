@@ -7,3 +7,5 @@ PASS: catálogo vacío sin targets ficticios; target autorizado/preparado; filtr
 SKIPPED: ejecución visual en dispositivo, Apply/Restore y reconstrucción de `restorePending`, por ausencia de API pública autorizada.
 
 La regresión 3J se ejecutó en `macos-15`, junto con compilación unsigned `iphoneos arm64` y comprobación de hashes protegidos. No se realizó ejecución visual en dispositivo ni despliegue productivo.
+
+Pruebas de conexión: PASS en modelo nativo para catálogo vacío, target autorizado/importado y target pendiente; PASS en revisión estática de que `VINIDashboardView` consume `VINIProductionStore.presentation`, no `VINIStagingStore`. OFF inicial: PASS por `patchState: .unknown`; Apply/Restore: SKIPPED deliberadamente. Identidad/categoría inválida: excluida por resolución estricta.

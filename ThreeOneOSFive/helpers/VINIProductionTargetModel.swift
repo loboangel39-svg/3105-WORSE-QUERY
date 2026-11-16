@@ -24,6 +24,7 @@ enum VINIProductionTargetModel {
             guard let patch = catalog.first(where: { $0.id == item.remotePatchID }),
                   let target = patch.target,
                   target.availability == "available",
+                  ["combat", "visuals", "offsets"].contains(target.category),
                   target.targetID == item.targetID,
                   target.packageID == item.packageID,
                   target.projectID == item.projectID,

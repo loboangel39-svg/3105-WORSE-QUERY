@@ -7,3 +7,5 @@ El diff funcional se limita a la fuente de `VINIDashboardPresentation` y a la in
 No se afirma validación visual en dispositivo hasta disponer de ejecución física; la preservación se verifica por diff de archivos protegidos.
 
 CI de compilación: `43810614609` (**PASS**, `macos-15`, `iphoneos arm64` unsigned).
+
+Diff mínimo de cierre: no cambia `VINIDashboardView.swift` ni `VINITargetCard`; solo cambia la alimentación de `VINIProductionStore.presentation` y elimina el fallback productivo a targets preview.

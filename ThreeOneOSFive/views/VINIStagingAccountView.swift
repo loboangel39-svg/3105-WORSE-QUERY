@@ -65,7 +65,6 @@ enum VINIAuthenticationPhase: Equatable { case checking, login, validating, auth
             verified = p.licenseStatus == "active"; status = verified ? "Activa" : "Sin autorización vigente"
             do {
                 packages = try await client.catalog()
-                let authorized = packages
                 let prepared = try await VINIRemotePackageCoordinator(client: client).prepareAuthorizedPackages()
                 preparedPackages = prepared
             } catch { packageResult = "Catálogo temporalmente no disponible" }
@@ -129,7 +128,7 @@ enum VINIAuthenticationPhase: Equatable { case checking, login, validating, auth
             targets: preparedPresentations, initialPreviewSelection: [])
     }
     private var preparedPresentations: [VINITargetPresentation] {
-        guard profile != nil else { return VINIDashboardPresentation.preview.targets }
+        guard profile != nil else { return [] }
         return VINIProductionTargetModel.resolve(catalog: packages, prepared: preparedPackages).map { target in
             let category = target.category == "visuals" ? VINICategory.visuals : target.category == "offsets" ? VINICategory.offsets : VINICategory.combat
             let symbol = category == .visuals ? "eye" : category == .offsets ? "slider.horizontal.3" : "bolt"
