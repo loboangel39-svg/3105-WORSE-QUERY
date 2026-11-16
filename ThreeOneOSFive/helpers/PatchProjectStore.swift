@@ -66,7 +66,8 @@ final class PatchProjectStore: ObservableObject {
                 guard try DevicePatchService.verifyState(receipt: receipt, original: false) else {
                     throw PatchPackageError.invalidProject
                 }
-                log("patch apply: \(String(format: \"%.3f\", ProcessInfo.processInfo.systemUptime - startedAt))s")
+                let applyElapsed = String(format: "%.3f", ProcessInfo.processInfo.systemUptime - startedAt)
+                log("patch apply: \(applyElapsed)s")
                 await self?.finishDirectOperation()
             } catch {
                 await self?.failDirectOperation()
@@ -89,7 +90,8 @@ final class PatchProjectStore: ObservableObject {
                 guard try DevicePatchService.verifyState(receipt: receipt, original: true) else {
                     throw PatchPackageError.invalidProject
                 }
-                log("patch restore: \(String(format: \"%.3f\", ProcessInfo.processInfo.systemUptime - startedAt))s")
+                let restoreElapsed = String(format: "%.3f", ProcessInfo.processInfo.systemUptime - startedAt)
+                log("patch restore: \(restoreElapsed)s")
                 await self?.finishDirectOperation()
             } catch {
                 await self?.failDirectOperation()
