@@ -100,7 +100,7 @@ jobs:
            (cd build-3j && zip -qry VINI-ApplyRestore-Unsigned.ipa Payload)
            shasum -a 256 build-3j/VINI-ApplyRestore-Unsigned.ipa | tee build-3j-ipa-sha256.txt
            stat -f '%z' build-3j/VINI-ApplyRestore-Unsigned.ipa | tee build-3j-ipa-size.txt
-       - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: VINI-3J-native-evidence
@@ -110,10 +110,8 @@ jobs:
             build-3j-native-staging.log
             build-3j-remote-coordinator.log
             build-3j/VINI-ApplyRestore-Unsigned.ipa
-           
-           
-       - uses: actions/upload-artifact@v4
-         name: upload-unsigned-ipa
-         with:
-           name: VINI-ApplyRestore-Unsigned
-           path: build-3j/VINI-ApplyRestore-Unsigned.ipa
+      - name: Upload unsigned IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: VINI-ApplyRestore-Unsigned
+          path: build-3j/VINI-ApplyRestore-Unsigned.ipa
