@@ -5,6 +5,7 @@ enum VINIAuthenticationPhase: Equatable { case checking, login, validating, auth
 
 @MainActor final class VINIStagingStore: ObservableObject {
     @Published private(set) var phase: VINIAuthenticationPhase = .checking
+    @Published private(set) var hasStoredIdentity: Bool?
     @Published private(set) var authorizationDeadline: TimeInterval = 0
     @Published private(set) var fixtureState = "Sin ensayo"
     @Published private(set) var preparedFixture = false
@@ -21,6 +22,10 @@ enum VINIAuthenticationPhase: Equatable { case checking, login, validating, auth
     private let client = VINIStagingClient()
     private var uptime: TimeInterval = 0
     private var lastRefresh: TimeInterval = -.infinity
+    func bootstrap() async {
+        hasStoredIdentity = (try? client.hasStoredIdentity()) ?? false
+        await refresh(force: true)
+    }
     private func finishOperation() {
         busy = false
         if phase == .authorized && authorizationDeadline <= ProcessInfo.processInfo.systemUptime {
@@ -57,8 +62,11 @@ enum VINIAuthenticationPhase: Equatable { case checking, login, validating, auth
             authorizationDeadline = uptime + lifetime
             phase = .authorized
             verified = p.licenseStatus == "active"; status = verified ? "Activa" : "Sin autorización vigente"
-            do { packages = try await client.catalog() }
-            catch { packageResult = "Catálogo temporalmente no disponible" }
+            do {
+                packages = try await client.catalog()
+                let authorized = packages
+                Task { await self.prepareAuthorizedPackages(authorized) }
+            } catch { packageResult = "Catálogo temporalmente no disponible" }
             await inspectFixture()
         } catch {
             verified = false
@@ -67,6 +75,14 @@ enum VINIAuthenticationPhase: Equatable { case checking, login, validating, auth
             status = (error as? VINIStagingError)?.message ?? VINIStagingError.invalidResponse.message
             // Keep previous rows visible on connection loss. They never authorize download/Apply.
         }
+    }
+    private func prepareAuthorizedPackages(_ patches: [VINIStagingPatch]) async {
+        guard patches.contains(where: { $0.id == VINIStagingEnvironment.fixtureID }), verified else { return }
+        do {
+            _ = try await client.downloadTestPackage(id: VINIStagingEnvironment.fixtureID)
+            preparedFixture = true
+            await inspectFixture()
+        } catch { packageResult = (error as? VINIStagingError)?.message ?? "Paquete no preparado" }
     }
     func logout() async {
         guard !busy else { return }

@@ -10,9 +10,11 @@ struct VINIAuthenticationRoot: View {
         TimelineView(.periodic(from: .now, by: 1)) { _ in
             if store.phase == .authorized && store.authorizationDeadline > ProcessInfo.processInfo.systemUptime {
                 VINIStagingDashboard(store: store)
+            } else if store.phase == .checking && store.hasStoredIdentity == true {
+                VINIConnectingView()
             } else { VINILicenseLogin(store: store) }
         }
-        .task { await store.refresh(force: true) }
+        .task { await store.bootstrap() }
         .onChange(of: scenePhase) { phase in
             if phase == .active { Task { await store.refresh(force: true) } }
         }
@@ -28,6 +30,18 @@ struct VINIAuthenticationRoot: View {
         .onOpenURL { url in
             if store.phase == .authorized && store.authorizationDeadline > ProcessInfo.processInfo.systemUptime { onImport(url) }
         }
+    }
+}
+
+struct VINIConnectingView: View {
+    var body: some View {
+        ZStack {
+            Color.black.ignoresSafeArea()
+            VStack(spacing: 18) {
+                ProgressView().tint(.white)
+                Text("Conectando con el servidor").foregroundStyle(.white)
+            }
+        }.preferredColorScheme(.dark).accessibilityIdentifier("vini-connecting")
     }
 }
 

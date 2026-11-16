@@ -187,18 +187,22 @@ actor VINIStagingClient {
             try vault.save(identity); credentials = identity
         } else { try vault.delete(); credentials = nil }
     }
-    func profile() async throws -> VINIStagingProfile {
+    func hasStoredIdentity() throws -> Bool {
+        try load()
+        return !(credentials?.licenseKey.isEmpty ?? true)
+    }
+    func profile(forceRevalidation: Bool = false) async throws -> VINIStagingProfile {
         try load()
         if let task = refreshTask { return try await task.value }
         let epoch = generation
-        let task = Task { try await self.fetchProfile(epoch: epoch) }
+        let task = Task { try await self.fetchProfile(epoch: epoch, forceRevalidation: forceRevalidation) }
         refreshTask = task
         defer { if generation == epoch { refreshTask = nil } }
         return try await task.value
     }
-    private func fetchProfile(epoch: Int) async throws -> VINIStagingProfile {
+    private func fetchProfile(epoch: Int, forceRevalidation: Bool = false) async throws -> VINIStagingProfile {
         guard let saved = credentials, !saved.licenseKey.isEmpty else { throw VINIStagingError.signedOut }
-        if !saved.token.isEmpty {
+        if !saved.token.isEmpty && !forceRevalidation {
             let (bytes, response) = try await request("api/app/me", token: saved.token)
             guard generation == epoch else { throw VINIStagingError.stale }
             if response.statusCode == 200 {
@@ -208,7 +212,7 @@ actor VINIStagingClient {
             credentials?.token = ""; try vault.save(credentials!)
         }
         // Exactly one explicit revalidation, coalesced across callers, with bounded retries.
-        guard ProcessInfo.processInfo.systemUptime - lastLogin >= 30 else { throw VINIStagingError.rateLimited }
+        guard forceRevalidation || ProcessInfo.processInfo.systemUptime - lastLogin >= 30 else { throw VINIStagingError.rateLimited }
         lastLogin = ProcessInfo.processInfo.systemUptime
         let (bytes, response) = try await request("api/app/validate-license", body: ["licenseKey": saved.licenseKey, "hwid": saved.hwid])
         guard generation == epoch else { throw VINIStagingError.stale }
@@ -229,7 +233,7 @@ actor VINIStagingClient {
         var (bytes, response) = try await request(path, token: token)
         guard generation == epoch else { throw VINIStagingError.stale }
         if response.statusCode == 401 {
-            _ = try await profile()
+            _ = try await profile(forceRevalidation: true)
             guard generation == epoch, let newToken = credentials?.token else { throw VINIStagingError.stale }
             (bytes, response) = try await request(path, token: newToken)
         }
@@ -245,12 +249,36 @@ actor VINIStagingClient {
         // The current API has no digest field. Only the independently pinned 2C fixture
         // can be marked verified; do not invent a checksum for arbitrary packages.
         guard id == VINIStagingEnvironment.fixtureID else { throw VINIStagingError.integrity }
+        _ = try await authorized("api/app/me")
+        let cache = try packageCacheURL(id: id)
+        if let cached = try? Data(contentsOf: cache), try validateFixture(cached) { return cached }
         let bytes = try await authorized("api/app/patches/" + id + "/download")
-        let digest = SHA256.hash(data: bytes).map { String(format: "%02x", $0) }.joined()
-        guard bytes.count == VINIStagingEnvironment.fixtureSize, digest == VINIStagingEnvironment.fixtureSHA256 else { throw VINIStagingError.integrity }
-        let decoded = try PatchPackageCodec.decode(bytes, password: nil)
-        guard decoded.project.id.uuidString == "E4F7CF4A-D0D9-4150-93DE-17AACCD5F037" else { throw VINIStagingError.integrity }
+        try storeFixture(bytes, id: id)
         return bytes
+    }
+    private func packageCacheURL(id: String) throws -> URL {
+        let root = try FileManager.default.url(for: .cachesDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
+            .appendingPathComponent("VINIStagingVerified", isDirectory: true)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        return root.appendingPathComponent(id + ".3105")
+    }
+    private func validateFixture(_ bytes: Data) throws -> Bool {
+        let digest = SHA256.hash(data: bytes).map { String(format: "%02x", $0) }.joined()
+        guard bytes.count == VINIStagingEnvironment.fixtureSize, digest == VINIStagingEnvironment.fixtureSHA256 else { return false }
+        let decoded = try PatchPackageCodec.decode(bytes, password: nil)
+        return decoded.project.id.uuidString == "E4F7CF4A-D0D9-4150-93DE-17AACCD5F037"
+    }
+    private func storeFixture(_ bytes: Data, id: String) throws {
+        guard try validateFixture(bytes) else { throw VINIStagingError.integrity }
+        let destination = try packageCacheURL(id: id)
+        let temporary = destination.deletingLastPathComponent().appendingPathComponent("." + UUID().uuidString + ".partial")
+        try bytes.write(to: temporary, options: .atomic)
+        guard try validateFixture(Data(contentsOf: temporary)) else { try? FileManager.default.removeItem(at: temporary); throw VINIStagingError.integrity }
+        if FileManager.default.fileExists(atPath: destination.path) {
+            try FileManager.default.replaceItemAt(destination, withItemAt: temporary, backupItemName: nil, options: .usingNewMetadataOnly)
+        } else {
+            try FileManager.default.moveItem(at: temporary, to: destination)
+        }
     }
     func downloadTestPackage(id: String) async throws -> String {
         let bytes = try await verifiedTestBytes(id: id)
