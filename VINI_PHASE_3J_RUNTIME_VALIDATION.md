@@ -26,4 +26,8 @@ Casos del arnés:
 - revalidación HTTP 401 durante el flujo autorizado: ejecutable;
 - descarga interrumpida, caché alterada, cambio de usuario, revocación posterior al catálogo y respaldos/recibos: pendiente; no forman parte del coordinador actual sin ampliar el contrato o tocar Apply/Restore.
 
-El resultado final depende de GitHub Actions macOS y se documentará en `VINI_PHASE_3J_FINAL_RESULTS.md`.
+## Evidencia runtime
+
+Run exitoso: `43804849931` — https://github.com/loboangel39-svg/3105-WORSE-QUERY/actions/runs/43804849931
+
+El log registra solicitudes sintéticas al contrato del Worker (`/api/app/validate-license`, `/api/app/patches` y `/api/app/patches/fixture-remote-id/download`) y la llamada literal a `VINIRemotePackageCoordinator.prepareAuthorizedPackages()`. Pasaron el paquete preparado, identidad, tamaño/SHA, importación `PatchProjectLibrary` y decodificación posterior con el codec original. También pasó la renovación 401 sobre `/api/app/patches`.
