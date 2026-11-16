@@ -434,8 +434,15 @@ struct PatchProjectsView: View {
                     .accessibilityLabel(language.text("patch.apply"))
                 }
             }
-            .sheet(item: $recoveryProjectID) { projectID in
-                PatchProjectDetailView(store: store, projectID: projectID)
+            .sheet(
+                isPresented: Binding(
+                    get: { recoveryProjectID != nil },
+                    set: { if !$0 { recoveryProjectID = nil } }
+                )
+            ) {
+                if let projectID = recoveryProjectID {
+                    PatchProjectDetailView(store: store, projectID: projectID)
+                }
             }
         }
     }
