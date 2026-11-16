@@ -54,8 +54,6 @@ func catalog(for project: PatchProject, package: Data, sha: String = "", targetP
 
 func run(_ package: Data, project: PatchProject, catalogData: Data, download: Data? = nil,
          prefix: [(String, Int, Data)] = []) async throws -> [VINIRemotePreparedPackage] {
-    let profile: [String: Any] = ["username": "fixture", "plan": "basic", "licenseStatus": "active",
-        "licenseExpiresAt": "2027-01-01T00:00:00Z", "serverTime": "2026-11-16T00:00:00Z"]
     let login: [String: Any] = ["valid": true, "token": "fixture-token", "expiresAt": "2027-01-01T00:00:00Z",
         "username": "fixture", "plan": "basic", "licenseStatus": "active",
         "licenseExpiresAt": "2027-01-01T00:00:00Z", "serverTime": "2026-11-16T00:00:00Z"]
@@ -63,7 +61,9 @@ func run(_ package: Data, project: PatchProject, catalogData: Data, download: Da
     replies += [("api/app/validate-license", 200, try data(login)), ("api/app/patches", 200, catalogData),
                 ("api/app/patches/fixture-remote-id/download", 200, download ?? package)]
     let client = VINIStagingClient(baseURL: VINIProductionEnvironment.base, transport: FixtureTransport(replies), vault: FixtureVault(value: try fixtureCredentials()))
+    print("LOGIN synthetic")
     _ = try await client.login(licenseKey: "fixture")
+    print("LOGIN complete")
     return try await VINIRemotePackageCoordinator(client: client).prepareAuthorizedPackages()
 }
 
