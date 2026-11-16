@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 
 struct PatchStoreAlert: Identifiable {
@@ -41,8 +42,8 @@ final class PatchProjectStore: ObservableObject {
     init() {
         isBusy = true
         Task.detached(priority: .userInitiated) { [weak self] in
-            let loadedItems = PatchProjectLibrary.load()
-            await self?.finishInitialLoad(loadedItems)
+            let snapshot = Self.loadLibrarySnapshot()
+            await self?.finishInitialLoad(snapshot.items, recoveryRequiredIDs: snapshot.recoveryRequiredIDs)
         }
     }
 
@@ -52,8 +53,8 @@ final class PatchProjectStore: ObservableObject {
 
     func reloadAsync() {
         Task.detached(priority: .userInitiated) { [weak self] in
-            let loadedItems = PatchProjectLibrary.load()
-            await self?.replaceItems(loadedItems)
+            let snapshot = Self.loadLibrarySnapshot()
+            await self?.replaceItems(snapshot.items, recoveryRequiredIDs: snapshot.recoveryRequiredIDs)
         }
     }
 
@@ -61,8 +62,15 @@ final class PatchProjectStore: ObservableObject {
         recoveryRequiredIDs.remove(projectID)
     }
 
-    private func replaceItems(_ loadedItems: [PatchLibraryItem]) {
+    private func replaceItems(_ loadedItems: [PatchLibraryItem], recoveryRequiredIDs: Set<UUID>) {
+        guard items.map(\.id) != loadedItems.map(\.id)
+            || items.map(\.summary) != loadedItems.map(\.summary)
+            || items.map(\.project) != loadedItems.map(\.project)
+            || self.recoveryRequiredIDs != recoveryRequiredIDs else {
+            return
+        }
         items = loadedItems
+        self.recoveryRequiredIDs = recoveryRequiredIDs
     }
 
     /// Direct actions used by the compact Installed list. They delegate to the
@@ -135,9 +143,36 @@ final class PatchProjectStore: ObservableObject {
         )
     }
 
-    private func finishInitialLoad(_ loadedItems: [PatchLibraryItem]) {
+    private func finishInitialLoad(_ loadedItems: [PatchLibraryItem], recoveryRequiredIDs: Set<UUID>) {
         items = loadedItems
+        self.recoveryRequiredIDs = recoveryRequiredIDs
         isBusy = false
+    }
+
+    private nonisolated static func loadLibrarySnapshot() -> (items: [PatchLibraryItem], recoveryRequiredIDs: Set<UUID>) {
+        let items = PatchProjectLibrary.load()
+        var recoveryRequiredIDs = Set<UUID>()
+        guard let reader = try? VINITransactionStateReader.live() else {
+            return (items, recoveryRequiredIDs)
+        }
+
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys]
+        for item in items {
+            guard let project = item.project,
+                  let packageDigest = try? Data(SHA256.hash(data: try encoder.encode(project))) else { continue }
+            let targetID = "package." + project.id.uuidString
+            let state = reader.state(targetID: targetID, projectID: project.id, packageDigest: packageDigest)
+            switch state {
+            case .applied, .restored:
+                break
+            case .prepared, .restorePending, .failed, .unknown:
+                if DevicePatchService.latestReceipt(projectID: project.id) != nil {
+                    recoveryRequiredIDs.insert(project.id)
+                }
+            }
+        }
+        return (items, recoveryRequiredIDs)
     }
 
     func create(project: PatchProject, password: String?) {

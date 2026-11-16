@@ -88,8 +88,7 @@ struct PatchProjectsView: View {
     }
 
     var body: some View {
-        NavigationStack {
-            VStack(spacing: 0) {
+        VStack(spacing: 0) {
                 List {
                     if !hasLocalContent && (store.isBusy || isImportingWallpapers) {
                         loadingState
@@ -117,11 +116,9 @@ struct PatchProjectsView: View {
                         }
                     }
                 }
-                .listStyle(.insetGrouped)
+                .listStyle(.plain)
             .controllerSurface()
             }
-            .navigationTitle("")
-            .navigationBarTitleDisplayMode(.inline)
             .sheet(isPresented: $showImporter) {
                 FileDocumentPicker(
                     allowedContentTypes: PatchPackagePickerPolicy.allowedContentTypes,
@@ -209,7 +206,7 @@ struct PatchProjectsView: View {
             .onAppear {
                 Task {
                     await PatchSyncManager.shared.syncPatches(reason: "installed")
-                    store.reload()
+                    store.reloadAsync()
                 }
                 consumeExternalImport()
 #if targetEnvironment(simulator)
@@ -223,7 +220,7 @@ struct PatchProjectsView: View {
                 }
 #endif
             }
-            .navigationDestination(isPresented: $showSimulatedWallpaperDetail) {
+            .sheet(isPresented: $showSimulatedWallpaperDetail) {
                 if let package = wallpaperPackages.first {
                     InstalledWallpaperPackageDetailView(
                         package: package,
@@ -234,7 +231,6 @@ struct PatchProjectsView: View {
             .onChange(of: draftCoordinator.importRequest?.id) { _ in
                 consumeExternalImport()
             }
-        }
     }
 
     private func consumeExternalImport() {
@@ -942,7 +938,7 @@ private struct PatchProjectDetailView: View {
                     : baseProject
                 _ = try DevicePatchService.apply(project: project)
                 await MainActor.run {
-                    store.reload()
+                    store.reloadAsync()
                     isWorking = false
                 }
             } catch let error as PatchPackageError {
@@ -972,7 +968,7 @@ private struct PatchProjectDetailView: View {
                     _ = try PatchProjectLibrary.synchronizeWorkspace(item: item)
                 }
                 await MainActor.run {
-                    store.reload()
+                    store.reloadAsync()
                     isWorking = false
                     shareRequest = PatchShareRequest(url: item.packageURL)
                 }
@@ -1026,7 +1022,7 @@ private struct PatchProjectDetailView: View {
                     await MainActor.run {
                         isWorking = false
                         store.clearRecoveryRequired(projectID: projectID)
-                        store.reload()
+                        store.reloadAsync()
                     }
                 } else {
                     await MainActor.run {
@@ -1068,7 +1064,7 @@ private struct PatchProjectDetailView: View {
                 await MainActor.run {
                     isWorking = false
                     store.clearRecoveryRequired(projectID: projectID)
-                    store.reload()
+                    store.reloadAsync()
                 }
             } catch let error as PatchPackageError {
                 await MainActor.run {
@@ -1099,7 +1095,7 @@ private struct PatchProjectDetailView: View {
                 )
                 await MainActor.run {
                     isWorking = false
-                    store.reload()
+                    store.reloadAsync()
                 }
             } catch let error as PatchPackageError {
                 await MainActor.run {

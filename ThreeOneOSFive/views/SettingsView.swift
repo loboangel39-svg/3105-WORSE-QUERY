@@ -6,8 +6,7 @@ struct SettingsView: View {
     @EnvironmentObject private var enginePresentation: VINIEnginePresentationStore
 
     var body: some View {
-        NavigationStack {
-            Form {
+        Form {
                 Section {
                     LabeledContent("Usuario", value: authStore.profile?.username ?? "—")
                     LabeledContent("Plan", value: plan)
@@ -23,11 +22,9 @@ struct SettingsView: View {
                 }
                 .controllerRow()
             }
-            .controllerSurface()
-            .tint(AppTheme.accent)
-            .navigationTitle("")
-            .navigationBarTitleDisplayMode(.inline)
-        }
+        .listStyle(.plain)
+        .controllerSurface()
+        .tint(AppTheme.accent)
     }
 
     private var plan: String {
