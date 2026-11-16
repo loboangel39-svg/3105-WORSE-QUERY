@@ -44,7 +44,7 @@ enum VINIProductionTargetModel {
 
 private extension Data {
     init(hex: String) {
-        self.init(Array(stride(from: 0, to: hex.count, by: 2)).compactMap {
+        self.init(Array(stride(from: 0, to: hex.count, by: 2).compactMap {
             let start = hex.index(hex.startIndex, offsetBy: $0)
             let end = hex.index(start, offsetBy: 2)
             return UInt8(hex[start..<end], radix: 16)
