@@ -39,7 +39,6 @@ final class PatchProjectStore: ObservableObject {
 
     init() {
         isBusy = true
-        let startedAt = ProcessInfo.processInfo.systemUptime
         Task.detached(priority: .userInitiated) { [weak self] in
             let loadedItems = PatchProjectLibrary.load()
             await self?.finishInitialLoad(loadedItems)
@@ -57,6 +56,7 @@ final class PatchProjectStore: ObservableObject {
               let baseProject = item.project,
               DevicePatchService.latestReceipt(projectID: projectID) == nil else { return }
         isBusy = true
+        let startedAt = ProcessInfo.processInfo.systemUptime
         Task.detached(priority: .userInitiated) { [weak self] in
             do {
                 let project = item.summary.schemaVersion >= 2 && item.canInspectContents
