@@ -1,6 +1,9 @@
 name: Build unsigned 3105 IPA
 
 on:
+  push:
+    branches:
+      - 'integration/vini-2.0-rc1'
   workflow_dispatch:
     inputs:
       configuration:
@@ -114,7 +117,7 @@ jobs:
           cp -R "$APP_PATH" build/Payload/
            (cd build && /usr/bin/ditto -c -k --sequesterRsrc --keepParent Payload VINI-2.0-RC1-Unsigned.ipa)
            test -f build/VINI-2.0-RC1-Unsigned.ipa
-          {
+           {
              echo '# VINI 2.0 RC1 build report'
             echo
             echo "- Xcode: $(xcodebuild -version | tr '\n' ' ')"
@@ -135,7 +138,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
            name: VINI-2.0-RC1-Unsigned
-          path: |
+           path: |
              build/VINI-2.0-RC1-Unsigned.ipa
             build/BUILD-REPORT.md
             build/WORSE_QUERY_INTEGRATION.md
