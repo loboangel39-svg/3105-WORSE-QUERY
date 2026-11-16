@@ -112,4 +112,5 @@ final class PatchSyncManager: ObservableObject {
 // MARK: - Notification para recargar patches
 extension Notification.Name {
     static let patchesDidChange = Notification.Name("patchesDidChange")
+    static let viniSessionInvalidated = Notification.Name("vini.session.invalidated")
 }

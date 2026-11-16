@@ -17,6 +17,7 @@ struct PatchProjectsView: View {
     @Environment(\.appLanguage) private var language
     @EnvironmentObject private var draftCoordinator: PatchDraftCoordinator
     @EnvironmentObject private var store: PatchProjectStore
+    @StateObject private var remoteManager = PatchManager.shared
     @AppStorage(FeatureVisibility.cleanerStorageKey) private var cleanerEnabled = true
     @State private var showCreate = false
     @State private var showImporter = false
@@ -67,11 +68,20 @@ struct PatchProjectsView: View {
     }
 
     private var hasLocalContent: Bool {
-        !store.items.isEmpty || !wallpaperPackages.isEmpty
+        !store.items.isEmpty || !remoteManager.availablePatches.isEmpty
     }
 
     private var hasSearchResults: Bool {
-        !filteredItems.isEmpty || !filteredWallpaperPackages.isEmpty
+        !filteredItems.isEmpty || filteredRemotePatches.count > 0
+    }
+
+    private var filteredRemotePatches: [RemotePatchInfo] {
+        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty else { return remoteManager.availablePatches }
+        return remoteManager.availablePatches.filter {
+            $0.name.localizedCaseInsensitiveContains(query)
+                || $0.description.localizedCaseInsensitiveContains(query)
+        }
     }
 
     init(
@@ -90,13 +100,20 @@ struct PatchProjectsView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                AppSearchField(
-                    text: $searchText,
-                    prompt: language.text("installed.search"),
-                    clearLabel: language.text("common.clear")
-                )
-                Divider()
                 List {
+                    if !filteredRemotePatches.isEmpty {
+                        Section("Remote Patches") {
+                            ForEach(filteredRemotePatches) { patch in
+                                RemotePatchInstalledRow(patch: patch, manager: remoteManager) {
+                                    Task {
+                                        await remoteManager.forceRedownload(patch)
+                                        await PatchSyncManager.shared.syncPatches()
+                                        store.reload()
+                                    }
+                                }
+                            }
+                        }
+                    }
                     if !hasLocalContent && (store.isBusy || isImportingWallpapers) {
                         loadingState
                             .listRowSeparator(.hidden)
@@ -121,40 +138,6 @@ struct PatchProjectsView: View {
                                 }
                             }
                         }
-                        if !filteredWallpaperPackages.isEmpty {
-                            Section(language.text("tab.wallpapers")) {
-                                ForEach(filteredWallpaperPackages) { package in
-                                    NavigationLink {
-                                        InstalledWallpaperPackageDetailView(
-                                            package: package,
-                                            onApplied: reloadWallpaperPackages
-                                        )
-                                    } label: {
-                                        wallpaperRow(package)
-                                            .controllerRow()
-                                    }
-                                    .swipeActions(
-                                        edge: .trailing,
-                                        allowsFullSwipe: false
-                                    ) {
-                                        Button(role: .destructive) {
-                                            wallpaperPendingDeletion = package
-                                        } label: {
-                                            Label(
-                                                language.text("common.delete"),
-                                                systemImage: "trash"
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    if cleanerEnabled {
-                        Section(language.text("repository.utilities")) {
-                            cleanerRow
-                                .controllerRow()
-                        }
                     }
                 }
                 .listStyle(.insetGrouped)
@@ -164,25 +147,8 @@ struct PatchProjectsView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Menu {
-                        Button {
-                            showCreate = true
-                        } label: {
-                            Label(language.text("patch.new"), systemImage: "doc.badge.plus")
-                        }
-                        Button {
-                            showImporter = true
-                        } label: {
-                            Label(language.text("patch.import"), systemImage: "square.and.arrow.down")
-                        }
-                        Button {
-                            showWallpaperImporter = true
-                        } label: {
-                            Label(
-                                language.text("wallpaper.import"),
-                                systemImage: "photo.badge.plus"
-                            )
-                        }
+                    Button {
+                        showImporter = true
                     } label: {
                         if store.isBusy || isImportingWallpapers {
                             ProgressView()
@@ -193,11 +159,6 @@ struct PatchProjectsView: View {
                     .disabled(store.isBusy || isImportingWallpapers)
                     .accessibilityLabel(language.text("patch.add"))
                 }
-                AppUtilityToolbar(
-                    language: language,
-                    onOpenSettings: onOpenSettings,
-                    onOpenLogs: onOpenLogs
-                )
             }
             .sheet(isPresented: $showImporter) {
                 FileDocumentPicker(
@@ -277,7 +238,11 @@ struct PatchProjectsView: View {
                 )
             }
             .onAppear {
-                reloadWallpaperPackages()
+                Task {
+                    await remoteManager.syncPatches()
+                    await PatchSyncManager.shared.syncPatches()
+                    store.reload()
+                }
                 consumeExternalImport()
 #if targetEnvironment(simulator)
                 if ProcessInfo.processInfo.arguments.contains(
@@ -301,6 +266,7 @@ struct PatchProjectsView: View {
             .onChange(of: draftCoordinator.importRequest?.id) { _ in
                 consumeExternalImport()
             }
+            .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .automatic), prompt: language.text("installed.search"))
         }
     }
 
@@ -659,13 +625,38 @@ extension View {
     }
 }
 
+private struct RemotePatchInstalledRow: View {
+    let patch: RemotePatchInfo
+    @ObservedObject var manager: PatchManager
+    let action: () -> Void
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: manager.isDownloaded(patch.id) ? "checkmark.circle.fill" : "arrow.down.circle")
+                .foregroundStyle(manager.isDownloaded(patch.id) ? .green : AppTheme.accent)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(patch.name).font(.subheadline.weight(.semibold))
+                Text(manager.downloadProgress[patch.id] ?? "v\(patch.version)")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 8)
+            Button(action: action) {
+                Image(systemName: manager.downloadingPatchIds.contains(patch.id) ? "hourglass" : "arrow.down.circle.fill")
+            }
+            .buttonStyle(.borderless)
+            .disabled(manager.downloadingPatchIds.contains(patch.id))
+            .accessibilityLabel("Descargar \(patch.name)")
+        }
+        .padding(.vertical, 2)
+    }
+}
+
 private struct PatchProjectDetailView: View {
     @Environment(\.appLanguage) private var language
     @ObservedObject var store: PatchProjectStore
     let projectID: UUID
     @State private var showEditor = false
     @State private var editingRule: PatchRule?
-    @State private var showApplyConfirmation = false
     @State private var showRestoreConfirmation = false
     @State private var showChangedRestoreConfirmation = false
     @State private var showResetConfirmation = false
@@ -806,7 +797,7 @@ private struct PatchProjectDetailView: View {
 
                 Section {
                     Button {
-                        showApplyConfirmation = true
+                        apply()
                     } label: {
                         actionLabel("patch.apply", systemImage: "checkmark.shield.fill")
                     }
@@ -865,16 +856,6 @@ private struct PatchProjectDetailView: View {
             PatchRuleEditorView(rule: rule) { updatedRule in
                 updateRule(updatedRule)
             }
-        }
-        .confirmationDialog(
-            language.text("patch.apply_confirm_title"),
-            isPresented: $showApplyConfirmation,
-            titleVisibility: .visible
-        ) {
-            Button(language.text("patch.apply")) { apply() }
-            Button(language.text("common.cancel"), role: .cancel) {}
-        } message: {
-            Text(language.text("patch.apply_confirm_message"))
         }
         .confirmationDialog(
             language.text("patch.restore_confirm_title"),

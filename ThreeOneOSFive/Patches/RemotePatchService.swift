@@ -31,6 +31,7 @@ final class RemotePatchService {
         TokenRefreshManager.shared.handleTokenRefresh(from: httpResponse)
         
         if httpResponse.statusCode == 401 {
+            NotificationCenter.default.post(name: .viniSessionInvalidated, object: nil)
             throw RemotePatchError.unauthorized
         }
         
@@ -64,6 +65,7 @@ final class RemotePatchService {
         TokenRefreshManager.shared.handleTokenRefresh(from: httpResponse)
         
         if httpResponse.statusCode == 401 {
+            NotificationCenter.default.post(name: .viniSessionInvalidated, object: nil)
             throw RemotePatchError.unauthorized
         }
         

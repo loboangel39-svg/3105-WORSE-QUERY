@@ -1,12 +1,8 @@
 import Foundation
 
 enum AppSection: Int, CaseIterable, Identifiable {
-    case home
-    case new
-    case sources
     case installed
-    case files
-    case search
+    case information
 
     var id: Int { rawValue }
 }
@@ -48,8 +44,7 @@ struct FeatureVisibility: Equatable {
 
     func isVisible(_ section: AppSection) -> Bool {
         switch section {
-        case .installed, .files, .search: return true
-        default: return false
+        case .installed, .information: return true
         }
     }
 }

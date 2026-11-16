@@ -45,6 +45,7 @@ final class PatchDownloadService {
                 
                 // 401 → token inválido
                 if httpResponse.statusCode == 401 {
+                    NotificationCenter.default.post(name: .viniSessionInvalidated, object: nil)
                     throw PatchDownloadError.unauthorized
                 }
                 

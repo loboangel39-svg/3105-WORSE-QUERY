@@ -477,6 +477,7 @@
 "tab.explore" = "Explorar";
 "tab.sources" = "Fuentes";
 "tab.installed" = "Instalados";
+"tab.information" = "Información";
 "installed.search" = "Buscar parches o fondos de pantalla";
 "installed.empty_title" = "No hay elementos instalados";
 "installed.empty_message" = "Importa un parche .3105 o un paquete de fondos .tendies para empezar.";

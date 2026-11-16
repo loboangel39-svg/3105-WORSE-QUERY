@@ -130,37 +130,13 @@ struct ContentView: View {
     @ViewBuilder
     private func sectionContent(_ section: AppSection) -> some View {
         switch section {
-        case .home:
-            RepositoryHomeView(
-                onOpenSettings: openSettings,
-                onOpenLogs: openLogs
-            )
-        case .new:
-            RepositoryNewView(
-                onOpenSettings: openSettings,
-                onOpenLogs: openLogs
-            )
-        case .sources:
-            RepositorySourcesView(
-                onOpenSettings: openSettings,
-                onOpenLogs: openLogs
-            )
         case .installed:
             PatchProjectsView(
                 onOpenSettings: openSettings,
                 onOpenLogs: openLogs
             )
-        case .files:
-            AppDataBrowserView(
-                tabSession: filesTabSession,
-                onOpenSettings: openSettings,
-                onOpenLogs: openLogs
-            )
-        case .search:
-            RepositorySearchView(
-                onOpenSettings: openSettings,
-                onOpenLogs: openLogs
-            )
+        case .information:
+            SettingsView()
         }
     }
 
@@ -230,23 +206,15 @@ private struct CompactTabLabel: View {
 private extension AppSection {
     var titleKey: String {
         switch self {
-        case .home: return "tab.home"
-        case .new: return "tab.new"
-        case .sources: return "tab.sources"
         case .installed: return "tab.installed"
-        case .files: return "tab.files"
-        case .search: return "tab.search"
+        case .information: return "tab.information"
         }
     }
 
     var systemImage: String {
         switch self {
-        case .home: return "house.fill"
-        case .new: return "clock.fill"
-        case .sources: return "shippingbox.fill"
         case .installed: return "tray.full.fill"
-        case .files: return "folder.fill"
-        case .search: return "magnifyingglass"
+        case .information: return "info.circle.fill"
         }
     }
 }

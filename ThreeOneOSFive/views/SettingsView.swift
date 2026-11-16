@@ -5,11 +5,10 @@ struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.appLanguage) private var language
     @EnvironmentObject private var appState: AppState
+    @EnvironmentObject private var authStore: VINIProductionStore
+    @EnvironmentObject private var enginePresentation: VINIEnginePresentationStore
     @AppStorage("interface.appearance") private var appearance = "dark"
     @AppStorage(AppLanguage.storageKey) private var languageCode = AppLanguage.spanish.rawValue
-    @AppStorage(FeatureVisibility.cleanerStorageKey) private var cleanerEnabled = true
-    @AppStorage(FeatureVisibility.developerModeStorageKey)
-    private var developerModeEnabled = false
 
     var body: some View {
         NavigationStack {
@@ -19,13 +18,33 @@ struct SettingsView: View {
                         AppLogo()
 
                         VStack(alignment: .leading, spacing: 3) {
-                            Text("3105").font(.headline)
+                            Text("VINI 2.0").font(.headline)
                             Text(language.text("common.version", appVersion))
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
                         }
                     }
                     .padding(.vertical, 4)
+                }
+                .controllerRow()
+
+                Section("Licencia") {
+                    LabeledContent("Estado", value: authStore.status)
+                    LabeledContent("Usuario", value: authStore.profile?.username ?? "—")
+                    LabeledContent("Plan", value: authStore.profile?.plan.uppercased() ?? "—")
+                    LabeledContent("Expiración", value: formattedDate(authStore.profile?.licenseExpiresAt))
+                    Button("Comprobar autorización") { Task { await authStore.refresh(force: true) } }
+                    Button("Cerrar sesión", role: .destructive) { Task { await authStore.logout() } }
+                }
+                .controllerRow()
+
+                Section("Dispositivo y acceso") {
+                    LabeledContent("Dispositivo", value: AppInfo.displayMachineName)
+                    LabeledContent("iOS", value: "\(AppInfo.osVersion) (\(AppInfo.osBuild))")
+                    LabeledContent("Proveedor", value: enginePresentation.displayText(appState: appState))
+                    LabeledContent("Kernel", value: appState.exploitStatus.isSuccess ? "Verificado · \(appState.accessMethod)" : "No verificado")
+                    LabeledContent("bad_query", value: appState.exploitStatus.isSuccess ? "Disponible" : "No verificado")
+                    LabeledContent("worse_query", value: appState.exploitStatus.isSuccess ? "Disponible" : "No verificado")
                 }
                 .controllerRow()
 
@@ -49,86 +68,6 @@ struct SettingsView: View {
                 }
                 .controllerRow()
 
-                Section {
-                    Toggle(isOn: $cleanerEnabled) {
-                        Label(language.text("tab.cleaner"), systemImage: "sparkles")
-                    }
-                    Toggle(isOn: $developerModeEnabled) {
-                        Label(
-                            language.text("settings.developer_mode"),
-                            systemImage: "hammer.fill"
-                        )
-                    }
-                } header: {
-                    Text(language.text("dashboard.features"))
-                } footer: {
-                    Text(language.text("settings.developer_mode_footer"))
-                }
-                .controllerRow()
-
-                if WallpaperFeatureSupportPolicy.isSupported(
-                    major: AppInfo.versionTuple.major
-                ) {
-                    Section {
-                        NavigationLink {
-                            WallpaperResetSettingsView()
-                        } label: {
-                            Label(
-                                language.text("wallpaper.reset"),
-                                systemImage: "arrow.counterclockwise"
-                            )
-                        }
-                    } header: {
-                        Text(language.text("tab.wallpapers"))
-                    } footer: {
-                        Text(language.text("wallpaper.reset_settings_footer"))
-                    }
-                    .controllerRow()
-                }
-
-                if #available(iOS 26.0, *) {
-                    Section("WQFiles") {
-                        NavigationLink(language.text("settings.wqfiles_tools")) {
-                            WQFilesIntegratedView().ignoresSafeArea()
-                                .navigationBarTitleDisplayMode(.inline)
-                        }
-                    }
-                    .controllerRow()
-                }
-
-                Section(language.text("common.device")) {
-                    LabeledContent(language.text("dashboard.hardware_model"), value: AppInfo.displayMachineName)
-                    LabeledContent(language.text("settings.ios_version"), value: "\(AppInfo.osVersion) (\(AppInfo.osBuild))")
-                }
-                .controllerRow()
-
-                Section {
-                    HStack {
-                        Text(language.text("settings.current_version"))
-                        Spacer()
-                        Text(language.text(appState.isSupported ? "settings.supported" : "settings.unsupported"))
-                        .foregroundStyle(appState.isSupported ? Color.green : Color.red)
-                    }
-                    LabeledContent("iOS 17", value: ExploitSupportPolicy.verifiedIOS17Range)
-                    LabeledContent("iOS 18", value: ExploitSupportPolicy.verifiedIOS18Range)
-                    LabeledContent("iOS 26", value: ExploitSupportPolicy.verifiedIOS26Range)
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("iOS 27.0")
-                            .font(.body)
-                        ForEach(ExploitSupportPolicy.verifiedIOS27Builds, id: \.build) { version in
-                            Text(versionLabel(version))
-                            .font(.caption.monospaced())
-                            .foregroundStyle(.secondary)
-                        }
-                    }
-                    .padding(.vertical, 2)
-                } header: {
-                    Text(language.text("settings.verified_versions"))
-                } footer: {
-                    Text(language.text("settings.supported_versions_footer"))
-                }
-                .controllerRow()
-
                 Section(language.text("settings.open_source_licenses")) {
                     NavigationLink(language.text("settings.open_source_licenses")) {
                         ScrollView { Text(openSourceLicenses).font(.caption).textSelection(.enabled).padding() }
@@ -139,7 +78,7 @@ struct SettingsView: View {
             }
             .controllerSurface()
             .tint(AppTheme.accent)
-            .navigationTitle(language.text("settings.title"))
+            .navigationTitle("Información")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -148,6 +87,11 @@ struct SettingsView: View {
                 }
             }
         }
+    }
+
+    private func formattedDate(_ value: String?) -> String {
+        guard let value, let date = try? VINIStagingEnvironment.date(value) else { return "—" }
+        return date.formatted(date: .abbreviated, time: .shortened)
     }
 
     private var openSourceLicenses: String {

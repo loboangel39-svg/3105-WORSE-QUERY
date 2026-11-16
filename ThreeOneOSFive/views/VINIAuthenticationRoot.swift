@@ -9,14 +9,17 @@ struct VINIAuthenticationRoot: View {
     var body: some View {
         TimelineView(.periodic(from: .now, by: 1)) { _ in
             if store.phase == .authorized && store.authorizationDeadline > ProcessInfo.processInfo.systemUptime {
-                ContentView()
+                ContentView().environmentObject(store)
             } else if store.phase == .checking && store.hasStoredIdentity == true {
                 VINIConnectingView()
             } else { VINILicenseLogin(store: store) }
         }
         .task { await store.bootstrap() }
         .onChange(of: scenePhase) { phase in
-            if phase == .active { Task { await store.refresh(force: true) } }
+            if phase == .active,
+               store.authorizationDeadline <= ProcessInfo.processInfo.systemUptime {
+                Task { await store.refresh(force: true) }
+            }
         }
         .onChange(of: store.phase) { phase in if phase == .authorized { onAuthorized() } }
         .task(id: store.authorizationDeadline) {
@@ -29,6 +32,9 @@ struct VINIAuthenticationRoot: View {
         }
         .onOpenURL { url in
             if store.phase == .authorized && store.authorizationDeadline > ProcessInfo.processInfo.systemUptime { onImport(url) }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .viniSessionInvalidated)) { _ in
+            Task { await store.refresh(force: true) }
         }
     }
 }
