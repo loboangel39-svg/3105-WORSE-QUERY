@@ -17,7 +17,6 @@ struct PatchProjectsView: View {
     @Environment(\.appLanguage) private var language
     @EnvironmentObject private var draftCoordinator: PatchDraftCoordinator
     @EnvironmentObject private var store: PatchProjectStore
-    @AppStorage(FeatureVisibility.cleanerStorageKey) private var cleanerEnabled = true
     @State private var showCreate = false
     @State private var showImporter = false
     @State private var showWallpaperImporter = false
@@ -120,7 +119,7 @@ struct PatchProjectsView: View {
                 .listStyle(.insetGrouped)
             .controllerSurface()
             }
-            .navigationTitle(language.text("tab.installed"))
+            .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -214,9 +213,15 @@ struct PatchProjectsView: View {
                     secondaryButton: .cancel(Text(language.text("common.cancel")))
                 )
             }
+            .alert(item: $store.alert) { alert in
+                Alert(
+                    title: Text(language.text(alert.titleKey)),
+                    message: Text(alert.message(language: language)),
+                    dismissButton: .default(Text(language.text("common.ok")))
+                )
+            }
             .onAppear {
                 Task {
-                    await PatchManager.shared.syncPatches()
                     await PatchSyncManager.shared.syncPatches()
                     store.reload()
                 }
@@ -242,6 +247,19 @@ struct PatchProjectsView: View {
             }
             .onChange(of: draftCoordinator.importRequest?.id) { _ in
                 consumeExternalImport()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .patchesDidChange)) { _ in
+                store.reload()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .viniForegroundRefresh)) { _ in
+                Task { await PatchSyncManager.shared.syncIfStale() }
+            }
+            .task {
+                while !Task.isCancelled {
+                    try? await Task.sleep(for: .seconds(PatchSyncManager.foregroundRefreshInterval))
+                    guard !Task.isCancelled else { break }
+                    await PatchSyncManager.shared.syncIfStale()
+                }
             }
         }
     }
@@ -375,10 +393,33 @@ struct PatchProjectsView: View {
             }
             .buttonStyle(.plain)
         } else {
-            NavigationLink {
-                PatchProjectDetailView(store: store, projectID: item.id)
-            } label: {
-                PatchProjectRow(item: item, language: language)
+            HStack(spacing: 8) {
+                NavigationLink {
+                    PatchProjectDetailView(store: store, projectID: item.id)
+                } label: {
+                    PatchProjectRow(item: item, language: language)
+                }
+                .buttonStyle(.plain)
+
+                if let receipt = DevicePatchService.latestReceipt(projectID: item.id) {
+                    Button {
+                        store.directRestore(projectID: receipt.projectID)
+                    } label: {
+                        Image(systemName: store.isBusy ? "hourglass" : "arrow.uturn.backward.circle.fill")
+                    }
+                    .buttonStyle(.borderless)
+                    .disabled(store.isBusy)
+                    .accessibilityLabel(language.text("patch.restore"))
+                } else {
+                    Button {
+                        store.directApply(projectID: item.id)
+                    } label: {
+                        Image(systemName: store.isBusy ? "hourglass" : "checkmark.circle.fill")
+                    }
+                    .buttonStyle(.borderless)
+                    .disabled(store.isBusy)
+                    .accessibilityLabel(language.text("patch.apply"))
+                }
             }
         }
     }
@@ -924,7 +965,6 @@ private struct PatchProjectDetailView: View {
                 await MainActor.run {
                     store.reload()
                     isWorking = false
-                    actionAlert = PatchStoreAlert(titleKey: "common.done", messageKey: "patch.applied_message")
                 }
             } catch let error as PatchPackageError {
                 await MainActor.run {
@@ -1006,10 +1046,7 @@ private struct PatchProjectDetailView: View {
                     try DevicePatchService.restore(receipt: receipt)
                     await MainActor.run {
                         isWorking = false
-                        actionAlert = PatchStoreAlert(
-                            titleKey: "common.done",
-                            messageKey: "patch.restored_message"
-                        )
+                        store.reload()
                     }
                 } else {
                     await MainActor.run {
@@ -1050,7 +1087,7 @@ private struct PatchProjectDetailView: View {
                 )
                 await MainActor.run {
                     isWorking = false
-                    actionAlert = PatchStoreAlert(titleKey: "common.done", messageKey: "patch.restored_message")
+                    store.reload()
                 }
             } catch let error as PatchPackageError {
                 await MainActor.run {
@@ -1081,10 +1118,7 @@ private struct PatchProjectDetailView: View {
                 )
                 await MainActor.run {
                     isWorking = false
-                    actionAlert = PatchStoreAlert(
-                        titleKey: "common.done",
-                        messageKey: "patch.reset_message"
-                    )
+                    store.reload()
                 }
             } catch let error as PatchPackageError {
                 await MainActor.run {

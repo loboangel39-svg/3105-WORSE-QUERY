@@ -213,7 +213,7 @@ struct ControllerHeader: View {
         HStack(alignment: .center, spacing: 12) {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 9) {
-                    Text("3105").font(AppTheme.sans(24, relativeTo: .title2).weight(.heavy)).tracking(1.2)
+                    Text("VINI 2.0").font(AppTheme.sans(24, relativeTo: .title2).weight(.heavy)).tracking(1.2)
                     Text("v" + (Bundle.main.object(forInfoDictionaryKey: "AppReleaseDisplayVersion") as? String ?? Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""))
                         .font(AppTheme.mono(10).weight(.bold)).foregroundStyle(AppTheme.accent)
                         .padding(.horizontal, 7).padding(.vertical, 4)

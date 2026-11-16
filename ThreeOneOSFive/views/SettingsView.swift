@@ -45,9 +45,6 @@ struct SettingsView: View {
                     LabeledContent("Dispositivo", value: AppInfo.displayMachineName)
                     LabeledContent("iOS", value: "\(AppInfo.osVersion) (\(AppInfo.osBuild))")
                     LabeledContent("Proveedor", value: enginePresentation.displayText(appState: appState))
-                    LabeledContent("Kernel", value: appState.exploitStatus.isSuccess ? "Verificado · \(appState.accessMethod)" : "No verificado")
-                    LabeledContent("bad_query", value: appState.exploitStatus.isSuccess ? "Disponible" : "No verificado")
-                    LabeledContent("worse_query", value: appState.exploitStatus.isSuccess ? "Disponible" : "No verificado")
                 }
                 .controllerRow()
 
@@ -81,14 +78,8 @@ struct SettingsView: View {
             }
             .controllerSurface()
             .tint(AppTheme.accent)
-            .navigationTitle("Información")
+            .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(language.text("common.done")) { dismiss() }
-                        .fontWeight(.semibold)
-                }
-            }
         }
     }
 

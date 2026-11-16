@@ -20,6 +20,9 @@ struct VINIAuthenticationRoot: View {
                store.authorizationDeadline <= ProcessInfo.processInfo.systemUptime {
                 Task { await store.refresh(force: true) }
             }
+            if phase == .active {
+                NotificationCenter.default.post(name: .viniForegroundRefresh, object: nil)
+            }
         }
         .onChange(of: store.phase) { phase in if phase == .authorized { onAuthorized() } }
         .task(id: store.authorizationDeadline) {

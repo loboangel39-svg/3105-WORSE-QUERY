@@ -8,6 +8,7 @@ import CommonCrypto
 // Los patches se guardan en Documents/RemotePatches/ (PatchStorage)
 // y también se copian a Application Support/PatchProjects/ para compatibilidad.
 
+@MainActor
 final class PatchSyncManager: ObservableObject {
     static let shared = PatchSyncManager()
     
@@ -18,6 +19,8 @@ final class PatchSyncManager: ObservableObject {
     
     private let patchManager = PatchManager.shared
     private let workerURL = "https://vini-v2-api.loboangel39.workers.dev"
+    static let foregroundRefreshInterval: TimeInterval = 45
+    private var lastAttemptUptime: TimeInterval = 0
     
     // Ruta donde PatchProjectLibrary busca los patches (compatibilidad)
     private var patchesDirectory: URL {
@@ -29,6 +32,9 @@ final class PatchSyncManager: ObservableObject {
     
     // MARK: - Sincronizar patches remotos (delegar a PatchManager)
     func syncPatches() async {
+        let now = ProcessInfo.processInfo.systemUptime
+        guard now - lastAttemptUptime >= 1 else { return }
+        lastAttemptUptime = now
         await patchManager.syncPatches()
         
         // Copiar patches de RemotePatches/ a PatchProjects/ para compatibilidad
@@ -86,6 +92,11 @@ final class PatchSyncManager: ObservableObject {
             try? PatchKeyStore.delete(for: summary)
         }
     }
+
+    func syncIfStale() async {
+        guard ProcessInfo.processInfo.systemUptime - lastAttemptUptime >= Self.foregroundRefreshInterval else { return }
+        await syncPatches()
+    }
     
     // MARK: - Verificar si ya está descargado
     func isDownloaded(_ patchId: String) -> Bool {
@@ -135,4 +146,5 @@ final class PatchSyncManager: ObservableObject {
 extension Notification.Name {
     static let patchesDidChange = Notification.Name("patchesDidChange")
     static let viniSessionInvalidated = Notification.Name("vini.session.invalidated")
+    static let viniForegroundRefresh = Notification.Name("vini.foreground.refresh")
 }

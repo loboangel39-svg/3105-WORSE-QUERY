@@ -15,7 +15,7 @@ struct ThreeOneOSFiveApp: App {
     init() {
         setupLogCapture()
         AppTheme.configure()
-        log("app: 3105 launching — iOS \(AppInfo.osVersion) (\(AppInfo.osBuild)) \(AppInfo.machineName)")
+        log("app: VINI 2.0 launching — iOS \(AppInfo.osVersion) (\(AppInfo.osBuild)) \(AppInfo.machineName)")
     }
     private var language: AppLanguage { AppLanguage(rawValue: languageCode) ?? .spanish }
     var body: some Scene {
@@ -59,9 +59,8 @@ struct ThreeOneOSFiveApp: App {
         let v = AppInfo.versionTuple
         let compatibility = VINICompatibilityResolver.resolve(major: v.major, minor: v.minor, patch: v.patch, build: AppInfo.osBuild)
         let selected = compatibility.sandbox.rawValue == "none" ? compatibility.kernel.rawValue : compatibility.sandbox.rawValue
-        guard selected != "none" else { return "Acceso sin verificar" }
-        if verifiedProvider == selected { return selected + " · Activo" }
-        return selected + " · Seleccionado"
+        guard selected != "none" else { return "No documentado" }
+        return selected
     }
 }
 

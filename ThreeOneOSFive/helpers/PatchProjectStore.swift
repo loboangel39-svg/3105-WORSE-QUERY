@@ -39,6 +39,7 @@ final class PatchProjectStore: ObservableObject {
 
     init() {
         isBusy = true
+        let startedAt = ProcessInfo.processInfo.systemUptime
         Task.detached(priority: .userInitiated) { [weak self] in
             let loadedItems = PatchProjectLibrary.load()
             await self?.finishInitialLoad(loadedItems)
@@ -47,6 +48,66 @@ final class PatchProjectStore: ObservableObject {
 
     func reload() {
         items = PatchProjectLibrary.load()
+    }
+
+    /// Direct actions used by the compact Installed list. They delegate to the
+    /// same DevicePatchService transaction path as the detail screen.
+    func directApply(projectID: UUID) {
+        guard !isBusy, let item = items.first(where: { $0.id == projectID }),
+              let baseProject = item.project,
+              DevicePatchService.latestReceipt(projectID: projectID) == nil else { return }
+        isBusy = true
+        Task.detached(priority: .userInitiated) { [weak self] in
+            do {
+                let project = item.summary.schemaVersion >= 2 && item.canInspectContents
+                    ? try PatchProjectLibrary.synchronizeWorkspace(item: item)
+                    : baseProject
+                let receipt = try DevicePatchService.apply(project: project)
+                guard try DevicePatchService.verifyState(receipt: receipt, original: false) else {
+                    throw PatchPackageError.invalidProject
+                }
+                log("patch apply: \(String(format: \"%.3f\", ProcessInfo.processInfo.systemUptime - startedAt))s")
+                await self?.finishDirectOperation()
+            } catch {
+                await self?.failDirectOperation()
+            }
+        }
+    }
+
+    func directRestore(projectID: UUID) {
+        guard !isBusy, let receipt = DevicePatchService.latestReceipt(projectID: projectID) else { return }
+        isBusy = true
+        let startedAt = ProcessInfo.processInfo.systemUptime
+        Task.detached(priority: .userInitiated) { [weak self] in
+            do {
+                let inspection = try DevicePatchService.inspectRestore(receipt: receipt)
+                guard inspection.changedTargets.isEmpty else {
+                    await self?.failDirectOperation(recoveryRequired: true)
+                    return
+                }
+                try DevicePatchService.restore(receipt: receipt)
+                guard try DevicePatchService.verifyState(receipt: receipt, original: true) else {
+                    throw PatchPackageError.invalidProject
+                }
+                log("patch restore: \(String(format: \"%.3f\", ProcessInfo.processInfo.systemUptime - startedAt))s")
+                await self?.finishDirectOperation()
+            } catch {
+                await self?.failDirectOperation()
+            }
+        }
+    }
+
+    private func finishDirectOperation() {
+        reload()
+        isBusy = false
+    }
+
+    private func failDirectOperation(recoveryRequired: Bool = false) {
+        isBusy = false
+        alert = PatchStoreAlert(
+            titleKey: "common.failed",
+            messageKey: recoveryRequired ? "patch.restore_changed_title" : "patch.error.apply"
+        )
     }
 
     private func finishInitialLoad(_ loadedItems: [PatchLibraryItem]) {

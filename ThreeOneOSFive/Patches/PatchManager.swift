@@ -33,10 +33,13 @@ final class PatchManager: ObservableObject {
     func syncPatches() async {
         guard !isSyncing else { return }
         isSyncing = true
+        let startedAt = ProcessInfo.processInfo.systemUptime
         
         do {
             // 1. Obtener lista de patches disponibles
+            let catalogStartedAt = ProcessInfo.processInfo.systemUptime
             let patches = try await remoteService.fetchAvailablePatches()
+            log("remote catalog: \(String(format: \"%.3f\", ProcessInfo.processInfo.systemUptime - catalogStartedAt))s, count=\(patches.count)")
             
             await MainActor.run {
                 self.availablePatches = patches
@@ -84,6 +87,7 @@ final class PatchManager: ObservableObject {
             NotificationCenter.default.post(name: .patchesDidChange, object: nil)
             
             print("[PatchManager] Sync complete — \(patches.count) patches available")
+            log("remote sync: \(String(format: \"%.3f\", ProcessInfo.processInfo.systemUptime - startedAt))s")
         } catch {
             await MainActor.run { self.isSyncing = false }
             print("[PatchManager] Sync failed: \(error.localizedDescription)")
