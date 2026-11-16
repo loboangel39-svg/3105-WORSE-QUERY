@@ -11,6 +11,7 @@ struct VINIProductionTargetDescriptor: Equatable {
     let sha256: String
     let fileSize: Int
     let category: String
+    let categoryID: Int?
     let name: String
     let description: String?
     let status: VINIProductionTargetStatus
@@ -31,12 +32,13 @@ enum VINIProductionTargetModel {
                   target.packageRevision == item.revision,
                   target.packageSHA256 == item.sha256,
                   target.fileSize == item.fileSize else { return nil }
+            let categoryID = item.categoryID ?? VINIProductionCategoryRegistry.categoryID(for: target.category)
             let state = stateReader?.state(targetID: target.targetID, projectID: target.projectID,
                 packageDigest: Data(hex: target.packageSHA256)) ?? .prepared
             return VINIProductionTargetDescriptor(targetID: target.targetID, remotePatchID: patch.id,
                 packageID: target.packageID, projectID: target.projectID, revision: target.packageRevision,
                 sha256: target.packageSHA256, fileSize: target.fileSize, category: target.category,
-                name: patch.name, description: patch.description,
+                name: patch.name, description: patch.description, categoryID: categoryID,
                 status: state == .applied ? .applied : state == .restorePending ? .restorePending : state == .restored ? .unavailable : .prepared)
         }
     }

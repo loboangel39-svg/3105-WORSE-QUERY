@@ -80,6 +80,8 @@ jobs:
             ThreeOneOSFive/helpers/VINIProductionTargetModel.swift \
             ThreeOneOSFive/helpers/VINITransactionStateReader.swift \
             ThreeOneOSFive/helpers/VINITransactionAssociationStore.swift \
+            ThreeOneOSFive/helpers/VINIProductionCategoryRegistry.swift \
+            ThreeOneOSFive/helpers/VINIPackageCategoryStore.swift \
             ThreeOneOSFive/helpers/VINIStagingClient.swift \
             ThreeOneOSFive/helpers/VINIRemoteContract.swift \
             ThreeOneOSFive/helpers/VNIRemotePackageCoordinator.swift \

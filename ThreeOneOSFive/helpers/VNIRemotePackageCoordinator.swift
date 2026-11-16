@@ -10,6 +10,7 @@ struct VINIRemotePreparedPackage: Codable, Equatable {
     let sha256: String
     let fileSize: Int
     let packageURL: URL
+    let categoryID: Int?
 }
 
 /// Coordinates remote catalog/import state without changing the codec or transaction engine.
@@ -18,18 +19,19 @@ actor VINIRemotePackageCoordinator {
     private let client: VINIStagingClient
     private let fileManager: FileManager
     private let cache: VINIRemotePackageCache
+    private let categoryStore: VINIPackageCategoryStore
     private(set) var skippedNoTarget = 0
     private(set) var skippedLocked = 0
     private(set) var skippedFailed = 0
     init(client: VINIStagingClient, fileManager: FileManager = .default) {
-        self.client = client; self.fileManager = fileManager; self.cache = (try! VINIRemotePackageCache(fileManager: fileManager))
+        self.client = client; self.fileManager = fileManager; self.cache = (try! VINIRemotePackageCache(fileManager: fileManager)); self.categoryStore = VINIPackageCategoryStore(fileManager: fileManager)
     }
 
     /// Production wiring uses the single definitive Worker. Tests inject the
     /// same client with a synthetic transport while retaining this base URL.
     init(fileManager: FileManager = .default) {
         self.client = VINIStagingClient(baseURL: VINIProductionEnvironment.base)
-        self.fileManager = fileManager; self.cache = (try! VINIRemotePackageCache(fileManager: fileManager))
+        self.fileManager = fileManager; self.cache = (try! VINIRemotePackageCache(fileManager: fileManager)); self.categoryStore = VINIPackageCategoryStore(fileManager: fileManager)
     }
 
     func prepareAuthorizedPackages() async throws -> [VINIRemotePreparedPackage] {
@@ -80,8 +82,10 @@ actor VINIRemotePackageCoordinator {
         }
         guard decoded.project.id == target.projectID else { throw CoordinatorError.invalidIdentity }
         let url = try PatchProjectLibrary.save(data: bytes, projectName: decoded.project.name, fileManager: fileManager)
+        let categoryID = VINIProductionCategoryRegistry.categoryID(for: target.category)
+        if let categoryID { try categoryStore.record(VINIPackageCategoryAssociation(userID: userID, remotePatchID: entry.id, packageID: target.packageID, projectID: target.projectID, sha256: digest, revision: target.packageRevision, categoryID: categoryID)) }
         return VINIRemotePreparedPackage(remotePatchID: entry.id, targetID: target.targetID, packageID: target.packageID,
-            projectID: target.projectID, revision: target.packageRevision, sha256: digest, fileSize: bytes.count, packageURL: url)
+            projectID: target.projectID, revision: target.packageRevision, sha256: digest, fileSize: bytes.count, packageURL: url, categoryID: categoryID)
     }
 
 }

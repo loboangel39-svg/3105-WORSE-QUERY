@@ -9,6 +9,8 @@
 /* Begin PBXBuildFile section */
 		AA3105070000000000000002 /* VINITransactionStateReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA3105070000000000000001; };
 		AA3105080000000000000002 /* VINITransactionAssociationStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA3105080000000000000001; };
+		AA3105090000000000000002 /* VINIProductionCategoryRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA3105090000000000000001; };
+		AA31050A0000000000000002 /* VINIPackageCategoryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA31050A0000000000000001; };
 		AA3105060000000000000002 /* VNIRemotePackageCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA3105060000000000000001; };
 		AA3105060000000000000004 /* VINIRemotePackageCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA3105060000000000000003; };
 		AA3105060000000000000006 /* VINIProductionTargetModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA3105060000000000000005; };
@@ -120,6 +122,8 @@
 /* Begin PBXFileReference section */
 		AA3105070000000000000001 /* VINITransactionStateReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VINITransactionStateReader.swift; sourceTree = "<group>"; };
 		AA3105080000000000000001 /* VINITransactionAssociationStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VINITransactionAssociationStore.swift; sourceTree = "<group>"; };
+		AA3105090000000000000001 /* VINIProductionCategoryRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VINIProductionCategoryRegistry.swift; sourceTree = "<group>"; };
+		AA31050A0000000000000001 /* VINIPackageCategoryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VINIPackageCategoryStore.swift; sourceTree = "<group>"; };
 		AA3105060000000000000001 /* VNIRemotePackageCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VNIRemotePackageCoordinator.swift; sourceTree = "<group>"; };
 		AA3105060000000000000003 /* VINIRemotePackageCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VINIRemotePackageCache.swift; sourceTree = "<group>"; };
 		AA3105060000000000000005 /* VINIProductionTargetModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VINIProductionTargetModel.swift; sourceTree = "<group>"; };
@@ -373,6 +377,8 @@
 			children = (
 				AA3105070000000000000001 /* VINITransactionStateReader.swift */,
 				AA3105080000000000000001 /* VINITransactionAssociationStore.swift */,
+				AA3105090000000000000001 /* VINIProductionCategoryRegistry.swift */,
+				AA31050A0000000000000001 /* VINIPackageCategoryStore.swift */,
 				AA3105060000000000000001 /* VNIRemotePackageCoordinator.swift */,
 				AA3105060000000000000003 /* VINIRemotePackageCache.swift */,
 				AA3105060000000000000005 /* VINIProductionTargetModel.swift */,
@@ -577,6 +583,8 @@
 				AA3105060000000000000006 /* VINIProductionTargetModel.swift in Sources */,
 				AA3105070000000000000002 /* VINITransactionStateReader.swift in Sources */,
 				AA3105080000000000000002 /* VINITransactionAssociationStore.swift in Sources */,
+				AA3105090000000000000002 /* VINIProductionCategoryRegistry.swift in Sources */,
+				AA31050A0000000000000002 /* VINIPackageCategoryStore.swift in Sources */,
 				AB1050010000000000000001,
 				AB1050010000000000000004,
 				AB1050010000000000000007,

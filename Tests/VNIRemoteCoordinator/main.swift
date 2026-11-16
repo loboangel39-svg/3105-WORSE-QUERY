@@ -94,6 +94,8 @@ func run(_ package: Data, project: PatchProject, catalogData: Data, download: Da
             remotePatchID: "dynamic", targetID: "fixture.target", packageID: project.id, projectID: project.id,
             revision: "fixture-r1", sha256: digest(encoded), fileSize: encoded.count, packageURL: prepared[0].packageURL)])
         try expect(dynamic.count == 1 && dynamic[0].status == .prepared, "authorized imported target reaches production model")
+        try expect(dynamic[0].categoryID == 1 && VINIProductionCategoryRegistry.categoryID(for: "visuals") == 2 && VINIProductionCategoryRegistry.categoryID(for: "offsets") == 3, "numeric category IDs remain stable")
+        try expect(VINIProductionCategoryRegistry.displayName(for: 2) == "Visuals", "category display name is separate from numeric identity")
         try expect(VINIProductionTargetModel.resolve(catalog: [dynamicPatch], prepared: []).isEmpty, "unprepared target is not dashboard-ready")
 
         let cacheRoot = FileManager.default.temporaryDirectory.appendingPathComponent("vini-cache-\(UUID().uuidString)")
