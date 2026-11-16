@@ -434,7 +434,7 @@ struct PatchProjectsView: View {
                     .accessibilityLabel(language.text("patch.apply"))
                 }
             }
-            .navigationDestination(item: $recoveryProjectID) { projectID in
+            .sheet(item: $recoveryProjectID) { projectID in
                 PatchProjectDetailView(store: store, projectID: projectID)
             }
         }
