@@ -233,7 +233,12 @@ private struct RepositorySourceDetailView: View {
     }
 
     var body: some View {
-        List {`r`n                Section {`r`n                    NavigationLink { RemotePatchesView() } label: {`r`n                        Label("Remote Patches", systemImage: "arrow.down.circle.fill")`r`n                    }`r`n                }
+        List {
+            Section {
+                NavigationLink { RemotePatchesView() } label: {
+                    Label("Remote Patches", systemImage: "arrow.down.circle.fill")
+                }
+            }
             sourceHeader
 
             if let source, store.state(for: source.id) == .loading {
