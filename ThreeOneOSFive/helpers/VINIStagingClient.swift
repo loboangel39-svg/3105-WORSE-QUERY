@@ -249,9 +249,11 @@ actor VINIStagingClient {
         // The current API has no digest field. Only the independently pinned 2C fixture
         // can be marked verified; do not invent a checksum for arbitrary packages.
         guard id == VINIStagingEnvironment.fixtureID else { throw VINIStagingError.integrity }
-        _ = try await authorized("api/app/me")
         let cache = try packageCacheURL(id: id)
-        if let cached = try? Data(contentsOf: cache), try validateFixture(cached) { return cached }
+        if let cached = try? Data(contentsOf: cache), try validateFixture(cached) {
+            _ = try await authorized("api/app/me")
+            return cached
+        }
         let bytes = try await authorized("api/app/patches/" + id + "/download")
         try storeFixture(bytes, id: id)
         return bytes
