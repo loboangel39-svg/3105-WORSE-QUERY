@@ -4,6 +4,7 @@ func log(_ message: String) { print(message) }
 
 final class FixtureVault: VINIStagingVault {
     var value: VINIStagingCredentials?
+    init(value: VINIStagingCredentials?) { self.value = value }
     func load() throws -> VINIStagingCredentials? { value }
     func save(_ credentials: VINIStagingCredentials) throws { value = credentials }
     func delete() throws { value = nil }
