@@ -9,7 +9,7 @@ Este workflow experimental añade `push` únicamente para
 
 - `swiftc -parse` del contrato, cliente y coordinador: **syntax check**, no prueba funcional.
 - `Tests/VINIContracts/main.swift`: pruebas de contrato/metadata, cuando se compilen mediante el workflow existente; no se declara aquí como coordinador runtime.
-- `Tests/VINIStaging/main.swift`: **native macOS runtime fixtures** con transporte sintético, Keychain macOS, codec original sin modificar y fixtures propios. Incluye login, renovación 401, cambio de cuenta, catálogo/descarga aislados y Apply/Restore sobre fixtures; no es ejecución sobre aplicaciones de terceros.
+- `Tests/VINIStaging/main.swift`: **native macOS runtime fixtures** con transporte sintético, Keychain macOS, codec original sin modificar y fixtures propios. Incluye sesión, renovación 401, cambio de cuenta y round-trip del codec; el workflow marca explícitamente los escenarios live Worker/R2/licencias como `SKIPPED` porque no usa secretos de producción.
 - `xcodebuild` para `iphoneos`, `ARCHS=arm64`, firma deshabilitada y verificación `lipo -info`.
 
 ## Límites de la evidencia

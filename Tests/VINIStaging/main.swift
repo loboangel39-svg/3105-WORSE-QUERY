@@ -96,6 +96,11 @@ func expect(_ condition: Bool, _ name: String) throws { if !condition { print("F
         var corruptRejected = false
         do { _ = try PatchPackageCodec.decode(corrupt,password:nil) } catch { corruptRejected = true }
         try expect(corruptRejected, "corrupt package rejected")
+        if ProcessInfo.processInfo.environment["VINI_STAGING_SKIP_LIVE"] == "1" {
+            print("SKIPPED: live Worker/R2/license scenarios (synthetic fixture mode)")
+            print("PASS native macOS synthetic staging fixtures; no live authorization or iPhone execution claimed")
+            return
+        }
         guard let fixture = ProcessInfo.processInfo.environment["VINI_STAGING_TEST_LICENSES"],
               let data = fixture.data(using:.utf8), let licenses = try JSONSerialization.jsonObject(with:data) as? [String:String]
         else { throw VINIStagingError.signedOut }

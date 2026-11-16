@@ -39,6 +39,8 @@ jobs:
           swiftc -parse ThreeOneOSFive/helpers/VINIStagingClient.swift
           swiftc -parse ThreeOneOSFive/helpers/VINIRemoteContract.swift
       - name: Native staging runtime fixtures
+        env:
+          VINI_STAGING_SKIP_LIVE: "1"
         shell: bash
         run: |
           set -euo pipefail
