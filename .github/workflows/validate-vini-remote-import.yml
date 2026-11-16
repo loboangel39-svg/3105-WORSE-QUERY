@@ -67,6 +67,7 @@ jobs:
             ThreeOneOSFive/helpers/PatchProjectLibrary.swift \
             ThreeOneOSFive/helpers/PatchWorkspaceService.swift \
             ThreeOneOSFive/helpers/PatchTransaction.swift \
+            ThreeOneOSFive/helpers/VINIDualBackupStore.swift \
             ThreeOneOSFive/helpers/PatchKeyStore.swift \
             ThreeOneOSFive/helpers/VINIRemotePackageCache.swift \
             ThreeOneOSFive/helpers/VINIProductionTargetModel.swift \
