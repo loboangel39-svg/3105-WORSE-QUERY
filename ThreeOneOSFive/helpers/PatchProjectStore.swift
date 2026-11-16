@@ -27,6 +27,7 @@ final class PatchProjectStore: ObservableObject {
     @Published var passwordRequest: PatchPasswordRequest?
     @Published var alert: PatchStoreAlert?
     @Published var unlockErrorKey: String?
+    @Published private(set) var recoveryRequiredIDs: Set<UUID> = []
 
     private struct PendingUnlock {
         let data: Data
@@ -56,6 +57,10 @@ final class PatchProjectStore: ObservableObject {
         }
     }
 
+    func clearRecoveryRequired(projectID: UUID) {
+        recoveryRequiredIDs.remove(projectID)
+    }
+
     private func replaceItems(_ loadedItems: [PatchLibraryItem]) {
         items = loadedItems
     }
@@ -65,6 +70,7 @@ final class PatchProjectStore: ObservableObject {
     func directApply(projectID: UUID) {
         guard !isBusy, let item = items.first(where: { $0.id == projectID }),
               let baseProject = item.project,
+              !recoveryRequiredIDs.contains(projectID),
               DevicePatchService.latestReceipt(projectID: projectID) == nil else { return }
         isBusy = true
         let startedAt = ProcessInfo.processInfo.systemUptime
@@ -94,7 +100,7 @@ final class PatchProjectStore: ObservableObject {
             do {
                 let inspection = try DevicePatchService.inspectRestore(receipt: receipt)
                 guard inspection.changedTargets.isEmpty else {
-                    await self?.failDirectOperation(recoveryRequired: true)
+                    await self?.markRecoveryRequired(projectID: projectID)
                     return
                 }
                 try DevicePatchService.restore(receipt: receipt)
@@ -113,6 +119,12 @@ final class PatchProjectStore: ObservableObject {
     private func finishDirectOperation() {
         reload()
         isBusy = false
+    }
+
+    private func markRecoveryRequired(projectID: UUID) {
+        recoveryRequiredIDs.insert(projectID)
+        isBusy = false
+        alert = PatchStoreAlert(titleKey: "common.failed", messageKey: "patch.restore_changed_title")
     }
 
     private func failDirectOperation(recoveryRequired: Bool = false) {

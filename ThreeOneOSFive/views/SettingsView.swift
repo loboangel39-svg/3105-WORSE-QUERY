@@ -19,7 +19,7 @@ struct SettingsView: View {
 
                         VStack(alignment: .leading, spacing: 3) {
                             Text("VINI 2.0").font(.headline)
-                            Text(language.text("common.version", appVersion))
+                            Text(authStore.profile?.plan.uppercased() ?? "—")
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
                         }

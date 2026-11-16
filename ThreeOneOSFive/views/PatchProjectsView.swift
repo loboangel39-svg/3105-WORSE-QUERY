@@ -26,6 +26,7 @@ struct PatchProjectsView: View {
     @State private var wallpaperImportFeedback: WallpaperImportFeedback?
     @State private var wallpaperPendingDeletion: WallpaperStagedPackage?
     @State private var isImportingWallpapers = false
+    @State private var recoveryProjectID: UUID?
     @State private var showSimulatedWallpaperDetail = false
     @State private var simulatedWallpaperDetailGate = OneShotPresentationGate()
     let onOpenSettings: () -> Void
@@ -388,7 +389,20 @@ struct PatchProjectsView: View {
                 }
                 .buttonStyle(.plain)
 
-                if let receipt = DevicePatchService.latestReceipt(projectID: item.id) {
+                if store.recoveryRequiredIDs.contains(item.id) {
+                    Button {
+                        recoveryProjectID = item.id
+                    } label: {
+                        Text("REVISAR")
+                            .font(.caption.weight(.bold))
+                            .frame(minWidth: 74, minHeight: 36)
+                            .foregroundStyle(.primary)
+                            .background(Color.orange.opacity(0.18), in: RoundedRectangle(cornerRadius: 8))
+                            .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.orange.opacity(0.7), lineWidth: 1))
+                    }
+                    .buttonStyle(.borderless)
+                    .accessibilityLabel("Revisar recuperación")
+                } else if let receipt = DevicePatchService.latestReceipt(projectID: item.id) {
                     Button {
                         store.directRestore(projectID: receipt.projectID)
                     } label: {
@@ -396,6 +410,9 @@ struct PatchProjectsView: View {
                             .font(.caption.weight(.bold))
                             .lineLimit(1)
                             .frame(minWidth: 74, minHeight: 36)
+                            .foregroundStyle(.primary)
+                            .background(AppTheme.accent.opacity(0.18), in: RoundedRectangle(cornerRadius: 8))
+                            .overlay(RoundedRectangle(cornerRadius: 8).stroke(AppTheme.accent.opacity(0.65), lineWidth: 1))
                     }
                     .buttonStyle(.borderless)
                     .disabled(store.isBusy)
@@ -408,11 +425,17 @@ struct PatchProjectsView: View {
                             .font(.caption.weight(.bold))
                             .lineLimit(1)
                             .frame(minWidth: 74, minHeight: 36)
+                            .foregroundStyle(.primary)
+                            .background(AppTheme.accent.opacity(0.18), in: RoundedRectangle(cornerRadius: 8))
+                            .overlay(RoundedRectangle(cornerRadius: 8).stroke(AppTheme.accent.opacity(0.65), lineWidth: 1))
                     }
                     .buttonStyle(.borderless)
                     .disabled(store.isBusy)
                     .accessibilityLabel(language.text("patch.apply"))
                 }
+            }
+            .navigationDestination(item: $recoveryProjectID) { projectID in
+                PatchProjectDetailView(store: store, projectID: projectID)
             }
         }
     }
@@ -481,7 +504,7 @@ private struct PatchProjectRow: View {
                 Text(item.project?.name ?? language.text("patch.locked_project"))
                     .font(.body.weight(.semibold))
                     .foregroundStyle(.primary)
-                    .lineLimit(1)
+                    .lineLimit(2)
                 if let author = item.project?.author, !author.isEmpty {
                     Text(language.text("patch.by_author", author))
                         .font(.caption)
@@ -489,12 +512,6 @@ private struct PatchProjectRow: View {
                 }
             }
             Spacer()
-            if item.summary.isPasswordProtected {
-                Image(systemName: "key.fill")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .accessibilityLabel(language.text("patch.password_protected"))
-            }
             if item.project?.isPrivate == true {
                 Image(systemName: "eye.slash.fill")
                     .font(.caption)
@@ -1021,6 +1038,7 @@ private struct PatchProjectDetailView: View {
                     try DevicePatchService.restore(receipt: receipt)
                     await MainActor.run {
                         isWorking = false
+                        store.clearRecoveryRequired(projectID: projectID)
                         store.reload()
                     }
                 } else {
@@ -1062,6 +1080,7 @@ private struct PatchProjectDetailView: View {
                 )
                 await MainActor.run {
                     isWorking = false
+                    store.clearRecoveryRequired(projectID: projectID)
                     store.reload()
                 }
             } catch let error as PatchPackageError {
