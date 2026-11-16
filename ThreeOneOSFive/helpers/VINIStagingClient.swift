@@ -17,7 +17,7 @@ enum VINIStagingError: Error, Equatable {
         case .integrity: return "Paquete sin integridad verificada"
         case .keychain: return "No se pudo acceder al llavero"
         case .stale: return "Operación cancelada"
-        case .invalidResponse: return "Respuesta no válida de staging"
+        case .invalidResponse: return "Respuesta no válida del Worker"
         }
     }
 }
@@ -244,11 +244,27 @@ actor VINIStagingClient {
         let (bytes, response) = try await request("api/app/validate-license", body: ["licenseKey": saved.licenseKey, "hwid": saved.hwid])
         guard generation == epoch else { throw VINIStagingError.stale }
         guard response.statusCode == 200 else { throw failure(bytes, response.statusCode) }
-        struct Login: Decodable { let valid: Bool; let token: String; let expiresAt: String }
-        let result = try JSONDecoder().decode(Login.self, from: bytes)
-        let p = try JSONDecoder().decode(VINIStagingProfile.self, from: bytes); try p.validate()
-        guard result.valid, !result.token.isEmpty, p.licenseStatus == "active",
-              try VINIStagingEnvironment.date(result.expiresAt) > VINIStagingEnvironment.date(p.serverTime)
+         struct Login: Decodable {
+             let valid: Bool
+             let token: String
+             let expiresAt: String
+             let username: String?
+             let userID: String?
+             let isPremium: Bool?
+             let plan: String?
+             let licenseExpiresAt: String?
+             let serverTime: String?
+         }
+         let result = try JSONDecoder().decode(Login.self, from: bytes)
+         guard result.valid, !result.token.isEmpty, let username = result.username, !username.isEmpty,
+               try VINIStagingEnvironment.date(result.expiresAt) > Date() else { throw VINIStagingError.invalidLicense }
+         let serverTime = result.serverTime ?? ISO8601DateFormatter().string(from: Date())
+         let plan = result.plan ?? (result.isPremium == true ? "pro" : "basic")
+         let p = VINIStagingProfile(userID: result.userID, username: username, plan: plan,
+             licenseStatus: "active", licenseExpiresAt: result.licenseExpiresAt ?? result.expiresAt,
+             serverTime: serverTime)
+         try p.validate()
+         guard try VINIStagingEnvironment.date(result.expiresAt) > VINIStagingEnvironment.date(p.serverTime)
         else { throw VINIStagingError.invalidResponse }
         let current = VINIStagingCredentials(licenseKey: saved.licenseKey, hwid: saved.hwid, token: result.token, expiresAt: result.expiresAt)
         try vault.save(current); credentials = current

@@ -57,9 +57,11 @@ func catalog(for project: PatchProject, package: Data, sha: String = "", targetP
 func run(_ package: Data, project: PatchProject, catalogData: Data, download: Data? = nil,
          prefix: [(String, Int, Data)] = [], remoteID: String = "fixture-remote-id") async throws -> [VINIRemotePreparedPackage] {
     let profile: [String: Any] = ["username": "fixture", "userID": "fixture-user", "plan": "basic", "licenseStatus": "active", "licenseExpiresAt": "2027-01-01T00:00:00Z", "serverTime": "2026-11-16T00:00:00Z"]
+    // Exact production validation contract: profile-only fields are optional
+    // and must not be required to accept a valid license response.
     let login: [String: Any] = ["valid": true, "token": "fixture-token", "expiresAt": "2027-01-01T00:00:00Z",
-        "username": "fixture", "plan": "basic", "licenseStatus": "active",
-        "licenseExpiresAt": "2027-01-01T00:00:00Z", "serverTime": "2026-11-16T00:00:00Z"]
+        "username": "fixture", "userID": "fixture-user", "isPremium": false,
+        "licenseExpiresAt": "2027-01-01T00:00:00Z"]
     var replies = prefix
     replies += [("api/app/validate-license", 200, try data(login)), ("api/app/me", 200, try data(profile)), ("api/app/patches", 200, catalogData),
                 ("api/app/patches/\(remoteID)/download", 200, download ?? package)]
