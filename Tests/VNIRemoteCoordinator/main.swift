@@ -93,7 +93,7 @@ func run(_ package: Data, project: PatchProject, catalogData: Data, download: Da
 
         let profile: [String: Any] = ["username": "fixture", "plan": "basic", "licenseStatus": "active", "serverTime": "2026-11-16T00:00:00Z"]
         let auth = try data(["valid": true, "token": "new-token", "expiresAt": "2027-01-01T00:00:00Z", "username": "fixture", "plan": "basic", "licenseStatus": "active", "serverTime": "2026-11-16T00:00:00Z"])
-        let transport = FixtureTransport([("api/app/validate-license", 200, auth), ("api/app/me", 401, try data(["error": "unauthorized"])), ("api/app/validate-license", 200, auth), ("api/app/patches", 200, validCatalog), ("api/app/patches/fixture-remote-id/download", 200, encoded)])
+        let transport = FixtureTransport([("api/app/validate-license", 200, auth), ("api/app/patches", 401, try data(["error": "unauthorized"])), ("api/app/validate-license", 200, auth), ("api/app/patches", 200, validCatalog), ("api/app/patches/fixture-remote-id/download", 200, encoded)])
         let client = VINIStagingClient(baseURL: VINIProductionEnvironment.base, transport: transport, vault: FixtureVault(value: try fixtureCredentials()))
         _ = try await client.login(licenseKey: "fixture")
         _ = try await VINIRemotePackageCoordinator(client: client).prepareAuthorizedPackages()
