@@ -1,6 +1,6 @@
 # VINI Fase 3J-CI — plan de evidencia
 
-Estado antes de la ejecución: **PENDING**.
+Estado actual: **PASS PARCIAL**.
 
 Este workflow experimental añade `push` únicamente para
 `experiment/vini-remote-import-ci`; no modifica `main` ni otros workflows.
@@ -18,4 +18,18 @@ El coordinador `VNIRemotePackageCoordinator` se compila sintácticamente en este
 
 ## Resultado
 
-Se completará después del run generado por el push. Debe registrar ID, URL, SHA, runner macOS-15, versión Xcode, salida nativa, log de compilación iPhone, arquitectura `arm64` y artefactos. Los estados válidos serán únicamente `PASS`, `FAIL` o `SKIPPED` con evidencia adjunta.
+## Ejecución CI verificada
+
+- Run: `43802759627`
+- URL: https://github.com/loboangel39-svg/3105-WORSE-QUERY/actions/runs/43802759627
+- Commit: `ad3e784` (`ad3e784` completo en el run)
+- Evento/rama: `push` / `experiment/vini-remote-import-ci`
+- Runner: `macos-15` (job `133086586381`)
+- Xcode observado: `/Applications/Xcode_26.3.app`
+- Syntax coordinator: **PASS**
+- Fixtures nativos macOS: **PASS**; las pruebas live Worker/R2/licencias: **SKIPPED** explícitamente por ausencia de secretos de producción.
+- Compilación `iphoneos` unsigned: **PASS**.
+- Arquitectura: `Non-fat file ... is architecture: arm64`.
+- Artefacto: `VINI-3J-native-evidence`, con logs y evidencia de build.
+
+No se declara PASS del flujo completo de `VNIRemotePackageCoordinator.prepareAuthorizedPackages()`: el coordinador tuvo validación sintáctica, pero el arnés nativo existente no lo invoca directamente. Tampoco se ejecutaron operaciones contra producción ni CoreSimulator/simctl.
