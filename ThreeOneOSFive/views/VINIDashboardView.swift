@@ -145,6 +145,7 @@ struct VINIHeaderView: View {
     var status = "Sin sesión"
     @Environment(\.appLanguage) private var language
     @EnvironmentObject private var appState: AppState
+    @EnvironmentObject private var enginePresentation: VINIEnginePresentationStore
     private var version: String {
         Bundle.main.object(forInfoDictionaryKey: "AppReleaseDisplayVersion") as? String
         ?? Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""
@@ -161,11 +162,11 @@ struct VINIHeaderView: View {
                 Spacer(minLength: 0)
             }
             HStack(spacing: 6) {
-                Circle().fill(appState.exploitStatus.isSuccess ? Color.green : Color.secondary)
+                Circle().fill(enginePresentation.verifiedProvider != nil ? Color.green : Color.secondary)
                     .frame(width: 6, height: 6).accessibilityHidden(true)
-                Text(isPreview ? language.text("vini.preview_mode") : appState.accessMethod)
+                Text(isPreview ? language.text("vini.preview_mode") : enginePresentation.displayText(appState: appState))
                     .font(AppTheme.sans(11, relativeTo: .caption))
-                    .foregroundStyle(appState.exploitStatus.isSuccess ? Color.green : Color.secondary)
+                    .foregroundStyle(enginePresentation.verifiedProvider != nil ? Color.green : Color.secondary)
             }
         }.frame(maxWidth: .infinity, alignment: .leading)
     }

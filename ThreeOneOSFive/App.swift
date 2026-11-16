@@ -4,6 +4,7 @@ import UIKit
 @main
 struct ThreeOneOSFiveApp: App {
     @StateObject private var appState = AppState()
+    @StateObject private var enginePresentation = VINIEnginePresentationStore()
     @StateObject private var patchDraftCoordinator = PatchDraftCoordinator()
     @StateObject private var fileOperationCoordinator = FileOperationCoordinator()
     @StateObject private var patchStore = PatchProjectStore()
@@ -22,8 +23,10 @@ struct ThreeOneOSFiveApp: App {
             VINIAuthenticationRoot(onAuthorized: {
                 if !initialized { WQIntegratedInitialize(); initialized = true }
                 appState.detectSupport()
+                enginePresentation.refresh(appState: appState)
             }, onImport: { url in patchDraftCoordinator.presentImport(url) })
                 .environmentObject(appState)
+                .environmentObject(enginePresentation)
                 .environmentObject(patchDraftCoordinator)
                 .environmentObject(fileOperationCoordinator)
                 .environmentObject(patchStore)
@@ -34,6 +37,35 @@ struct ThreeOneOSFiveApp: App {
         }
     }
 }
+
+@MainActor final class VINIEnginePresentationStore: ObservableObject {
+    @Published private(set) var verifiedProvider: String?
+    @Published private(set) var lastError: String?
+    private var observer: NSObjectProtocol?
+
+    init() {
+        observer = NotificationCenter.default.addObserver(forName: .viniAccessOutcome, object: nil, queue: .main) { [weak self] note in
+            guard let self else { return }
+            let provider = note.userInfo?["provider"] as? String
+            let success = note.userInfo?["success"] as? Bool ?? false
+            if success { self.verifiedProvider = provider; self.lastError = nil }
+            else { self.verifiedProvider = nil; self.lastError = note.userInfo?["error"] as? String }
+        }
+    }
+
+    deinit { if let observer { NotificationCenter.default.removeObserver(observer) } }
+    func refresh(appState: AppState) { if !appState.exploitStatus.isSuccess { verifiedProvider = nil } }
+    func displayText(appState: AppState) -> String {
+        let v = AppInfo.versionTuple
+        let compatibility = VINICompatibilityResolver.resolve(major: v.major, minor: v.minor, patch: v.patch, build: AppInfo.osBuild)
+        let selected = compatibility.sandbox.rawValue == "none" ? compatibility.kernel.rawValue : compatibility.sandbox.rawValue
+        guard selected != "none" else { return "Acceso sin verificar" }
+        if verifiedProvider == selected { return selected + " · Activo" }
+        return selected + " · Seleccionado"
+    }
+}
+
+extension Notification.Name { static let viniAccessOutcome = Notification.Name("vini.access.outcome") }
 
 class AppState: ObservableObject {
     @Published var exploitStatus: ExploitStatus = .notStarted
