@@ -56,7 +56,7 @@ struct VINILicenseLogin: View {
                     }.padding(.top, 20)
                     Text("ENVIRONMENT AUTHENTICATION").font(AppTheme.mono(9).weight(.semibold))
                         .tracking(1).foregroundStyle(Color(red: 0.55, green: 0.65, blue: 0.77)).padding(.top, 12)
-                    Spacer(minLength: 48)
+                    Spacer(minLength: 26)
                     VStack(alignment: .leading, spacing: 14) {
                         Text("LICENSE KEY").font(AppTheme.mono(10).weight(.bold)).tracking(0.6).foregroundStyle(AppTheme.accent)
                         HStack(spacing: 10) {
@@ -81,7 +81,7 @@ struct VINILicenseLogin: View {
                         }.buttonStyle(.plain).disabled(busy || (license.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && store.phase != .blocked))
                     }.padding(18).background(Color(red: 0.05, green: 0.065, blue: 0.09), in: RoundedRectangle(cornerRadius: 20))
                         .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color.white.opacity(0.1), lineWidth: 0.8))
-                    Spacer(minLength: 48)
+                    Spacer(minLength: 30)
                     HStack {
                         Circle().fill(store.phase == .blocked ? .gray : AppTheme.accent).frame(width: 3, height: 3)
                         Text(store.phase == .blocked ? "Sin conexión verificada" : busy ? "Comprobando servidor" : "Sesión no autorizada")

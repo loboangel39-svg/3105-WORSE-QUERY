@@ -52,6 +52,10 @@ class AppState: ObservableObject {
     }
 
     var isSupported: Bool { unsupportedMessage == nil }
+    var accessMethod: String {
+        if case .success(let method) = exploitStatus { return method }
+        return "Acceso sin verificar"
+    }
 
     func detectSupport() {
         let v = AppInfo.versionTuple

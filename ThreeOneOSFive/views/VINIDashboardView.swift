@@ -63,15 +63,17 @@ struct VINIDashboardPresentation {
 struct VINIDashboardView: View {
     let presentation: VINIDashboardPresentation
     let openAccount: () -> Void
+    let onExit: () -> Void
     @Environment(\.appLanguage) private var language
     @Environment(\.dynamicTypeSize) private var typeSize
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @AppStorage("interface.appearance") private var appearance = "dark"
     @State private var category: VINICategory = .combat
 
-    init(presentation: VINIDashboardPresentation = .preview, openAccount: @escaping () -> Void = {}) {
+    init(presentation: VINIDashboardPresentation = .preview, openAccount: @escaping () -> Void = {}, onExit: @escaping () -> Void = {}) {
         self.presentation = presentation
         self.openAccount = openAccount
+        self.onExit = onExit
         AppTheme.configure()
     }
     private var visibleTargets: [VINITargetPresentation] {
@@ -100,10 +102,16 @@ struct VINIDashboardView: View {
     }
     private var header: some View {
         VStack(spacing: 10) {
-            VINIHeaderView(isPreview: presentation.isPreview, status: presentation.license.status)
+            HStack(alignment: .top, spacing: 8) {
+                VINIHeaderView(isPreview: presentation.isPreview, status: presentation.license.status)
+                Button(action: onExit) {
+                    Image(systemName: "rectangle.portrait.and.arrow.right")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(Color.secondary)
+                        .frame(width: 30, height: 30)
+                }.buttonStyle(.plain).accessibilityLabel("Salir")
+            }
             VINILicenseCard(license: presentation.license)
-                .contentShape(Rectangle()).onTapGesture(perform: openAccount)
-                .accessibilityAction(named: "Abrir cuenta") { openAccount() }
             VINICategorySelector(selection: $category)
         }.padding(.horizontal, 20).padding(.top, 8).padding(.bottom, 12)
     }
@@ -136,6 +144,7 @@ struct VINIHeaderView: View {
     var isPreview = true
     var status = "Sin sesión"
     @Environment(\.appLanguage) private var language
+    @EnvironmentObject private var appState: AppState
     private var version: String {
         Bundle.main.object(forInfoDictionaryKey: "AppReleaseDisplayVersion") as? String
         ?? Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""
@@ -152,8 +161,11 @@ struct VINIHeaderView: View {
                 Spacer(minLength: 0)
             }
             HStack(spacing: 6) {
-                Circle().fill(AppTheme.accent).frame(width: 6, height: 6).accessibilityHidden(true)
-                Text(isPreview ? language.text("vini.preview_mode") : status).font(AppTheme.sans(11, relativeTo: .caption)).foregroundStyle(.secondary)
+                Circle().fill(appState.exploitStatus.isSuccess ? Color.green : Color.secondary)
+                    .frame(width: 6, height: 6).accessibilityHidden(true)
+                Text(isPreview ? language.text("vini.preview_mode") : appState.accessMethod)
+                    .font(AppTheme.sans(11, relativeTo: .caption))
+                    .foregroundStyle(appState.exploitStatus.isSuccess ? Color.green : Color.secondary)
             }
         }.frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -195,7 +207,7 @@ struct VINILicenseCard: View {
             } else {
                 HStack(spacing: 10) { identity; Spacer(minLength: 0); remaining }
             }
-        }.padding(.horizontal, 12).padding(.vertical, 9)
+        }.padding(.horizontal, 12).padding(.vertical, 11)
          .background(AppTheme.card.opacity(0.9), in: RoundedRectangle(cornerRadius: 12))
          .overlay(RoundedRectangle(cornerRadius: 12).stroke(AppTheme.border.opacity(0.7), lineWidth: 0.75))
          .accessibilityIdentifier("vini-license-preview")

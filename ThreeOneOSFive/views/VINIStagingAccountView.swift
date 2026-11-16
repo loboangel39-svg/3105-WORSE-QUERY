@@ -121,7 +121,7 @@ struct VINIStagingDashboard: View {
     @State private var account = false
     var body: some View {
         TimelineView(.periodic(from: .now, by: 60)) { _ in
-            VINIDashboardView(presentation: store.presentation, openAccount: { account = true })
+            VINIDashboardView(presentation: store.presentation, onExit: { Task { await store.logout() } })
         }
         .sheet(isPresented: $account) { VINIStagingAccountView(store: store) }
     }
