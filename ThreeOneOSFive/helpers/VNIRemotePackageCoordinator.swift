@@ -68,7 +68,6 @@ actor VINIRemotePackageCoordinator {
         }
         guard decoded.project.id == target.projectID else { throw CoordinatorError.invalidIdentity }
         let url = try PatchProjectLibrary.save(data: bytes, projectName: decoded.project.name, fileManager: fileManager)
-        try cache.updateImportURL(identity: identity, importedPackageURL: url)
         return VINIRemotePreparedPackage(remotePatchID: entry.id, targetID: target.targetID, packageID: target.packageID,
             projectID: target.projectID, revision: target.packageRevision, sha256: digest, fileSize: bytes.count, packageURL: url)
     }
