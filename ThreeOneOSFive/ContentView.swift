@@ -68,6 +68,20 @@ struct ContentView: View {
         .onAppear {
             tabNavigation.reconcileSelection(with: featureVisibility)
         }
+        .onReceive(NotificationCenter.default.publisher(for: .patchesDidChange)) { _ in
+            patchStore.reloadAsync()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .viniForegroundRefresh)) { _ in
+            Task { await PatchSyncManager.shared.syncPatches(reason: "foreground") }
+        }
+        .task {
+            await PatchSyncManager.shared.syncPatches(reason: "authorized")
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(PatchSyncManager.foregroundRefreshInterval))
+                guard !Task.isCancelled else { break }
+                await PatchSyncManager.shared.syncIfStale()
+            }
+        }
         .sheet(isPresented: $showSettings) { SettingsView() }
         .sheet(isPresented: $showLogs) { LogView() }
         .patchStorePresentation(patchStore)

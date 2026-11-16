@@ -104,7 +104,7 @@ struct PatchProjectsView: View {
                             .controllerRow()
                     } else {
                         if !filteredItems.isEmpty {
-                            Section(language.text("patch.title")) {
+                            Section {
                                 ForEach(filteredItems) { item in
                                     itemRow(item)
                                         .controllerRow()
@@ -222,7 +222,7 @@ struct PatchProjectsView: View {
             }
             .onAppear {
                 Task {
-                    await PatchSyncManager.shared.syncPatches()
+                    await PatchSyncManager.shared.syncPatches(reason: "installed")
                     store.reload()
                 }
                 consumeExternalImport()
@@ -247,19 +247,6 @@ struct PatchProjectsView: View {
             }
             .onChange(of: draftCoordinator.importRequest?.id) { _ in
                 consumeExternalImport()
-            }
-            .onReceive(NotificationCenter.default.publisher(for: .patchesDidChange)) { _ in
-                store.reload()
-            }
-            .onReceive(NotificationCenter.default.publisher(for: .viniForegroundRefresh)) { _ in
-                Task { await PatchSyncManager.shared.syncIfStale() }
-            }
-            .task {
-                while !Task.isCancelled {
-                    try? await Task.sleep(for: .seconds(PatchSyncManager.foregroundRefreshInterval))
-                    guard !Task.isCancelled else { break }
-                    await PatchSyncManager.shared.syncIfStale()
-                }
             }
         }
     }
@@ -405,7 +392,10 @@ struct PatchProjectsView: View {
                     Button {
                         store.directRestore(projectID: receipt.projectID)
                     } label: {
-                        Image(systemName: store.isBusy ? "hourglass" : "arrow.uturn.backward.circle.fill")
+                        Text(store.isBusy ? "PROCESANDO" : "RESTORE")
+                            .font(.caption.weight(.bold))
+                            .lineLimit(1)
+                            .frame(minWidth: 74, minHeight: 36)
                     }
                     .buttonStyle(.borderless)
                     .disabled(store.isBusy)
@@ -414,7 +404,10 @@ struct PatchProjectsView: View {
                     Button {
                         store.directApply(projectID: item.id)
                     } label: {
-                        Image(systemName: store.isBusy ? "hourglass" : "checkmark.circle.fill")
+                        Text(store.isBusy ? "PROCESANDO" : "APPLY")
+                            .font(.caption.weight(.bold))
+                            .lineLimit(1)
+                            .frame(minWidth: 74, minHeight: 36)
                     }
                     .buttonStyle(.borderless)
                     .disabled(store.isBusy)
@@ -489,15 +482,11 @@ private struct PatchProjectRow: View {
                     .font(.body.weight(.semibold))
                     .foregroundStyle(.primary)
                     .lineLimit(1)
-                InstalledContentKindBadge(kind: .patch, language: language)
                 if let author = item.project?.author, !author.isEmpty {
                     Text(language.text("patch.by_author", author))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
-                Text(rowDetail)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
             }
             Spacer()
             if item.summary.isPasswordProtected {
@@ -516,20 +505,6 @@ private struct PatchProjectRow: View {
         .padding(.vertical, 4)
     }
 
-    private var rowDetail: String {
-        if item.isLocked {
-            return language.text("patch.tap_to_unlock")
-        }
-        if item.project?.isPrivate == true, !item.isAuthorCopy {
-            return language.text("patch.private_received")
-        }
-        return language.text(
-            item.summary.schemaVersion >= 2
-                ? "patch.workspace_items_count"
-                : "patch.rules_count",
-            Int64((item.project?.rules.count ?? 0) + (item.project?.directories.count ?? 0))
-        )
-    }
 }
 
 private enum InstalledContentKind {

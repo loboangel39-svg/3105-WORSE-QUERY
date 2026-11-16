@@ -49,6 +49,17 @@ final class PatchProjectStore: ObservableObject {
         items = PatchProjectLibrary.load()
     }
 
+    func reloadAsync() {
+        Task.detached(priority: .userInitiated) { [weak self] in
+            let loadedItems = PatchProjectLibrary.load()
+            await self?.replaceItems(loadedItems)
+        }
+    }
+
+    private func replaceItems(_ loadedItems: [PatchLibraryItem]) {
+        items = loadedItems
+    }
+
     /// Direct actions used by the compact Installed list. They delegate to the
     /// same DevicePatchService transaction path as the detail screen.
     func directApply(projectID: UUID) {

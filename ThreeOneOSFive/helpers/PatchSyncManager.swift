@@ -31,10 +31,12 @@ final class PatchSyncManager: ObservableObject {
     init() {}
     
     // MARK: - Sincronizar patches remotos (delegar a PatchManager)
-    func syncPatches() async {
+    func syncPatches(reason: String = "manual") async {
         let now = ProcessInfo.processInfo.systemUptime
         guard now - lastAttemptUptime >= 1 else { return }
         lastAttemptUptime = now
+        let startedAt = now
+        log("remote sync start: reason=\(reason)")
         await patchManager.syncPatches()
         
         // Copiar patches de RemotePatches/ a PatchProjects/ para compatibilidad
@@ -47,6 +49,8 @@ final class PatchSyncManager: ObservableObject {
             self.lastSyncDate = patchManager.lastSyncDate
             self.isSyncing = false
         }
+        let elapsed = String(format: "%.3f", ProcessInfo.processInfo.systemUptime - startedAt)
+        log("remote sync finish: reason=\(reason), available=\(availablePatches.count), duration=\(elapsed)s")
     }
     
     // MARK: - Copiar patches a la ubicación legacy
@@ -95,7 +99,7 @@ final class PatchSyncManager: ObservableObject {
 
     func syncIfStale() async {
         guard ProcessInfo.processInfo.systemUptime - lastAttemptUptime >= Self.foregroundRefreshInterval else { return }
-        await syncPatches()
+        await syncPatches(reason: "periodic")
     }
     
     // MARK: - Verificar si ya está descargado
