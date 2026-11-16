@@ -1,6 +1,6 @@
 import Foundation
 import CryptoKit
-func log(_ message: String) { print(message) }
+func log(_ message: String) { print(message); fflush(stdout) }
 
 final class FixtureVault: VINIStagingVault {
     var value: VINIStagingCredentials?
@@ -17,7 +17,7 @@ actor FixtureTransport: VINIStagingTransport {
     func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
         guard index < replies.count else { throw VINIStagingError.offline }
         let reply = replies[index]; index += 1
-        print("REQUEST \(request.url?.path ?? "nil") expected /\(reply.0) status \(reply.1)")
+        log("REQUEST \(request.url?.path ?? "nil") expected /\(reply.0) status \(reply.1)")
         guard request.url?.path == "/" + reply.0 else { throw VINIStagingError.invalidResponse }
         return (reply.2, HTTPURLResponse(url: request.url!, statusCode: reply.1, httpVersion: nil, headerFields: nil)!)
     }
@@ -61,9 +61,9 @@ func run(_ package: Data, project: PatchProject, catalogData: Data, download: Da
     replies += [("api/app/validate-license", 200, try data(login)), ("api/app/patches", 200, catalogData),
                 ("api/app/patches/fixture-remote-id/download", 200, download ?? package)]
     let client = VINIStagingClient(baseURL: VINIProductionEnvironment.base, transport: FixtureTransport(replies), vault: FixtureVault(value: try fixtureCredentials()))
-    print("LOGIN synthetic")
+    log("LOGIN synthetic")
     _ = try await client.login(licenseKey: "fixture")
-    print("LOGIN complete")
+    log("LOGIN complete")
     return try await VINIRemotePackageCoordinator(client: client).prepareAuthorizedPackages()
 }
 
