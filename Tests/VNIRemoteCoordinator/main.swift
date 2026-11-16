@@ -63,7 +63,7 @@ func run(_ package: Data, project: PatchProject, catalogData: Data, download: Da
                 ("api/app/patches/fixture-remote-id/download", 200, download ?? package)]
     let client = VINIStagingClient(baseURL: VINIProductionEnvironment.base, transport: FixtureTransport(replies), vault: FixtureVault(value: try fixtureCredentials()))
     _ = try await client.login(licenseKey: "fixture")
-    return try await VNIRemotePackageCoordinator(client: client).prepareAuthorizedPackages()
+    return try await VINIRemotePackageCoordinator(client: client).prepareAuthorizedPackages()
 }
 
 @main struct RemoteCoordinatorTests {
@@ -95,7 +95,7 @@ func run(_ package: Data, project: PatchProject, catalogData: Data, download: Da
         let transport = FixtureTransport([("api/app/validate-license", 200, auth), ("api/app/me", 401, try data(["error": "unauthorized"])), ("api/app/validate-license", 200, auth), ("api/app/patches", 200, validCatalog), ("api/app/patches/fixture-remote-id/download", 200, encoded)])
         let client = VINIStagingClient(baseURL: VINIProductionEnvironment.base, transport: transport, vault: FixtureVault(value: try fixtureCredentials()))
         _ = try await client.login(licenseKey: "fixture")
-        _ = try await VNIRemotePackageCoordinator(client: client).prepareAuthorizedPackages()
+        _ = try await VINIRemotePackageCoordinator(client: client).prepareAuthorizedPackages()
         _ = profile
         print("PASS HTTP 401 revalidation preserved real coordinator flow")
         print("SKIPPED: interrupted download, altered cache, account switch, post-catalog revocation, Apply/Restore and production authorization")
