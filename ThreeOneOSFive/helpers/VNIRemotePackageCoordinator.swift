@@ -17,31 +17,43 @@ actor VINIRemotePackageCoordinator {
     enum CoordinatorError: Error { case noTarget, invalidIdentity, integrity, locked, staleAuthorization }
     private let client: VINIStagingClient
     private let fileManager: FileManager
+    private let cache: VINIRemotePackageCache
     init(client: VINIStagingClient, fileManager: FileManager = .default) {
-        self.client = client; self.fileManager = fileManager
+        self.client = client; self.fileManager = fileManager; self.cache = (try! VINIRemotePackageCache(fileManager: fileManager))
     }
 
     /// Production wiring uses the single definitive Worker. Tests inject the
     /// same client with a synthetic transport while retaining this base URL.
     init(fileManager: FileManager = .default) {
         self.client = VINIStagingClient(baseURL: VINIProductionEnvironment.base)
-        self.fileManager = fileManager
+        self.fileManager = fileManager; self.cache = (try! VINIRemotePackageCache(fileManager: fileManager))
     }
 
     func prepareAuthorizedPackages() async throws -> [VINIRemotePreparedPackage] {
+        let profile = try await client.profile()
         let entries = try await client.catalog()
         var prepared: [VINIRemotePreparedPackage] = []
         for entry in entries {
             guard let target = entry.target, target.availability == "available" else { continue }
-            prepared.append(try await prepare(entry: entry, target: target))
+            prepared.append(try await prepare(entry: entry, target: target, userID: profile.stableUserID))
         }
         return prepared
     }
 
-    private func prepare(entry: VINIStagingPatch, target: VINIRemotePatchTarget) async throws -> VINIRemotePreparedPackage {
+    private func prepare(entry: VINIStagingPatch, target: VINIRemotePatchTarget, userID: String) async throws -> VINIRemotePreparedPackage {
         guard target.packageSHA256.range(of: "^[0-9a-f]{64}$", options: .regularExpression) != nil,
               target.targetID.isEmpty == false else { throw CoordinatorError.invalidIdentity }
-        let bytes = try await client.downloadPackage(id: entry.id)
+        let identity = VINIRemoteCacheIdentity(userID: userID, remotePatchID: entry.id, targetID: target.targetID,
+            packageID: target.packageID, projectID: target.projectID, revision: target.packageRevision,
+            sha256: target.packageSHA256, fileSize: target.fileSize)
+        let bytes: Data
+        if let cached = try cache.load(identity: identity) { bytes = cached.0 }
+        else {
+            bytes = try await client.downloadPackage(id: entry.id)
+            guard bytes.count == target.fileSize else { throw CoordinatorError.integrity }
+            guard SHA256.hash(data: bytes).map({ String(format: "%02x", $0) }).joined() == target.packageSHA256 else { throw CoordinatorError.integrity }
+            try cache.store(bytes: bytes, identity: identity)
+        }
         guard bytes.count > 0, bytes.count == target.fileSize else { throw CoordinatorError.integrity }
         let digest = SHA256.hash(data: bytes).map { String(format: "%02x", $0) }.joined()
         guard digest == target.packageSHA256 else { throw CoordinatorError.integrity }
@@ -56,6 +68,7 @@ actor VINIRemotePackageCoordinator {
         }
         guard decoded.project.id == target.projectID else { throw CoordinatorError.invalidIdentity }
         let url = try PatchProjectLibrary.save(data: bytes, projectName: decoded.project.name, fileManager: fileManager)
+        try cache.updateImportURL(identity: identity, importedPackageURL: url)
         return VINIRemotePreparedPackage(remotePatchID: entry.id, targetID: target.targetID, packageID: target.packageID,
             projectID: target.projectID, revision: target.packageRevision, sha256: digest, fileSize: bytes.count, packageURL: url)
     }

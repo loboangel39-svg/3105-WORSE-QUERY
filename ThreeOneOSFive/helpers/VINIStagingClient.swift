@@ -41,11 +41,13 @@ enum VINIProductionEnvironment {
 }
 
 struct VINIStagingProfile: Codable, Equatable {
+    let userID: String?
     let username: String
     let plan: String
     let licenseStatus: String
     let licenseExpiresAt: String?
     let serverTime: String
+    var stableUserID: String { userID?.isEmpty == false ? userID! : username }
     func validate() throws {
         guard !username.isEmpty, ["basic", "pro"].contains(plan),
               ["active", "paused", "expired", "revoked", "blocked", "inactive", "archived"].contains(licenseStatus)
