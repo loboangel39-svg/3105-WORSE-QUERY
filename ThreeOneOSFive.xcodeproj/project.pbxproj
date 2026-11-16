@@ -18,6 +18,7 @@
 		AA3105050000000000000002 /* VINIAuthenticationRoot.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA3105050000000000000001; };
 		AA3105040000000000000004 /* VINIStagingAccountView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA3105040000000000000003; };
 		AA3105040000000000000002 /* VINIStagingClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA3105040000000000000001; };
+		AA31050B0000000000000002 /* VINIRemotePatchTarget.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA31050B0000000000000001; };
 		AA3105030000000000000004 /* VINIDualBackupStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA3105020000000000000004; };
 		AA3105030000000000000003 /* VINIPackageCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA3105020000000000000003; };
 		AA3105030000000000000002 /* VINIRemoteContract.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA3105020000000000000002; };
@@ -131,6 +132,7 @@
 		AA3105050000000000000001 /* VINIAuthenticationRoot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VINIAuthenticationRoot.swift; sourceTree = "<group>"; };
 		AA3105040000000000000003 /* VINIStagingAccountView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VINIStagingAccountView.swift; sourceTree = "<group>"; };
 		AA3105040000000000000001 /* VINIStagingClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VINIStagingClient.swift; sourceTree = "<group>"; };
+		AA31050B0000000000000001 /* VINIRemotePatchTarget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VINIRemotePatchTarget.swift; sourceTree = "<group>"; };
 		AA3105020000000000000004 /* VINIDualBackupStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VINIDualBackupStore.swift; sourceTree = "<group>"; };
 		AA3105020000000000000003 /* VINIPackageCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VINIPackageCatalog.swift; sourceTree = "<group>"; };
 		AA3105020000000000000002 /* VINIRemoteContract.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VINIRemoteContract.swift; sourceTree = "<group>"; };
@@ -384,6 +386,7 @@
 				AA3105060000000000000005 /* VINIProductionTargetModel.swift */,
 				AA3105050000000000000003 /* VINIIsolatedFixture.swift */,
 				AA3105040000000000000001 /* VINIStagingClient.swift */,
+				AA31050B0000000000000001 /* VINIRemotePatchTarget.swift */,
 				3105A099 /* Localization.swift */,
 				3105A104 /* ContainerStore.swift */,
 				3105A114 /* ContainerAccessCoordinator.swift */,
@@ -578,6 +581,7 @@
 				AA3105050000000000000002 /* VINIAuthenticationRoot.swift in Sources */,
 				AA3105040000000000000004 /* VINIStagingAccountView.swift in Sources */,
 				AA3105040000000000000002 /* VINIStagingClient.swift in Sources */,
+				AA31050B0000000000000002 /* VINIRemotePatchTarget.swift in Sources */,
 				AA3105060000000000000002 /* VNIRemotePackageCoordinator.swift in Sources */,
 				AA3105060000000000000004 /* VINIRemotePackageCache.swift in Sources */,
 				AA3105060000000000000006 /* VINIProductionTargetModel.swift in Sources */,

@@ -56,17 +56,6 @@ struct VINIStagingProfile: Codable, Equatable {
         if let expiry = licenseExpiresAt { _ = try VINIStagingEnvironment.date(expiry) }
     }
 }
-struct VINIRemotePatchTarget: Codable {
-    let targetID: String
-    let category: String
-    let packageID: UUID
-    let projectID: UUID
-    let packageRevision: String
-    let packageSHA256: String
-    let fileSize: Int
-    let requiredPlan: String?
-    let availability: String
-}
 struct VINIStagingPatch: Codable, Identifiable {
     let id: String
     let name: String
