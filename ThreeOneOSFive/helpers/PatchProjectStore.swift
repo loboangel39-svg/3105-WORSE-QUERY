@@ -47,7 +47,7 @@ final class PatchProjectStore: ObservableObject {
     }
 
     func reload() {
-        items = PatchProjectLibrary.load()
+        reloadAsync()
     }
 
     func reloadAsync() {
@@ -117,7 +117,7 @@ final class PatchProjectStore: ObservableObject {
     }
 
     private func finishDirectOperation() {
-        reload()
+        reloadAsync()
         isBusy = false
     }
 
@@ -397,7 +397,7 @@ final class PatchProjectStore: ObservableObject {
     }
 
     private func finishWorkspaceSynchronization(reportsSuccess: Bool) {
-        reload()
+        reloadAsync()
         isBusy = false
         if reportsSuccess {
             alert = PatchStoreAlert(
@@ -499,7 +499,7 @@ final class PatchProjectStore: ObservableObject {
     }
 
     private func finishOperation(successMessageKey: String) {
-        reload()
+        reloadAsync()
         isBusy = false
         alert = PatchStoreAlert(titleKey: "common.done", messageKey: successMessageKey)
     }

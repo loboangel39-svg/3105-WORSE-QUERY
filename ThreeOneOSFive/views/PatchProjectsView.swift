@@ -209,7 +209,7 @@ struct PatchProjectsView: View {
             .onAppear {
                 Task {
                     await PatchSyncManager.shared.syncPatches(reason: "installed")
-                    store.reload()
+                    store.reloadAsync()
                 }
                 consumeExternalImport()
 #if targetEnvironment(simulator)
@@ -942,7 +942,7 @@ private struct PatchProjectDetailView: View {
                     : baseProject
                 _ = try DevicePatchService.apply(project: project)
                 await MainActor.run {
-                    store.reload()
+                    store.reloadAsync()
                     isWorking = false
                 }
             } catch let error as PatchPackageError {
@@ -972,7 +972,7 @@ private struct PatchProjectDetailView: View {
                     _ = try PatchProjectLibrary.synchronizeWorkspace(item: item)
                 }
                 await MainActor.run {
-                    store.reload()
+                    store.reloadAsync()
                     isWorking = false
                     shareRequest = PatchShareRequest(url: item.packageURL)
                 }
@@ -1026,7 +1026,7 @@ private struct PatchProjectDetailView: View {
                     await MainActor.run {
                         isWorking = false
                         store.clearRecoveryRequired(projectID: projectID)
-                        store.reload()
+                        store.reloadAsync()
                     }
                 } else {
                     await MainActor.run {
@@ -1068,7 +1068,7 @@ private struct PatchProjectDetailView: View {
                 await MainActor.run {
                     isWorking = false
                     store.clearRecoveryRequired(projectID: projectID)
-                    store.reload()
+                    store.reloadAsync()
                 }
             } catch let error as PatchPackageError {
                 await MainActor.run {
@@ -1099,7 +1099,7 @@ private struct PatchProjectDetailView: View {
                 )
                 await MainActor.run {
                     isWorking = false
-                    store.reload()
+                    store.reloadAsync()
                 }
             } catch let error as PatchPackageError {
                 await MainActor.run {
