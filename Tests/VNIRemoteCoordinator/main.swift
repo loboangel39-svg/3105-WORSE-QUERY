@@ -81,6 +81,31 @@ func run(_ package: Data, project: PatchProject, catalogData: Data, download: Da
         let imported = try PatchPackageCodec.decode(Data(contentsOf: prepared[0].packageURL), password: nil)
         try expect(imported.project.id == project.id, "imported bytes decode with original codec")
 
+        let cacheRoot = FileManager.default.temporaryDirectory.appendingPathComponent("vini-cache-\(UUID().uuidString)")
+        let cache = try VINIRemotePackageCache(root: cacheRoot)
+        let cacheIdentity = VINIRemoteCacheIdentity(userID: "fixture-user", remotePatchID: "cache-r1",
+            targetID: "fixture.target", packageID: project.id, projectID: project.id, revision: "r1",
+            sha256: digest(encoded), fileSize: encoded.count)
+        _ = try cache.store(bytes: encoded, identity: cacheIdentity)
+        let validCache = try cache.load(identity: cacheIdentity)
+        try expect(validCache?.0 == encoded, "valid cache reused after persistence")
+        let packagePath = cacheRoot.appendingPathComponent(validCache!.1.packageFilename)
+        try Data("altered".utf8).write(to: packagePath)
+        let alteredCache = try cache.load(identity: cacheIdentity)
+        try expect(alteredCache == nil, "altered cache rejected by digest")
+        _ = try cache.store(bytes: encoded, identity: cacheIdentity)
+        var failedBytes = encoded; failedBytes.append(0)
+        do { _ = try cache.store(bytes: failedBytes, identity: cacheIdentity); throw VINIStagingError.invalidResponse }
+        catch { }
+        let preservedCache = try cache.load(identity: cacheIdentity)
+        try expect(preservedCache?.0 == encoded, "failed replacement preserves prior revision")
+        let otherUser = VINIRemoteCacheIdentity(userID: "other-user", remotePatchID: "cache-r1",
+            targetID: "fixture.target", packageID: project.id, projectID: project.id, revision: "r1",
+            sha256: digest(encoded), fileSize: encoded.count)
+        let otherUserCache = try cache.load(identity: otherUser)
+        try expect(otherUserCache == nil, "cache is isolated by user identity")
+        print("PASS cache restart metadata reload")
+
         var corrupt = encoded; corrupt[corrupt.startIndex] ^= 0xff
         do { _ = try await run(corrupt, project: project, catalogData: try catalog(for: project, package: corrupt, remoteID: "corrupt"), remoteID: "corrupt"); throw VINIStagingError.invalidResponse }
         catch { print("PASS corrupt package rejected before import") }
@@ -93,12 +118,10 @@ func run(_ package: Data, project: PatchProject, catalogData: Data, download: Da
         catch { print("PASS inconsistent SHA-256 rejected") }
 
         let auth = try data(["valid": true, "token": "new-token", "expiresAt": "2027-01-01T00:00:00Z", "username": "fixture", "userID": "fixture-user", "plan": "basic", "licenseStatus": "active", "serverTime": "2026-11-16T00:00:00Z"])
-        let profile = try data(["username": "fixture", "userID": "fixture-user", "plan": "basic", "licenseStatus": "active", "serverTime": "2026-11-16T00:00:00Z"])
         let transport = FixtureTransport([("api/app/me", 401, try data(["error": "unauthorized"])), ("api/app/validate-license", 200, auth), ("api/app/patches", 200, validCatalog), ("api/app/patches/fixture-remote-id/download", 200, encoded)])
         var expiredCredentials = try fixtureCredentials(); expiredCredentials.token = "old-token"
         let client = VINIStagingClient(baseURL: VINIProductionEnvironment.base, transport: transport, vault: FixtureVault(value: expiredCredentials))
         _ = try await VINIRemotePackageCoordinator(client: client).prepareAuthorizedPackages()
-        _ = profile
         print("PASS HTTP 401 revalidation preserved real coordinator flow")
         print("SKIPPED: interrupted download, altered cache, account switch, post-catalog revocation, Apply/Restore and production authorization")
         print("PASS coordinator runtime fixture validation")

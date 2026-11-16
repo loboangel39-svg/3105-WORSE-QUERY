@@ -1,7 +1,9 @@
 # VINI 3J-F — Matriz de pruebas
 
-Estado inicial: **PENDING CI**.
+Resultado CI de referencia: commit `bbdb5a8`, run `43806900148` — **PASS** (macOS-15, Swift nativo y build unsigned `iphoneos arm64`).
 
 La prueba nativa existente seguirá invocando literalmente `VINIRemotePackageCoordinator.prepareAuthorizedPackages()` con transporte aislado, paquete generado por `PatchPackageCodec` y usuario sintético. Se ampliará para comprobar reutilización íntegra, rechazo de bytes alterados, revisión anterior conservada, usuario diferente, reinicio mediante lectura de metadatos y revocación/ausencia del catálogo.
 
-Los escenarios Apply/Restore permanecen fuera de alcance. Los journals y backups se verifican solo como rutas no tocadas; no se invoca ninguna operación de transacción.
+PASS: descarga/importación real, reutilización válida, alteración de bytes, reemplazo fallido conservando revisión previa, aislamiento por usuario, recuperación de metadatos tras recrear el adaptador y renovación HTTP 401.
+
+SKIPPED: revocación posterior al catálogo, contador de descarga explícito, fixture de interrupción de transporte y verificación de backups/journals por filesystem. Apply/Restore permanecen fuera de alcance.
