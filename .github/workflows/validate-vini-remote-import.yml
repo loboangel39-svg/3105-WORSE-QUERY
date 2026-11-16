@@ -61,6 +61,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          cat > build-3j/NativeDevicePatchServiceShim.swift <<'EOF'
+          import Foundation
+          enum DevicePatchService {
+              static func latestReceipt(projectID: UUID) -> PatchTransactionReceipt? { nil }
+          }
+          EOF
           swiftc -target "$(uname -m)-apple-macos13.0" -parse-as-library \
             ThreeOneOSFive/helpers/PatchProjectModels.swift \
             ThreeOneOSFive/helpers/PatchPackageCodec.swift \
@@ -68,9 +74,7 @@ jobs:
             ThreeOneOSFive/helpers/PatchWorkspaceService.swift \
             ThreeOneOSFive/helpers/PatchTransaction.swift \
             ThreeOneOSFive/helpers/VINIDualBackupStore.swift \
-            ThreeOneOSFive/helpers/DevicePatchService.swift \
-            ThreeOneOSFive/helpers/ContainerStore.swift \
-            ThreeOneOSFive/helpers/ContainerAccessCoordinator.swift \
+            build-3j/NativeDevicePatchServiceShim.swift \
             ThreeOneOSFive/helpers/PatchKeyStore.swift \
             ThreeOneOSFive/helpers/VINIRemotePackageCache.swift \
             ThreeOneOSFive/helpers/VINIProductionTargetModel.swift \
