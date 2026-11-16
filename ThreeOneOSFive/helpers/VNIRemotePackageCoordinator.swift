@@ -18,6 +18,9 @@ actor VINIRemotePackageCoordinator {
     private let client: VINIStagingClient
     private let fileManager: FileManager
     private let cache: VINIRemotePackageCache
+    private(set) var skippedNoTarget = 0
+    private(set) var skippedLocked = 0
+    private(set) var skippedFailed = 0
     init(client: VINIStagingClient, fileManager: FileManager = .default) {
         self.client = client; self.fileManager = fileManager; self.cache = (try! VINIRemotePackageCache(fileManager: fileManager))
     }
@@ -34,8 +37,13 @@ actor VINIRemotePackageCoordinator {
         let entries = try await client.catalog()
         var prepared: [VINIRemotePreparedPackage] = []
         for entry in entries {
-            guard let target = entry.target, target.availability == "available" else { continue }
-            prepared.append(try await prepare(entry: entry, target: target, userID: profile.stableUserID))
+            guard let target = entry.target else { skippedNoTarget += 1; continue }
+            guard target.availability == "available" else { continue }
+            do { prepared.append(try await prepare(entry: entry, target: target, userID: profile.stableUserID)) }
+            catch {
+                if case CoordinatorError.locked = error { skippedLocked += 1 }
+                else { skippedFailed += 1 }
+            }
         }
         return prepared
     }
@@ -47,9 +55,12 @@ actor VINIRemotePackageCoordinator {
             packageID: target.packageID, projectID: target.projectID, revision: target.packageRevision,
             sha256: target.packageSHA256, fileSize: target.fileSize)
         let bytes: Data
+        var authorizedKey: Data?
         if let cached = try cache.load(identity: identity) { bytes = cached.0 }
         else {
-            bytes = try await client.downloadPackage(id: entry.id)
+            let download = try await client.downloadPackageWithMetadata(id: entry.id)
+            bytes = download.data
+            authorizedKey = download.contentKey
             guard bytes.count == target.fileSize else { throw CoordinatorError.integrity }
             guard SHA256.hash(data: bytes).map({ String(format: "%02x", $0) }).joined() == target.packageSHA256 else { throw CoordinatorError.integrity }
             try cache.store(bytes: bytes, identity: identity)
@@ -59,11 +70,12 @@ actor VINIRemotePackageCoordinator {
         guard digest == target.packageSHA256 else { throw CoordinatorError.integrity }
         let summary = try PatchPackageCodec.inspect(bytes)
         guard summary.packageID == target.packageID else { throw CoordinatorError.invalidIdentity }
+        if let keyValue = authorizedKey { try PatchKeyStore.store(keyValue, for: summary) }
         let decoded: DecodedPatchPackage
         if let key = try PatchKeyStore.load(for: summary) {
             decoded = try PatchPackageCodec.decode(bytes, contentKey: key)
         } else {
-            guard !summary.isPasswordProtected else { throw CoordinatorError.locked }
+            guard !summary.isPasswordProtected else { skippedLocked += 1; throw CoordinatorError.locked }
             decoded = try PatchPackageCodec.decode(bytes, password: nil)
         }
         guard decoded.project.id == target.projectID else { throw CoordinatorError.invalidIdentity }

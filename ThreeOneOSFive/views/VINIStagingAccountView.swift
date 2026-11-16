@@ -72,9 +72,16 @@ enum VINIAuthenticationPhase: Equatable { case checking, login, validating, auth
             do {
                 packages = try await client.catalog()
                 catalogDiagnostic = "Catálogo: \(packages.count) patches autorizados"
-                let prepared = try await VINIRemotePackageCoordinator(client: client).prepareAuthorizedPackages()
+                let coordinator = VINIRemotePackageCoordinator(client: client)
+                let prepared = try await coordinator.prepareAuthorizedPackages()
                 preparedPackages = prepared
+                let skippedNoTarget = await coordinator.skippedNoTarget
+                let skippedLocked = await coordinator.skippedLocked
+                let skippedFailed = await coordinator.skippedFailed
                 catalogDiagnostic += " · \(prepared.count) importados y verificados"
+                if skippedNoTarget > 0 { catalogDiagnostic += " · \(skippedNoTarget) sin metadatos target" }
+                if skippedLocked > 0 { catalogDiagnostic += " · \(skippedLocked) cifrados sin clave" }
+                if skippedFailed > 0 { catalogDiagnostic += " · \(skippedFailed) rechazados por integridad/identidad" }
             } catch {
                 catalogDiagnostic = "Catálogo no disponible: \(String(describing: error))"
                 packageResult = "Catálogo no disponible; sesión conservada"

@@ -128,6 +128,7 @@ protocol VINIStagingTransport {
     func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse)
 }
 final class VINIStagingHTTP: VINIStagingTransport {
+    static let maximumPackageBytes = 64 * 1024 * 1024
     private let session: URLSession
     private let baseURL: URL
     init(baseURL: URL = VINIProductionEnvironment.base) {
@@ -145,8 +146,8 @@ final class VINIStagingHTTP: VINIStagingTransport {
                 defer { try? FileManager.default.removeItem(at: url) }
                 guard let http = response as? HTTPURLResponse else { throw VINIStagingError.invalidResponse }
                 let handle = try FileHandle(forReadingFrom: url); defer { try? handle.close() }
-                let bytes = try handle.read(upToCount: VINIStagingEnvironment.fixtureSize + 1) ?? Data()
-                guard bytes.count <= VINIStagingEnvironment.fixtureSize else { throw VINIStagingError.integrity }
+                let bytes = try handle.read(upToCount: Self.maximumPackageBytes + 1) ?? Data()
+                guard bytes.count <= Self.maximumPackageBytes else { throw VINIStagingError.integrity }
                 return (bytes, http)
             }
             let (data, response) = try await session.data(for: request)
@@ -276,7 +277,7 @@ actor VINIStagingClient {
         try vault.save(current); credentials = current
         return p
     }
-    private func authorized(_ path: String) async throws -> Data {
+    private func authorizedResponse(_ path: String) async throws -> (Data, HTTPURLResponse) {
         try load(); let epoch = generation
         guard let token = credentials?.token, !token.isEmpty else { throw VINIStagingError.signedOut }
         var (bytes, response) = try await request(path, token: token)
@@ -288,14 +289,36 @@ actor VINIStagingClient {
         }
         guard generation == epoch else { throw VINIStagingError.stale }
         guard response.statusCode == 200 else { throw failure(bytes, response.statusCode) }
-        return bytes
+        return (bytes, response)
+    }
+    private func authorized(_ path: String) async throws -> Data {
+        try await (authorizedResponse(path)).0
     }
     func catalog() async throws -> [VINIStagingPatch] {
         struct Catalog: Decodable { let patches: [VINIStagingPatch] }
         return try JSONDecoder().decode(Catalog.self, from: await authorized("api/app/patches")).patches
     }
     func downloadPackage(id: String) async throws -> Data {
-        try await authorized("api/app/patches/" + id + "/download")
+        try await downloadPackageWithMetadata(id: id).data
+    }
+    struct AuthorizedPackageDownload {
+        let data: Data
+        let headers: [AnyHashable: Any]
+        let contentKey: Data?
+    }
+    func downloadPackageWithMetadata(id: String) async throws -> AuthorizedPackageDownload {
+        let response = try await authorizedResponse("api/app/patches/" + id + "/download")
+        let headers = response.1.allHeaderFields
+        let raw = headers.first { String(describing: $0.key).lowercased() == "x-content-key" }.map { String(describing: $0.value) }
+        let contentKey: Data?
+        if let raw, raw.count == 64, raw.allSatisfy({ $0.isHexDigit }) {
+            contentKey = Data((0..<32).compactMap { index in
+                let start = raw.index(raw.startIndex, offsetBy: index * 2)
+                let end = raw.index(start, offsetBy: 2)
+                return UInt8(raw[start..<end], radix: 16)
+            })
+        } else { contentKey = nil }
+        return AuthorizedPackageDownload(data: response.0, headers: headers, contentKey: contentKey)
     }
     func verifiedTestBytes(id: String) async throws -> Data {
         // The current API has no digest field. Only the independently pinned 2C fixture
