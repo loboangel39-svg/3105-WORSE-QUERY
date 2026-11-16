@@ -65,6 +65,8 @@ jobs:
             ThreeOneOSFive/helpers/PatchProjectModels.swift \
             ThreeOneOSFive/helpers/PatchPackageCodec.swift \
             ThreeOneOSFive/helpers/PatchProjectLibrary.swift \
+            ThreeOneOSFive/helpers/PatchWorkspaceService.swift \
+            ThreeOneOSFive/helpers/PatchTransaction.swift \
             ThreeOneOSFive/helpers/PatchKeyStore.swift \
             ThreeOneOSFive/helpers/VINIStagingClient.swift \
             ThreeOneOSFive/helpers/VINIRemoteContract.swift \

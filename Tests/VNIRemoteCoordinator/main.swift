@@ -1,5 +1,6 @@
 import Foundation
 import CryptoKit
+func log(_ message: String) { print(message) }
 
 final class FixtureVault: VINIStagingVault {
     var value: VINIStagingCredentials?
