@@ -281,6 +281,8 @@ actor VINIStagingClient {
         }
     }
     func downloadTestPackage(id: String) async throws -> String {
+        let catalog = try await catalog()
+        guard catalog.contains(where: { $0.id == id }) else { throw VINIStagingError.denied }
         let bytes = try await verifiedTestBytes(id: id)
         let decoded = try PatchPackageCodec.decode(bytes, password: nil)
         try storeFixture(bytes, id: id)
