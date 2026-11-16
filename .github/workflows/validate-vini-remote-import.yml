@@ -57,6 +57,20 @@ jobs:
             ThreeOneOSFive/helpers/VINIIsolatedFixture.swift \
             Tests/VINIStaging/main.swift -o build-3j/native-staging-tests
           build-3j/native-staging-tests | tee build-3j-native-staging.log
+      - name: Real remote coordinator runtime fixtures
+        shell: bash
+        run: |
+          set -euo pipefail
+          swiftc -target "$(uname -m)-apple-macos13.0" -parse-as-library \
+            ThreeOneOSFive/helpers/PatchProjectModels.swift \
+            ThreeOneOSFive/helpers/PatchPackageCodec.swift \
+            ThreeOneOSFive/helpers/PatchProjectLibrary.swift \
+            ThreeOneOSFive/helpers/PatchKeyStore.swift \
+            ThreeOneOSFive/helpers/VINIStagingClient.swift \
+            ThreeOneOSFive/helpers/VINIRemoteContract.swift \
+            ThreeOneOSFive/helpers/VNIRemotePackageCoordinator.swift \
+            Tests/VNIRemoteCoordinator/main.swift -o build-3j/remote-coordinator-tests
+          build-3j/remote-coordinator-tests | tee build-3j-remote-coordinator.log
       - name: Build physical iPhone arm64 unsigned
         shell: bash
         run: |
@@ -73,3 +87,4 @@ jobs:
             build-3j-*.txt
             build-3j-build.log
             build-3j-native-staging.log
+            build-3j-remote-coordinator.log
