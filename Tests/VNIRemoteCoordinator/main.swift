@@ -145,8 +145,8 @@ func run(_ package: Data, project: PatchProject, catalogData: Data, download: Da
         _ = try await run(encoded, project: project, catalogData: try catalog(for: project, package: encoded, remoteID: interruptionID, revision: "r1"), remoteID: interruptionID)
         let partial = Data(encoded.prefix(8))
         let r2Catalog = try catalog(for: project, package: encoded, remoteID: interruptionID, revision: "r2")
-        do { _ = try await run(encoded, project: project, catalogData: r2Catalog, download: partial, remoteID: interruptionID); throw VINIStagingError.invalidResponse }
-        catch { print("PASS interrupted download rejected before publication") }
+        let partialResult = try? await run(encoded, project: project, catalogData: r2Catalog, download: partial, remoteID: interruptionID)
+        try expect(partialResult == nil, "interrupted download rejected before publication")
         let cacheAfterInterruption = try VINIRemotePackageCache()
         let r1Identity = VINIRemoteCacheIdentity(userID: "fixture-user", remotePatchID: interruptionID, targetID: "fixture.target", packageID: project.id, projectID: project.id, revision: "r1", sha256: digest(encoded), fileSize: encoded.count)
         let priorRevision = try cacheAfterInterruption.load(identity: r1Identity)
