@@ -1,4 +1,3 @@
-import CryptoKit
 import Foundation
 
 struct PatchStoreAlert: Identifiable {
@@ -157,28 +156,10 @@ final class PatchProjectStore: ObservableObject {
 
     private nonisolated static func loadLibrarySnapshot() -> (items: [PatchLibraryItem], recoveryRequiredIDs: Set<UUID>) {
         let items = PatchProjectLibrary.load()
-        var recoveryRequiredIDs = Set<UUID>()
-        guard let reader = try? VINITransactionStateReader.live() else {
-            return (items, recoveryRequiredIDs)
-        }
-
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.sortedKeys]
-        for item in items {
-            guard let project = item.project,
-                  let packageDigest = try? Data(SHA256.hash(data: try encoder.encode(project))) else { continue }
-            let targetID = "package." + project.id.uuidString
-            let state = reader.state(targetID: targetID, projectID: project.id, packageDigest: packageDigest)
-            switch state {
-            case .applied, .restored:
-                break
-            case .prepared, .restorePending, .failed, .unknown:
-                if DevicePatchService.latestReceipt(projectID: project.id) != nil {
-                    recoveryRequiredIDs.insert(project.id)
-                }
-            }
-        }
-        return (items, recoveryRequiredIDs)
+        // RC12 uses the PatchTransaction journal as the sole productive
+        // operation authority. Legacy VINI A/B records remain untouched and
+        // are not consulted to block new Apply/Restore actions.
+        return (items, [])
     }
 
     func create(project: PatchProject, password: String?) {
