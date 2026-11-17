@@ -8,13 +8,21 @@ enum DevicePatchService {
         mutationLock.lock(); defer { mutationLock.unlock() }
         let bundleIDs = orderedBundleIdentifiers(in: project)
         return try withResolvedContainers(bundleIDs: bundleIDs) { roots in
+            // Never replace the VINI association while an engine transaction
+            // is still recoverable. If no active receipt exists, the record is
+            // stale and this operation captures a fresh pre-Apply reference.
+            let backupRoot = try PatchProjectLibrary.backupRootURL()
+            guard PatchTransaction.latestReceipt(projectID: project.id,
+                                                 backupRoot: backupRoot) == nil else {
+                throw PatchPackageError.projectAlreadyApplied
+            }
             let store = try VINIDualBackupStore.live()
             var operation = try makeOperationRecord(project: project, roots: roots)
             try store.save(operation)
             do {
                 let receipt = try PatchTransaction.apply(
                     project: project,
-                    backupRoot: try PatchProjectLibrary.backupRootURL(),
+                    backupRoot: backupRoot,
                     containerResolver: { bundleID in
                         guard let root = roots[bundleID] else {
                             throw PatchPackageError.targetAppUnavailable(bundleID)
@@ -102,9 +110,9 @@ enum DevicePatchService {
             try store.save(operation)
             try PatchTransaction.restore(
                 receipt: receipt,
-                // Destination drift is never an authorization for an unsafe overwrite.
-                // The parameter remains for source compatibility with the existing UI.
-                allowChangedTargets: false,
+                // The caller enables this only after warning about destination
+                // drift. Identity, path and backup checks remain enforced.
+                allowChangedTargets: allowChangedTargets,
                 containerResolver: { bundleID in
                     guard let root = roots[bundleID] else {
                         throw PatchPackageError.targetAppUnavailable(bundleID)

@@ -94,8 +94,10 @@ final class PatchProjectStore: ObservableObject {
                 let applyElapsed = String(format: "%.3f", ProcessInfo.processInfo.systemUptime - startedAt)
                 log("patch apply: \(applyElapsed)s")
                 await self?.finishDirectOperation()
+            } catch let error as PatchPackageError {
+                await self?.failDirectOperation(error)
             } catch {
-                await self?.failDirectOperation()
+                await self?.failDirectOperation(.operationDiagnostic(String(describing: error)))
             }
         }
     }
@@ -118,8 +120,10 @@ final class PatchProjectStore: ObservableObject {
                 let restoreElapsed = String(format: "%.3f", ProcessInfo.processInfo.systemUptime - startedAt)
                 log("patch restore: \(restoreElapsed)s")
                 await self?.finishDirectOperation()
+            } catch let error as PatchPackageError {
+                await self?.failDirectOperation(error)
             } catch {
-                await self?.failDirectOperation()
+                await self?.failDirectOperation(.operationDiagnostic(String(describing: error)))
             }
         }
     }
@@ -135,11 +139,13 @@ final class PatchProjectStore: ObservableObject {
         alert = PatchStoreAlert(titleKey: "common.failed", messageKey: "patch.restore_changed_title")
     }
 
-    private func failDirectOperation(recoveryRequired: Bool = false) {
+    private func failDirectOperation(_ error: PatchPackageError,
+                                     recoveryRequired: Bool = false) {
         isBusy = false
         alert = PatchStoreAlert(
             titleKey: "common.failed",
-            messageKey: recoveryRequired ? "patch.restore_changed_title" : "patch.error.apply"
+            messageKey: recoveryRequired ? "patch.restore_changed_title" : error.localizationKey,
+            messageArgument: error.localizationArgument
         )
     }
 

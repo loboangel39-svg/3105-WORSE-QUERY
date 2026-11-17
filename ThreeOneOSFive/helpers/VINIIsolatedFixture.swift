@@ -74,7 +74,8 @@ actor VINIIsolatedFixture {
             guard type.isRegularFile == true, type.isSymbolicLink != true else { throw VINIPatchFailure.invalidScope }
         }
         if !fm.fileExists(atPath: destination.path) { try Self.original.write(to: destination, options: .atomic) }
-        guard try Data(contentsOf: destination) == Self.original else { throw VINIPatchFailure.concurrentChange }
+        // Any regular existing file is valid input. PatchTransaction captures
+        // its exact bytes in this operation's backup before writing.
         // Isolated package import: exact received bytes + unchanged codec, outside the live library.
         try bytes.write(to: directory.appendingPathComponent("Imported.3105"), options: .atomic)
         guard try self.project(Data(contentsOf: directory.appendingPathComponent("Imported.3105"))).id == project.id else { throw VINIPatchFailure.invalidManifest }

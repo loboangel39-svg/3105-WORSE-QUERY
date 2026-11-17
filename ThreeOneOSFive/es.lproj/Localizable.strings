@@ -225,6 +225,7 @@
 "patch.error.active_delete" = "Este parche sigue activo. Restaura sus archivos originales antes de eliminar el paquete.";
 "patch.error.symlink" = "Los destinos de un parche no pueden atravesar enlaces simbólicos.";
 "patch.error.apply" = "No se pudo aplicar el parche. Se revirtieron las escrituras anteriores.";
+"patch.error.diagnostic" = "La operación falló: %@";
 "patch.error.restore" = "No se pudieron restaurar los originales de forma segura. No se sobrescribió ningún destino sin verificar.";
 "patch.error.reset" = "No se pudieron restablecer los archivos al estado del paquete aplicado. Se revirtieron las escrituras parciales.";
 "patch.error.invalid_import_link" = "Este enlace de importación de parche no es válido. Usa un enlace HTTPS seguro a un paquete .3105.";
