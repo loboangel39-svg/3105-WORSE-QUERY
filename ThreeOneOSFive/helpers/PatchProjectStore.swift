@@ -107,12 +107,11 @@ final class PatchProjectStore: ObservableObject {
         let startedAt = ProcessInfo.processInfo.systemUptime
         Task.detached(priority: .userInitiated) { [weak self] in
             do {
-                let inspection = try DevicePatchService.inspectRestore(receipt: receipt)
-                guard inspection.changedTargets.isEmpty else {
-                    await self?.markRecoveryRequired(projectID: projectID)
-                    return
-                }
-                try DevicePatchService.restore(receipt: receipt)
+                // Changed targets are a confirmation condition in the detail
+                // flow, not a permanent block for the Installed action. The
+                // engine still verifies the receipt, backup, identity and
+                // final restored bytes before returning success.
+                try DevicePatchService.restore(receipt: receipt, allowChangedTargets: true)
                 guard try DevicePatchService.verifyState(receipt: receipt, original: true) else {
                     throw PatchPackageError.invalidProject
                 }
@@ -130,12 +129,6 @@ final class PatchProjectStore: ObservableObject {
     private func finishDirectOperation() {
         reloadAsync()
         isBusy = false
-    }
-
-    private func markRecoveryRequired(projectID: UUID) {
-        recoveryRequiredIDs.insert(projectID)
-        isBusy = false
-        alert = PatchStoreAlert(titleKey: "common.failed", messageKey: "patch.restore_changed_title")
     }
 
     private func failDirectOperation(_ error: PatchPackageError,

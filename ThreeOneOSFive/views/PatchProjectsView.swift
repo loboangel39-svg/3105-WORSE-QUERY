@@ -377,7 +377,7 @@ struct PatchProjectsView: View {
                             .overlay(RoundedRectangle(cornerRadius: 8).stroke(AppTheme.accent.opacity(0.65), lineWidth: 1))
                     }
                     .buttonStyle(.borderless)
-                    .disabled(store.isBusy || store.recoveryRequiredIDs.contains(item.id))
+                    .disabled(store.isBusy)
                     .accessibilityLabel(language.text("patch.restore"))
                 } else {
                     Button {
@@ -392,7 +392,7 @@ struct PatchProjectsView: View {
                             .overlay(RoundedRectangle(cornerRadius: 8).stroke(AppTheme.accent.opacity(0.65), lineWidth: 1))
                     }
                     .buttonStyle(.borderless)
-                    .disabled(store.isBusy || store.recoveryRequiredIDs.contains(item.id))
+                    .disabled(store.isBusy)
                     .accessibilityLabel(language.text("patch.apply"))
                 }
             }

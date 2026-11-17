@@ -153,8 +153,12 @@ enum DevicePatchService {
                 ).get()
                 sessions.append(session)
             } catch {
-                log("patch: shared container access failed \(bundleID): \(error.localizedDescription)")
-                throw PatchPackageError.targetAppUnavailable(bundleID)
+                let nsError = error as NSError
+                log("patch: container access failed bundle=\(bundleID) operation=write "
+                    + "domain=\(nsError.domain) code=\(nsError.code)")
+                throw PatchPackageError.operationDiagnostic(
+                    "container access failed for \(bundleID): \(nsError.domain) (\(nsError.code))"
+                )
             }
             roots[bundleID] = PatchPathValidator.canonicalFileURL(URL(fileURLWithPath: path, isDirectory: true))
         }

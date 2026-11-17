@@ -1176,9 +1176,12 @@ struct FileBrowserView: View {
         let shouldGrant = !hasGranted && ContainerAccessPolicy.shouldRequestGrant(isRoot: isRoot)
         hasGranted = true
         isLoadingEntries = true
-        let path = currentPath
+        // Re-resolve a bundle-backed root whenever Files loads. App
+        // reinstalls can replace the container UUID; never reuse a stale path.
+        let requestedPath = currentPath
         let targetBundleID = bundleID
         DispatchQueue.global(qos: .userInitiated).async {
+            let path = targetBundleID.flatMap(ContainerStore.resolveAppContainerPath) ?? requestedPath
             var accessSession: ContainerAccessSession?
             if shouldGrant {
                 do {
@@ -1193,7 +1196,8 @@ struct FileBrowserView: View {
             _ = accessSession
             let loadedEntries = ContainerStore.listFiles(at: path)
             DispatchQueue.main.async {
-                guard currentPath == path else { return }
+                guard currentPath == path || bundleID != nil else { return }
+                if currentPath != path { currentPath = path }
                 entries = loadedEntries
                 selectedEntryIDs.formIntersection(Set(loadedEntries.map(\.id)))
                 isLoadingEntries = false
